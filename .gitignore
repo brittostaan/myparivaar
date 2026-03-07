@@ -1,0 +1,5 @@
+# Supabase temp files (contain sensitive project info)
+supabase/.temp/
+
+# Binary tools
+tools/supabase/supabase.exe

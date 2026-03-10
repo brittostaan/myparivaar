@@ -1,24 +1,23 @@
 /**
  * auth-bootstrap
  *
- * Verifies a Firebase Phone Auth ID token, upserts the user in Supabase,
+ * Verifies a Supabase Auth JWT token, upserts the user in the database,
  * and optionally creates a household if a family_name is supplied.
  *
  * POST /functions/v1/auth-bootstrap
- * Header:  Authorization: Bearer <firebase_id_token>
+ * Header:  Authorization: Bearer <supabase_jwt_token>
  * Body:    { "family_name"?: "Sharma Family" }   ← optional
  *
  * Responses
  *   201  { user, household }   new user created
  *   200  { user, household }   existing user returned
- *   400  invalid request body / phone number missing
- *   401  invalid / expired Firebase token
+ *   400  invalid request body
+ *   401  invalid / expired Supabase token
  *   403  household suspended
  *   405  wrong method
  *   500  unexpected server error
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { verifyFirebaseToken } from "../_shared/firebase.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -32,7 +31,7 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-// Service role client — bypasses RLS, targets app schema, never leaks to the client.
+// Service role client — bypasses RLS, targets app schema
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -42,7 +41,14 @@ const supabase = createClient(
   },
 );
 
-const FIREBASE_PROJECT_ID = Deno.env.get("FIREBASE_PROJECT_ID")!;
+// Client for verifying JWT tokens
+const supabaseClient = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_ANON_KEY")!,
+  {
+    auth: { persistSession: false },
+  },
+);
 
 // ─── Selected columns returned to the client ───────────────────────────────
 const USER_COLS =
@@ -60,7 +66,7 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Method not allowed" }, 405);
   }
 
-  // ── 1. Extract Firebase token ──────────────────────────────────────────
+  // ── 1. Extract Supabase JWT token ──────────────────────────────────────
   const authHeader = req.headers.get("Authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) {
     return json({ error: "Missing or malformed Authorization header" }, 401);
@@ -85,18 +91,21 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // ── 3. Verify Firebase token ───────────────────────────────────────────
-  let uid: string;
-  let phoneNumber: string;
+  // ── 3. Verify Supabase JWT token and get user ─────────────────────────
+  let supabaseUserId: string;
+  let email: string;
   try {
-    const claims = await verifyFirebaseToken(idToken, FIREBASE_PROJECT_ID);
-    uid = claims.uid;
-    if (!claims.phone_number) {
-      return json({ error: "Token does not contain a phone number" }, 400);
+    const { data: { user }, error } = await supabaseClient.auth.getUser(idToken);
+    
+    if (error || !user) {
+      console.error("Supabase token verification failed:", error);
+      return json({ error: "Invalid or expired token" }, 401);
     }
-    phoneNumber = claims.phone_number;
+    
+    supabaseUserId = user.id;
+    email = user.email || "no-email@placeholder.com";
   } catch (err) {
-    console.error("Firebase token verification failed:", err);
+    console.error("Supabase token verification failed:", err);
     return json({ error: "Invalid or expired token" }, 401);
   }
 
@@ -105,7 +114,7 @@ Deno.serve(async (req: Request) => {
     const { data: existingUser, error: lookupErr } = await supabase
       .from("users")
       .select(USER_COLS)
-      .eq("firebase_uid", uid)
+      .eq("firebase_uid", supabaseUserId)
       .is("deleted_at", null)
       .maybeSingle();
 
@@ -138,7 +147,7 @@ Deno.serve(async (req: Request) => {
       // Create household
       const { data: household, error: hErr } = await supabase
         .from("households")
-        .insert({ name: familyName, admin_firebase_uid: uid })
+        .insert({ name: familyName, admin_firebase_uid: supabaseUserId })
         .select(HOUSEHOLD_COLS)
         .single();
 
@@ -148,8 +157,8 @@ Deno.serve(async (req: Request) => {
       const { data: user, error: uErr } = await supabase
         .from("users")
         .insert({
-          firebase_uid: uid,
-          phone: phoneNumber,
+          firebase_uid: supabaseUserId,
+          phone: email,  // Store email in phone field for now
           household_id: household.id,
           role: "admin",
         })
@@ -169,7 +178,10 @@ Deno.serve(async (req: Request) => {
     // Flutter will prompt: "Create Family" or "Join Family"
     const { data: user, error: uErr } = await supabase
       .from("users")
-      .insert({ firebase_uid: uid, phone: phoneNumber })
+      .insert({ 
+        firebase_uid: supabaseUserId, 
+        phone: email  // Store email in phone field for now
+      })
       .select(USER_COLS)
       .single();
 
@@ -179,7 +191,7 @@ Deno.serve(async (req: Request) => {
         const { data: raceUser } = await supabase
           .from("users")
           .select(USER_COLS)
-          .eq("firebase_uid", uid)
+          .eq("firebase_uid", supabaseUserId)
           .is("deleted_at", null)
           .maybeSingle();
         if (raceUser) return json({ user: raceUser, household: null }, 200);

@@ -31,13 +31,13 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-// Service role client — bypasses RLS, targets public schema
+// Service role client — bypasses RLS, targets app schema
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   {
     auth: { persistSession: false },
-    db: { schema: "public" },
+    db: { schema: "app" },
   },
 );
 

@@ -16,7 +16,7 @@ import 'services/family_service.dart';
 import 'services/import_service.dart';
 
 const _kSupabaseUrl = 'https://qimqakfjryptyhxmrjsj.supabase.co';
-const _kSupabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY_HERE';  // TODO: Add your actual anon key
+const _kSupabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpbXFha2ZqcnlwdHloeG1yanNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NDQ3NzQsImV4cCI6MjA4ODQyMDc3NH0.SIySX0aILaLTp08K-TurhhS4dMWl0VqKzgKp3PPFlM0';
 
 // ── View Mode (Responsive Design) ────────────────────────────────────────────
 

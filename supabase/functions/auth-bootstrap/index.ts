@@ -31,13 +31,13 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-// Service role client — bypasses RLS, targets app schema
+// Service role client — bypasses RLS, targets public schema
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   {
     auth: { persistSession: false },
-    db: { schema: "app" },
+    db: { schema: "public" },
   },
 );
 
@@ -95,18 +95,21 @@ Deno.serve(async (req: Request) => {
   let supabaseUserId: string;
   let email: string;
   try {
+    console.log("Verifying token...");
     const { data: { user }, error } = await supabaseClient.auth.getUser(idToken);
     
     if (error || !user) {
-      console.error("Supabase token verification failed:", error);
-      return json({ error: "Invalid or expired token" }, 401);
+      console.error("Token verification failed - error:", error);
+      console.error("Token verification failed - user:", user);
+      return json({ error: `Token verification failed: ${error?.message || 'No user returned'}` }, 401);
     }
     
+    console.log("Token verified successfully for user:", user.id);
     supabaseUserId = user.id;
     email = user.email || "no-email@placeholder.com";
   } catch (err) {
-    console.error("Supabase token verification failed:", err);
-    return json({ error: "Invalid or expired token" }, 401);
+    console.error("Token verification exception:", err);
+    return json({ error: `Token verification exception: ${err.message}` }, 401);
   }
 
   // ── 4. Look up existing user ───────────────────────────────────────────
@@ -202,6 +205,8 @@ Deno.serve(async (req: Request) => {
     return json({ user, household: null }, 201);
   } catch (err) {
     console.error("auth-bootstrap error:", err);
-    return json({ error: "Internal server error" }, 500);
+    const errorMessage = err.message || err.toString();
+    console.error("Error details:", JSON.stringify(err, null, 2));
+    return json({ error: `Database operation failed: ${errorMessage}` }, 500);
   }
 });

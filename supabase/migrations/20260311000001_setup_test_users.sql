@@ -17,6 +17,22 @@
 -- Create Test Household
 -- ============================================================================
 
+-- COMMENTED OUT: Database schema appears to have changed
+-- Household creation will be done manually through the app or dashboard
+/*
+-- Ensure admin_firebase_uid column exists (in case schema was modified)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'app' 
+        AND table_name = 'households' 
+        AND column_name = 'admin_firebase_uid'
+    ) THEN
+        ALTER TABLE app.households ADD COLUMN admin_firebase_uid TEXT;
+    END IF;
+END $$;
+
 -- Insert household with Devi as admin (use Devi's Supabase auth UID)
 INSERT INTO app.households (id, name, admin_firebase_uid, plan, suspended, created_at, updated_at)
 VALUES (
@@ -29,6 +45,7 @@ VALUES (
   now()
 )
 ON CONFLICT (id) DO NOTHING;
+*/
 
 -- ============================================================================
 -- Create Test Users in app.users table
@@ -65,7 +82,8 @@ ON CONFLICT (firebase_uid) DO UPDATE SET
   role = EXCLUDED.role;
 
 -- Family Head User: devi
--- Role: admin (can manage family members, linked to Devi's Family)
+-- Role: admin (can manage family members)
+-- NOTE: household_id set to NULL until household is created via app
 INSERT INTO app.users (
   id,
   firebase_uid,
@@ -82,7 +100,7 @@ VALUES (
   gen_random_uuid(),
   '9eefa45c-71b3-4238-ad47-3af7769ff328',  -- Devi's Supabase UID
   '+91-0000000002',  -- Placeholder phone for testing
-  '00000000-0000-0000-0000-000000000001'::uuid,
+  NULL,  -- Will link to household via auth-bootstrap or manually
   'admin',
   'Devi',
   true,
@@ -92,7 +110,6 @@ VALUES (
 )
 ON CONFLICT (firebase_uid) DO UPDATE SET
   display_name = EXCLUDED.display_name,
-  household_id = EXCLUDED.household_id,
   role = EXCLUDED.role;
 
 -- Family Member User: kevin
@@ -113,7 +130,7 @@ VALUES (
   gen_random_uuid(),
   '24e1a20d-98b4-45b9-adeb-064af7fa9507',  -- Kevin's Supabase UID
   '+91-0000000003',  -- Placeholder phone for testing
-  '00000000-0000-0000-0000-000000000001'::uuid,
+  NULL,  -- Will link to household via auth-bootstrap or manually
   'member',
   'Kevin',
   true,
@@ -122,8 +139,7 @@ VALUES (
   now()
 )
 ON CONFLICT (firebase_uid) DO UPDATE SET
-  display_name = EXCLUDED.display_name,
-  household_id = EXCLUDED.household_id;
+  display_name = EXCLUDED.display_name;
 
 -- Family Member User: riya
 -- Role: member (can view and add expenses, linked to Devi's Family)
@@ -143,7 +159,7 @@ VALUES (
   gen_random_uuid(),
   'ddd906ad-e1c1-4c66-8c7b-2b56d995dadd',  -- Riya's Supabase UID
   '+91-0000000004',  -- Placeholder phone for testing
-  '00000000-0000-0000-0000-000000000001'::uuid,
+  NULL,  -- Will link to household via manually
   'member',
   'Riya',
   true,
@@ -152,8 +168,7 @@ VALUES (
   now()
 )
 ON CONFLICT (firebase_uid) DO UPDATE SET
-  display_name = EXCLUDED.display_name,
-  household_id = EXCLUDED.household_id;
+  display_name = EXCLUDED.display_name;
 
 -- ============================================================================
 -- Verification Queries

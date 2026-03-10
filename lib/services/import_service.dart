@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/import_result.dart';
+import 'auth_service.dart';
 
 /// Thrown by [ImportService] for all API-level failures.
 class ImportException implements Exception {
@@ -20,14 +20,14 @@ class ImportException implements Exception {
 class ImportService {
   ImportService({
     required String supabaseUrl,
-    FirebaseAuth? firebaseAuth,
+    required AuthService authService,
     http.Client? httpClient,
   })  : _supabaseUrl = supabaseUrl.replaceAll(RegExp(r'/$'), ''),
-        _auth = firebaseAuth ?? FirebaseAuth.instance,
+        _authService = authService,
         _http = httpClient ?? http.Client();
 
   final String       _supabaseUrl;
-  final FirebaseAuth _auth;
+  final AuthService  _authService;
   final http.Client  _http;
 
   /// Validates the CSV server-side without writing anything to the database.
@@ -65,10 +65,11 @@ class ImportService {
     required String type,
     required String csvText,
   }) async {
-    final user = _auth.currentUser;
-    if (user == null) throw const ImportException('Not authenticated.');
+    if (!_authService.isLoggedIn) {
+      throw const ImportException('Not authenticated.');
+    }
 
-    final idToken = await user.getIdToken(true);
+    final idToken = await _authService.getIdToken(true);
 
     final http.Response response;
     try {

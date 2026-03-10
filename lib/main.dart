@@ -1,8 +1,7 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'firebase_options.dart';
 import 'screens/csv_import_screen.dart';
 import 'screens/family_management_screen.dart';
 import 'screens/expense_management_screen.dart';
@@ -17,6 +16,7 @@ import 'services/family_service.dart';
 import 'services/import_service.dart';
 
 const _kSupabaseUrl = 'https://qimqakfjryptyhxmrjsj.supabase.co';
+const _kSupabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY_HERE';  // TODO: Add your actual anon key
 
 // ── View Mode (Responsive Design) ────────────────────────────────────────────
 
@@ -51,8 +51,10 @@ class ViewModeProvider extends ChangeNotifier {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
+  
+  await Supabase.initialize(
+    url: _kSupabaseUrl,
+    anonKey: _kSupabaseAnonKey,
   );
 
   runApp(
@@ -115,17 +117,29 @@ class MyParivaaarApp extends StatelessWidget {
       case '/household-setup':
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => _NeedsHouseholdScreen(
-            familyService: FamilyService(supabaseUrl: _kSupabaseUrl),
-          ),
+          builder: (ctx) {
+            final auth = Provider.of<AuthService>(ctx, listen: false);
+            return _NeedsHouseholdScreen(
+              familyService: FamilyService(
+                supabaseUrl: _kSupabaseUrl,
+                authService: auth,
+              ),
+            );
+          },
         );
 
       case '/csv-import':
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => CsvImportScreen(
-            importService: ImportService(supabaseUrl: _kSupabaseUrl),
-          ),
+          builder: (ctx) {
+            final auth = Provider.of<AuthService>(ctx, listen: false);
+            return CsvImportScreen(
+              importService: ImportService(
+                supabaseUrl: _kSupabaseUrl,
+                authService: auth,
+              ),
+            );
+          },
         );
 
       case '/family':
@@ -142,7 +156,10 @@ class MyParivaaarApp extends StatelessWidget {
               );
             }
             return FamilyManagementScreen(
-              familyService: FamilyService(supabaseUrl: _kSupabaseUrl),
+              familyService: FamilyService(
+                supabaseUrl: _kSupabaseUrl,
+                authService: auth,
+              ),
               currentUser: currentUser,
               householdName: auth.currentHousehold?.name ?? 'Unknown Household',
             );
@@ -199,7 +216,7 @@ class MyParivaaarApp extends StatelessWidget {
 
 // ── App Router (splash + auth guard) ────────────────────────────────────────
 
-/// Shown while the app checks for an existing Firebase session.
+/// Shown while the app checks for an existing Supabase session.
 /// Redirects to [_HomeShell] if ready, [_LoginScreen] if not authenticated.
 class _AppRouter extends StatefulWidget {
   const _AppRouter();
@@ -348,9 +365,8 @@ class _HomeShell extends StatelessWidget {
 
 // ── Login Screen ─────────────────────────────────────────────────────────────
 
-/// Two-step phone-OTP login backed by [AuthService].
-/// Step 1: enter phone number → receive SMS.
-/// Step 2: enter OTP → authenticated and routed.
+/// Email/Password login backed by [AuthService].
+/// Supports both sign in and sign up flows.
 class _LoginScreen extends StatefulWidget {
   const _LoginScreen();
 
@@ -359,58 +375,30 @@ class _LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<_LoginScreen> {
-  final _phoneCtrl = TextEditingController();
-  final _otpCtrl   = TextEditingController();
-
-  String? _verificationId;
+  final _emailCtrl    = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  
   String? _error;
   bool    _isBusy = false;
+  bool    _isSignUp = false;  // Toggle between sign in and sign up
 
   @override
   void dispose() {
-    _phoneCtrl.dispose();
-    _otpCtrl.dispose();
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
     super.dispose();
   }
 
-  // ── Step 1: send OTP ───────────────────────────────────────────────────────
+  // ── Sign In ────────────────────────────────────────────────────────────────
 
-  Future<void> _sendOtp() async {
-    final phone = _phoneCtrl.text.trim();
-    if (phone.isEmpty) return;
-
-    setState(() {
-      _isBusy = true;
-      _error  = null;
-    });
-
-    await context.read<AuthService>().verifyPhoneNumber(
-      phoneNumber: phone,
-      onCodeSent: (id, _) {
-        if (mounted) setState(() => _verificationId = id);
-      },
-      onError: (msg) {
-        if (mounted) setState(() => _error = msg);
-      },
-      onAutoVerified: () {
-        // Android only: OTP retrieved automatically after _bootstrap completes.
-        if (!mounted) return;
-        final auth = context.read<AuthService>();
-        _navigateByStatus(
-          auth.hasHousehold ? AuthStatus.ready : AuthStatus.needsHousehold,
-        );
-      },
-    );
-
-    if (mounted) setState(() => _isBusy = false);
-  }
-
-  // ── Step 2: verify OTP ────────────────────────────────────────────────────
-
-  Future<void> _verifyOtp() async {
-    final id   = _verificationId;
-    final code = _otpCtrl.text.trim();
-    if (id == null || code.isEmpty) return;
+  Future<void> _signIn() async {
+    final email    = _emailCtrl.text.trim();
+    final password = _passwordCtrl.text;
+    
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Please enter email and password.');
+      return;
+    }
 
     setState(() {
       _isBusy = true;
@@ -418,14 +406,45 @@ class _LoginScreenState extends State<_LoginScreen> {
     });
 
     try {
-      final status = await context.read<AuthService>().verifyOtp(
-        verificationId: id,
-        smsCode: code,
+      final status = await context.read<AuthService>().signInWithEmail(
+        email: email,
+        password: password,
       );
       if (mounted) _navigateByStatus(status);
-    } on AuthException catch (e) {
+    } on AppAuthException catch (e) {
       if (mounted) setState(() => _error = e.message);
-    } catch (_) {
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Something went wrong. Please try again.');
+    } finally {
+      if (mounted) setState(() => _isBusy = false);
+    }
+  }
+
+  // ── Sign Up ────────────────────────────────────────────────────────────────
+
+  Future<void> _signUp() async {
+    final email    = _emailCtrl.text.trim();
+    final password = _passwordCtrl.text;
+    
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Please enter email and password.');
+      return;
+    }
+
+    setState(() {
+      _isBusy = true;
+      _error  = null;
+    });
+
+    try {
+      final status = await context.read<AuthService>().signUpWithEmail(
+        email: email,
+        password: password,
+      );
+      if (mounted) _navigateByStatus(status);
+    } on AppAuthException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } catch (e) {
       if (mounted) setState(() => _error = 'Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isBusy = false);
@@ -437,15 +456,12 @@ class _LoginScreenState extends State<_LoginScreen> {
     Navigator.of(context).pushReplacementNamed(route);
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
+  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final waitingForOtp = _verificationId != null;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Sign in')),
-      // Slide content above keyboard
+      appBar: AppBar(title: Text(_isSignUp ? 'Create Account' : 'Sign in')),
       resizeToAvoidBottomInset: true,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -453,70 +469,78 @@ class _LoginScreenState extends State<_LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              waitingForOtp
-                  ? 'Enter the OTP sent to ${_phoneCtrl.text}'
-                  : 'Enter your phone number to continue',
+              _isSignUp
+                  ? 'Create a new account to get started'
+                  : 'Sign in to your account',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 24),
 
-            if (!waitingForOtp) ...[
-              TextField(
-                controller:   _phoneCtrl,
-                keyboardType: TextInputType.phone,
-                enabled:      !_isBusy,
-                decoration: const InputDecoration(
-                  labelText:   'Phone number',
-                  hintText:    '+91 98765 43210',
-                  prefixIcon:  Icon(Icons.phone),
-                  border:      OutlineInputBorder(),
-                ),
-                onSubmitted: (_) => _sendOtp(),
+            TextField(
+              controller:   _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              enabled:      !_isBusy,
+              autocorrect:  false,
+              decoration: const InputDecoration(
+                labelText:   'Email',
+                hintText:    'your.email@example.com',
+                prefixIcon:  Icon(Icons.email),
+                border:      OutlineInputBorder(),
               ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: _isBusy ? null : _sendOtp,
-                child: _isBusy
-                    ? const _SmallSpinner()
-                    : const Text('Send OTP'),
+            ),
+            const SizedBox(height: 16),
+
+            TextField(
+              controller:   _passwordCtrl,
+              obscureText:  true,
+              enabled:      !_isBusy,
+              decoration: const InputDecoration(
+                labelText:   'Password',
+                hintText:    'Min. 6 characters',
+                prefixIcon:  Icon(Icons.lock),
+                border:      OutlineInputBorder(),
               ),
-            ] else ...[
-              TextField(
-                controller:   _otpCtrl,
-                keyboardType: TextInputType.number,
-                maxLength:    6,
-                enabled:      !_isBusy,
-                decoration: const InputDecoration(
-                  labelText:   'One-time password',
-                  prefixIcon:  Icon(Icons.lock_outline),
-                  border:      OutlineInputBorder(),
-                ),
-                onSubmitted: (_) => _verifyOtp(),
+              onSubmitted: (_) => _isSignUp ? _signUp() : _signIn(),
+            ),
+            const SizedBox(height: 24),
+
+            FilledButton(
+              onPressed: _isBusy ? null : (_isSignUp ? _signUp : _signIn),
+              child: _isBusy
+                  ? const _SmallSpinner()
+                  : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            TextButton(
+              onPressed: _isBusy
+                  ? null
+                  : () => setState(() {
+                        _isSignUp = !_isSignUp;
+                        _error = null;
+                      }),
+              child: Text(
+                _isSignUp
+                    ? 'Already have an account? Sign in'
+                    : 'Don\'t have an account? Sign up',
               ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: _isBusy ? null : _verifyOtp,
-                child: _isBusy
-                    ? const _SmallSpinner()
-                    : const Text('Verify OTP'),
-              ),
-              TextButton(
-                onPressed: _isBusy
-                    ? null
-                    : () => setState(() {
-                          _verificationId = null;
-                          _otpCtrl.clear();
-                          _error = null;
-                        }),
-                child: const Text('Change phone number'),
-              ),
-            ],
+            ),
 
             if (_error != null) ...[
               const SizedBox(height: 16),
-              Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _error!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                  ),
+                ),
               ),
             ],
           ],
@@ -785,3 +809,4 @@ class _ViewModeSelector extends StatelessWidget {
     );
   }
 }
+

@@ -249,7 +249,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     final household = authService.currentHousehold;
 
     // Check if current user is admin
-    final isAdmin = user?.firebaseUid == household?.adminFirebaseUid;
+    final isAdmin = user?.supabaseUserId == household?.adminFirebaseUid;
 
     if (!isAdmin) {
       return Scaffold(

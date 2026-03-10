@@ -2,7 +2,7 @@
 class AppUser {
   const AppUser({
     required this.id,
-    required this.firebaseUid,
+    required this.supabaseUserId,
     required this.phone,
     required this.role,
     required this.notificationsEnabled,
@@ -13,7 +13,7 @@ class AppUser {
   });
 
   final String id;
-  final String firebaseUid;
+  final String supabaseUserId;  // Supabase Auth UID (stored as firebase_uid in DB for compatibility)
   final String phone;
 
   /// 'admin' | 'member' | 'super_admin'
@@ -32,7 +32,7 @@ class AppUser {
   factory AppUser.fromJson(Map<String, dynamic> json) {
     return AppUser(
       id:                   json['id']                    as String,
-      firebaseUid:          json['firebase_uid']          as String,
+      supabaseUserId:       json['firebase_uid']          as String,  // DB column still named firebase_uid
       phone:                json['phone']                 as String,
       role:                 json['role']                  as String,
       householdId:          json['household_id']          as String?,
@@ -52,7 +52,7 @@ class AppUser {
   }) {
     return AppUser(
       id:                   id,
-      firebaseUid:          firebaseUid,
+      supabaseUserId:       supabaseUserId,
       phone:                phone,
       role:                 role                 ?? this.role,
       householdId:          householdId          ?? this.householdId,

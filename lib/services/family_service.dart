@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/member.dart';
+import 'auth_service.dart';
 
 /// Thrown by [FamilyService] for all API-level failures.
 class FamilyException implements Exception {
@@ -24,14 +24,14 @@ class FamilyException implements Exception {
 class FamilyService {
   FamilyService({
     required String supabaseUrl,
-    FirebaseAuth? firebaseAuth,
+    required AuthService authService,
     http.Client? httpClient,
   })  : _supabaseUrl = supabaseUrl.replaceAll(RegExp(r'/$'), ''),
-        _auth = firebaseAuth ?? FirebaseAuth.instance,
+        _authService = authService,
         _http = httpClient ?? http.Client();
 
   final String       _supabaseUrl;
-  final FirebaseAuth _auth;
+  final AuthService  _authService;
   final http.Client  _http;
 
   // ── Public API ─────────────────────────────────────────────────────────────
@@ -92,10 +92,11 @@ class FamilyService {
     Map<String, dynamic> body, {
     int expectedStatus = 200,
   }) async {
-    final user = _auth.currentUser;
-    if (user == null) throw const FamilyException('Not authenticated.');
+    if (!_authService.isLoggedIn) {
+      throw const FamilyException('Not authenticated.');
+    }
 
-    final idToken = await user.getIdToken(true);
+    final idToken = await _authService.getIdToken(true);
 
     final http.Response response;
     try {

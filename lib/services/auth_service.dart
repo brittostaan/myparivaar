@@ -1,19 +1,19 @@
 import 'dart:convert';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/app_user.dart';
 import '../models/household.dart';
 
 /// Thrown by [AuthService] for authentication and bootstrap errors.
-class AuthException implements Exception {
-  const AuthException(this.message);
+class AppAuthException implements Exception {
+  const AppAuthException(this.message);
   final String message;
 
   @override
-  String toString() => 'AuthException: $message';
+  String toString() => 'AppAuthException: $message';
 }
 
 /// Describes the state of the user after a successful sign-in.
@@ -25,13 +25,13 @@ enum AuthStatus {
   needsHousehold,
 }
 
-/// Manages Firebase Phone Authentication and Supabase user bootstrapping.
+/// Manages Supabase Email/Password Authentication and user bootstrapping.
 ///
 /// Usage:
-///   1. [verifyPhoneNumber]   — request SMS OTP
-///   2. [verifyOtp]           — confirm OTP, bootstrap user, return [AuthStatus]
-///   3. [refreshSession]      — restore state on app cold start
-///   4. [signOut]             — clear session
+///   1. [signInWithEmail]  — sign in with email and password
+///   2. [signUpWithEmail]  — create new account with email and password
+///   3. [refreshSession]   — restore state on app cold start
+///   4. [signOut]          — clear session
 ///
 /// State is held in memory only. The service is a [ChangeNotifier] so
 /// widgets or state managers can listen for [currentUser] / [currentHousehold]
@@ -39,14 +39,14 @@ enum AuthStatus {
 class AuthService extends ChangeNotifier {
   AuthService({
     required String supabaseUrl,
-    FirebaseAuth? firebaseAuth,
+    SupabaseClient? supabaseClient,
     http.Client? httpClient,
   })  : _supabaseUrl = supabaseUrl.replaceAll(RegExp(r'/$'), ''),
-        _auth = firebaseAuth ?? FirebaseAuth.instance,
+        _supabase = supabaseClient ?? Supabase.instance.client,
         _http = httpClient ?? http.Client();
 
   final String _supabaseUrl;
-  final FirebaseAuth _auth;
+  final SupabaseClient _supabase;
   final http.Client _http;
 
   // ── In-memory state ────────────────────────────────────────────────────────
@@ -65,88 +65,96 @@ class AuthService extends ChangeNotifier {
 
   // ── Public methods ─────────────────────────────────────────────────────────
 
-  /// Get the current Firebase ID token, refreshing if needed
+  /// Get the current Supabase JWT token
   Future<String> getIdToken([bool forceRefresh = false]) async {
-    final user = _auth.currentUser;
-    if (user == null) {
-      throw AuthException('User not authenticated');
+    final session = _supabase.auth.currentSession;
+    if (session == null) {
+      throw const AppAuthException('User not authenticated');
     }
-    final token = await user.getIdToken(forceRefresh);
-    if (token == null) {
-      throw AuthException('Unable to get ID token');
+    
+    if (forceRefresh) {
+      final response = await _supabase.auth.refreshSession();
+      if (response.session == null) {
+        throw const AppAuthException('Unable to refresh token');
+      }
+      return response.session!.accessToken;
     }
-    return token;
+    
+    return session.accessToken;
   }
 
-  // ── Phase 1: Request OTP ───────────────────────────────────────────────────
+  // ── Sign In with Email/Password ────────────────────────────────────────────
 
-  /// Initiates Firebase Phone Auth and sends an SMS OTP.
-  ///
-  /// [onCodeSent]     — called with verificationId once the SMS is dispatched.
-  /// [onError]        — called with a human-readable message on failure.
-  /// [onAutoVerified] — called on Android if the OTP is retrieved automatically.
-  Future<void> verifyPhoneNumber({
-    required String phoneNumber,
-    required void Function(String verificationId, int? resendToken) onCodeSent,
-    required void Function(String error) onError,
-    void Function()? onAutoVerified,
-  }) async {
-    await _auth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      // Auto-retrieval on Android — skip manual OTP entry
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        try {
-          final result = await _auth.signInWithCredential(credential);
-          if (result.user != null) {
-            await _bootstrap(result.user!);
-            onAutoVerified?.call();
-          }
-        } on AuthException catch (e) {
-          onError(e.message);
-        } catch (_) {
-          onError('Auto-verification failed. Please enter the OTP manually.');
-        }
-      },
-      verificationFailed: (FirebaseAuthException e) {
-        onError(_friendlyError(e));
-      },
-      codeSent: onCodeSent,
-      codeAutoRetrievalTimeout: (_) {
-        // No action required — user continues with manual OTP entry.
-      },
-    );
-  }
-
-  // ── Phase 2: Confirm OTP ───────────────────────────────────────────────────
-
-  /// Verifies the SMS OTP and bootstraps the user against Supabase.
-  ///
-  /// [familyName] — optional. If provided on a first-ever login, the
-  /// Edge Function will create a household and assign the user as admin.
+  /// Signs in with email and password, then bootstraps the user against Supabase.
   ///
   /// Returns [AuthStatus.ready] if the user has a household,
   /// or [AuthStatus.needsHousehold] if the user needs to create or join one.
   ///
-  /// Throws [AuthException] on invalid OTP or server error.
-  Future<AuthStatus> verifyOtp({
-    required String verificationId,
-    required String smsCode,
+  /// Throws [AppAuthException] on invalid credentials or server error.
+  Future<AuthStatus> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    _setLoading(true);
+    try {
+      final response = await _supabase.auth.signInWithPassword(
+        email: email.trim(),
+        password: password,
+      );
+      
+      if (response.user == null) {
+        throw const AppAuthException('Sign-in succeeded but returned no user.');
+      }
+      
+      await _bootstrap();
+      return hasHousehold ? AuthStatus.ready : AuthStatus.needsHousehold;
+    } on AppAuthException {
+      rethrow;
+    } on AuthApiException catch (e) {
+      throw AppAuthException(_friendlySupabaseError(e));
+    } catch (e) {
+      throw AppAuthException('Sign-in failed: ${e.toString()}');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // ── Sign Up with Email/Password ────────────────────────────────────────────
+
+  /// Creates a new account with email and password.
+  ///
+  /// [familyName] — optional. If provided, the Edge Function will create a 
+  /// household and assign the user as admin.
+  ///
+  /// Returns [AuthStatus.ready] if the user has a household,
+  /// or [AuthStatus.needsHousehold] if the user needs to create or join one.
+  ///
+  /// Throws [AppAuthException] on validation errors or server error.
+  Future<AuthStatus> signUpWithEmail({
+    required String email,
+    required String password,
     String? familyName,
   }) async {
     _setLoading(true);
     try {
-      final credential = PhoneAuthProvider.credential(
-        verificationId: verificationId,
-        smsCode: smsCode.trim(),
+      final response = await _supabase.auth.signUp(
+        email: email.trim(),
+        password: password,
       );
-      final result = await _auth.signInWithCredential(credential);
-      if (result.user == null) {
-        throw const AuthException('Sign-in succeeded but returned no user.');
+      
+      if (response.user == null) {
+        throw const AppAuthException('Sign-up succeeded but returned no user.');
       }
-      await _bootstrap(result.user!, familyName: familyName);
+      
+      // Bootstrap with optional family name
+      await _bootstrap(familyName: familyName);
       return hasHousehold ? AuthStatus.ready : AuthStatus.needsHousehold;
-    } on FirebaseAuthException catch (e) {
-      throw AuthException(_friendlyError(e));
+    } on AppAuthException {
+      rethrow;
+    } on AuthApiException catch (e) {
+      throw AppAuthException(_friendlySupabaseError(e));
+    } catch (e) {
+      throw AppAuthException('Sign-up failed: ${e.toString()}');
     } finally {
       _setLoading(false);
     }
@@ -155,20 +163,21 @@ class AuthService extends ChangeNotifier {
   // ── Session restore ────────────────────────────────────────────────────────
 
   /// Restores session on cold start by re-bootstrapping the existing
-  /// Firebase session (if any). Call once from app initialisation.
+  /// Supabase session (if any). Call once from app initialisation.
   ///
   /// Returns [AuthStatus.ready], [AuthStatus.needsHousehold], or null if the
-  /// user has no active Firebase session.
+  /// user has no active Supabase session.
   Future<AuthStatus?> refreshSession() async {
-    final firebaseUser = _auth.currentUser;
-    if (firebaseUser == null) return null;
+    final session = _supabase.auth.currentSession;
+    if (session == null) return null;
 
     _setLoading(true);
     try {
-      // Force-refresh token in case it expired while the app was closed.
-      await _bootstrap(firebaseUser);
+      // Refresh token in case it expired while the app was closed.
+      await _supabase.auth.refreshSession();
+      await _bootstrap();
       return hasHousehold ? AuthStatus.ready : AuthStatus.needsHousehold;
-    } on AuthException {
+    } on AppAuthException {
       // Token is genuinely invalid — clear state and force re-login.
       await signOut();
       return null;
@@ -180,7 +189,7 @@ class AuthService extends ChangeNotifier {
   // ── Sign out ───────────────────────────────────────────────────────────────
 
   Future<void> signOut() async {
-    await _auth.signOut();
+    await _supabase.auth.signOut();
     _currentUser      = null;
     _currentHousehold = null;
     notifyListeners();
@@ -188,11 +197,11 @@ class AuthService extends ChangeNotifier {
 
   // ── Internal ───────────────────────────────────────────────────────────────
 
-  /// Retrieves a fresh Firebase ID token, calls auth-bootstrap, and updates
-  /// in-memory state. Throws [AuthException] on any failure.
-  Future<void> _bootstrap(User firebaseUser, {String? familyName}) async {
-    // Always force-refresh the token to avoid serving a stale one.
-    final idToken = await firebaseUser.getIdToken(true);
+  /// Retrieves a fresh Supabase JWT token, calls auth-bootstrap, and updates
+  /// in-memory state. Throws [AppAuthException] on any failure.
+  Future<void> _bootstrap({String? familyName}) async {
+    // Get the current session access token
+    final idToken = await getIdToken(true);
 
     final body = <String, dynamic>{};
     final trimmedName = familyName?.trim();
@@ -211,7 +220,7 @@ class AuthService extends ChangeNotifier {
         body: jsonEncode(body),
       );
     } catch (e) {
-      throw AuthException('Network error: unable to reach the server.');
+      throw const AppAuthException('Network error: unable to reach the server.');
     }
 
     if (response.statusCode == 200 || response.statusCode == 201) {
@@ -225,7 +234,7 @@ class AuthService extends ChangeNotifier {
 
       notifyListeners();
     } else {
-      throw AuthException(_parseServerError(response.body));
+      throw AppAuthException(_parseServerError(response.body));
     }
   }
 
@@ -245,23 +254,31 @@ class AuthService extends ChangeNotifier {
     return 'An unexpected server error occurred.';
   }
 
-  /// Maps FirebaseAuthException error codes to user-readable messages.
-  String _friendlyError(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'invalid-verification-code':
-        return 'Incorrect OTP. Please check the code and try again.';
-      case 'session-expired':
-        return 'OTP has expired. Please request a new one.';
-      case 'too-many-requests':
-        return 'Too many attempts. Please wait before trying again.';
-      case 'invalid-phone-number':
-        return 'The phone number format is invalid.';
-      case 'quota-exceeded':
-        return 'SMS quota exceeded. Please try again later.';
-      case 'network-request-failed':
-        return 'No internet connection. Please check your network.';
-      default:
-        return e.message ?? 'Authentication failed. Please try again.';
+  /// Maps Supabase AuthApiException error messages to user-readable messages.
+  String _friendlySupabaseError(AuthApiException e) {
+    final message = e.message.toLowerCase();
+    
+    if (message.contains('invalid login credentials') || message.contains('invalid email or password')) {
+      return 'Invalid email or password. Please try again.';
     }
+    if (message.contains('email not confirmed')) {
+      return 'Please confirm your email address to sign in.';
+    }
+    if (message.contains('user already registered')) {
+      return 'This email is already registered. Please sign in instead.';
+    }
+    if (message.contains('password')) {
+      return 'Password must be at least 6 characters long.';
+    }
+    if (message.contains('email')) {
+      return 'Please enter a valid email address.';
+    }
+    if (message.contains('network')) {
+      return 'No internet connection. Please check your network.';
+    }
+    
+    return e.message;
   }
 }
+
+

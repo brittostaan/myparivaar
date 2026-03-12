@@ -1,0 +1,37 @@
+name: myparivaar
+description: AI-first family finance app for Indian families.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Supabase - Authentication and Backend
+  supabase_flutter: ^2.5.6
+
+  # Networking — used by all service classes to call Supabase Edge Functions
+  http: ^1.2.2
+
+  # State management — AuthService extends ChangeNotifier; wired via Provider
+  provider: ^6.1.2
+
+  # File picking — used with withData: true for web-safe CSV reading
+  file_picker: ^8.1.2
+
+  # Localisation and date/number formatting
+  intl: ^0.19.0
+
+  # Material icons (conventional Flutter default)
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

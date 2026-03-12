@@ -1,0 +1,9 @@
+{
+  "files.exclude": {
+    "**/_nested_project_old": true
+  },
+  "search.exclude": {
+    "**/_nested_project_old": true
+  },
+  "terminal.integrated.cwd": "${workspaceFolder}"
+}

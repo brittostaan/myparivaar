@@ -1,0 +1,1283 @@
+<?xml version="1.0"?>
+<site-list version="1.35">
+ <site url="81cpv2-microsoft.msappproxy.net">
+  <compat-mode>IE5</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aer.microsoft.com">
+  <compat-mode>IE11</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="aka.ms/aer">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms/aroblue">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms/contractsearch">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms/dart">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms/dartedog">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms/dartint">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms/gtr">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms/ieevent1">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms/ieevent2">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms/ieevent3">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms/ieevent4">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms/lmi">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms/offnrt">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms/offnrtedog">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms/offnrtint">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms/temtool">
+  <compat-mode>IE11</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="aka.ms/upgradeyourworld">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aka.ms/wfmcloud">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="applicationcatalog.gtm.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="assurenet">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="assurenetppe">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="au1.app-hlb.fareast.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="axis.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="axisng.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="az.memotech.cpaglobal.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="az.memotech.cpaglobal.com/203he8c1">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="az.memotech.cpaglobal.com/54455354">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="az.memotech.cpaglobal.com/prod">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="azcufitrptweb1:6011">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aznovagradient">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="azprodssiis01.redmond.corp.microsoft.com/sendsuite%20live">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="azpscpv2iis">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="azpscpv2iis:81">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="azpscpv2iis:82">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="azsmartepi/weblogicsmart_daily/apsmart_daily/ap">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="aztestportal">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="azwfmprdis02.partners.extranet.microsoft.com/eamweb/wfmcloud/enu/common/servlet/admingetuserprofile.ewfm">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="baat">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="baat/baat">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="bcweb.microsoft.com">
+  <compat-mode>IE7</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="bcwebu2.microsoft.com">
+  <compat-mode>IE7</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="bet">
+  <compat-mode>IE10</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="betuat">
+  <compat-mode>IE10</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="bgeilms">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="bgeilms/ilms">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="bts.arkadasar.com/podweb/homepage.aspx">
+  <compat-mode>IE7</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="businesstravelletter.microsoft.com">
+  <compat-mode>IE11</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="certmanager.redmond.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="classeval">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="clmarcherqa.redmond.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="cmlarcherdev.redmond.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="codesign.gtm.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="codesignmopr3.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="codesignmopr7.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="connectus.partners.extranet.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="connectus.partners.extranet.microsoft.com/microsoft/main.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="consensus">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="cp">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="cp.partners.extranet.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="cp1pd1pkiweb.redmond.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="cp1pd1pkiweb.redmond.corp.microsoft.com/pkitaweb">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="cpv2">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="cpv2-microsoft.msappproxy.net">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="cpv2:81">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="cpv2:82">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="csx.crm.dynamics.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="dad">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="ddweb">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="ddweb/dad">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="ddweb/faqease">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="ddweb/teamstats/groupadmin">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="ddweb/teamstats/reports">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="devicesmdm">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="dmt.partners.extranet.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="dmt.partners.extranet.microsoft.com/dmtweb">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="eagreements.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="eds.outlook.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="emsl">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="emsl.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="emsl.partners.extranet.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="emsl.ppe.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="emslicense.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="emslicense.ppe.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="emslu1.partners.extranet.microsoft.com/mslicense/login.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="emsuat1.partners.extranet.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="eolas">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="esafee">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="essharepoint.redmond.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="eu1-app-hlb.europe.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="experf">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="faqease">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="financebi">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="financebi/gotrade">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="financebi/pbi">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="financebi/pbi/sitepages/home.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="gestalt/appfeedback">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="gestalt/asd">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="gestalt/cperm">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="gestalt/gethelp">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="gestalt/linkedin">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="gestalt/osfeedback">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="gestalt/social">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="gestalt/yammer">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="gfsdeploy">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="gppadmin">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="gppadminppe">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="gppadminsand">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="gppwui">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="gps">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="gtamadmin">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="gtobiweb">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="hrweb">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="hrweb/_layouts/hrweb/askhr.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="icmods.cloudapp.net">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="ilmsrcb.redmond.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="ilmsrcb.redmond.corp.microsoft.com/ilms/default.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="integratedcampaignprogram.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="integratedcampaignprogram.microsoft.com/admin">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="ivfeedback">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="ivfeedback/ivf">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="karnak">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="karnak/sites/karnak">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="learningcentral">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="licensingadmin.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="login.live-int.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="login.live.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="login.microsoftonline.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="login.windows.net">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="mastermaint">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="mbp">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="mbp.redmond.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="mbsauthor.partners.extranet.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="mbsep">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="mic">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="mic1">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="mic2">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="microsoft.com/japan/msbc/rss/msbcrss.xml">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/_forms/default.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/sites/itweb/software/thirdpartysoftware/pages/admin/admindashboard.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/sites/itweb/software/thirdpartysoftware/pages/availableproducts.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/emeasmtp">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/financeapps/pages/hierarchy-queries.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/financeuseraccess/accessrequest/plancast/lists">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/financeuseraccess/accessrequest/plancast/pages">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/fiscalcalendar/pages/calendarapp.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/gmintaketool">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/governmenttakedownrequest">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/jpcpeuat/pages/default.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/legalcontacttoolppe/pages/apppage.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/lswbizappstest/pages/apppartpage.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/matrixspotest/pivottilemenu">
+  <compat-mode>IE10</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/mrmcppereports">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/mrmcprodreports">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/mrmctestreports">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/msspend/pages/default.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/pcrefresh_ms_czech">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/pcrefresh_skype_czech">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/smbaer/sitepages/home.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/softwarelicensingservice/sitepages/tps/first-party-products.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/softwarelicensingservice/sitepages/tps/tpsm.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/sps-interview/leader/interviewtoolleader/msciqfe/leaderivq.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoft.sharepoint.com/teams/sps-interview/manager/interviewtoolmanager/msciqfe/compivq.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoftapc.sharepoint.com/teams/dev_sls/sitepages/first-party-product-catalog.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="microsoftapc.sharepoint.com/teams/dev_sls/sitepages/third-party-product-catalog.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="mla.microsoft.com">
+  <compat-mode>IE7</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="mlskvmweb">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="moet.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="moo.microsoftoem.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="moo.microsoftoem.net">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="msanalytics/advertising">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/asg/_layouts">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/asg/power%20view%20gallery">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/asg/sitepages/asg%20analytics.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="msanalytics/bingbi/_layouts">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/bingbi/distribution%20gallery">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/bingbi/sitepages/bing%20home.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="msanalytics/competitive">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/cortana">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/devices">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/finance">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/globalproductavailability">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/hololens">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/k">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/mp">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/msn">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/o365">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/officeclients">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/onedrive">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/onenote">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/outlooko365">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/partner">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/research">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/showpoint">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/sitepages/home.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="msanalytics/skype">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/surface">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/user360">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/windows%2010%20search/_layouts">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/windows%2010%20search/sitepages/home.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="msanalytics/windows%2010%20search/windows%2010%20search%20analytics">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/windows/sitepages/windows%20analytics.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="msanalytics/winphone">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msanalytics/xbox">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msdnasia.one.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msexpense">
+  <compat-mode>IE5</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msexpense2">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msft.sts.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="msm.live-int.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msm.live.com">
+  <compat-mode>IE11</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msmarket">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="mspacsr.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="msprotect.microsoft.com/securityprofile/dashboard">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="na1-app-hlb.redmond.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="nda">
+  <compat-mode>IE7</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="nebulavmc">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="ngimcrm.partners.extranet.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="ngimcrm.partners.extranet.microsoft.com/ngimmscrmclient/default.html">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="oa.microsoftoem.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="oa.microsoftoem.net">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="oasysnet/admin/addproperty.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="oasysnet/admin/classification.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="oasysnet/admin/jobpriority.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="oasysnet/admin/mergejobs.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="oasysnet/admin/officialmailsmanager.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="oasysnet/admin/rebalancemachines.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="oasysnet/monitor.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="oasysnet/reports.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="ops.microsoftoem.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="ops.microsoftoem.net">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="opsmrfv2">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="orion.microsoftoem.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="osgvmx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="ownit">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="pcrs">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="pdscloud.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="peatweb">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="peatwebuat">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="performance">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="pidplus.one.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="pistorearchive">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="pkitaaocgtm.gtm.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="pkitaaocgtm.gtm.corp.microsoft.com/pkitaweb">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="pkitaaocweb.redmond.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="pkitaaocweb.redmond.corp.microsoft.com/pkitaweb">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="pkitamoprgtm.gtm.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="pkitamoprgtm.gtm.corp.microsoft.com/pkitaweb">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="pkitaweb.gtm.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="pkitaweb.gtm.corp.microsoft.com/pkitaweb">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="portals">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="portals/refleaseprocurement/loppages">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="preview.eagreements.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="previewuat.eagreements.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="psig.partners.extranet.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="psig.partners.extranet.microsoft.com/psiglobal/splash.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="pst.microsoftpassportsupport.net">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="rapport.microsoft.com">
+  <compat-mode>IE7</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="rapportu2.microsoft.com">
+  <compat-mode>IE7</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="rbmqa.europe.nokia.com">
+  <compat-mode>IE7</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="rd2-app-hlb.redmond.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="rd3-app-hlb.redmond.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="recweb">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="redmondts.microsoft.com">
+  <compat-mode>IE10</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="refdwmds">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="refdwmdsdev">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="rit">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="rmailer">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="rmailer/views/clicktracker.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="roleguide">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="roqout.gtm.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="roqout.gtm.microsoft.com/roq/release">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="roqout.gtm.microsoft.com/roqonboarding">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="rsmext.one.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="rsmint.gtm.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="rsmintqa.gtm.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="sccmsnap">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="servicesconnect.azurewebsites.net">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="smbsales.partners.extranet.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="spur.microsoft.com">
+  <compat-mode>IE10</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="stringtranslations.azurewebsites.net">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="suppliercentral">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="support.cdmatech.com">
+  <compat-mode>IE8Enterprise</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="supportdiagnostics.partners.extranet.microsoft.com">
+  <compat-mode>IE10</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="teamstats">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="teamstats/groupadmin">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="teamstats/reports">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="tendoors">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="termstudio">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="termstudio.azurewebsites.net">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="termstudiowebdev.azurewebsites.net">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="testportal">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="ude">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="ude.support.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="vlodocmain.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="vlodocmain.corp.microsoft.com/pve.aspx">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="vlresendtool.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="vru">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="vstfsharepoint">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="vstfsharepoint/sites/tpc1/fit_rptplanning">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="vvr.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="wac">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="wac/live">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="wac/live/dogfood">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="wfm2/wfo/wfmcloud/home/dashboard">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="wwicpact">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="wwicpact1">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="www.explore.ms">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="www.microsoftoem.com/modernoa">
+  <compat-mode>IE11</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="xpert">
+  <compat-mode>Default</compat-mode>
+  <open-in>NEUTRAL</open-in>
+ </site>
+ <site url="xpert/osg/legacy">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="xpert/xbox/legacy">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="http://opsbipmds.corp.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="https://emsuat1.partners.extranet.microsoft.com/chatlauncheredge.htm">
+  <compat-mode>Default</compat-mode>
+  <open-in>MSEdge</open-in>
+ </site>
+ <site url="https://emsuat1.partners.extranet.microsoft.com/home/emslivechat">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+ <site url="https://exploremspreprod.microsoft.com">
+  <compat-mode>Default</compat-mode>
+  <open-in>IE11</open-in>
+ </site>
+</site-list>

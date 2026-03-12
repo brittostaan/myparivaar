@@ -177,8 +177,9 @@ class AuthService extends ChangeNotifier {
       await _supabase.auth.refreshSession();
       await _bootstrap();
       return hasHousehold ? AuthStatus.ready : AuthStatus.needsHousehold;
-    } on AppAuthException {
-      // Token is genuinely invalid — clear state and force re-login.
+    } catch (e) {
+      // Any failure (expired token, network error, parse error) → force re-login.
+      debugPrint('refreshSession error: $e');
       await signOut();
       return null;
     } finally {

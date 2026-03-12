@@ -23,13 +23,15 @@ class Household {
   bool get isPaid => plan == 'paid';
 
   factory Household.fromJson(Map<String, dynamic> json) {
+    final createdAtRaw = json['created_at']?.toString();
     return Household(
-      id:               json['id']                 as String,
-      name:             json['name']               as String,
-      adminFirebaseUid: json['admin_firebase_uid'] as String,
-      plan:             json['plan']               as String? ?? 'free',
-      suspended:        json['suspended']          as bool?   ?? false,
-      createdAt:        DateTime.parse(json['created_at'] as String),
+      id:               json['id']?.toString() ?? '',
+      name:             json['name']?.toString() ?? 'Household',
+      // Supports both legacy (admin_firebase_uid) and current (owner_user_id) schemas.
+      adminFirebaseUid: (json['admin_firebase_uid'] ?? json['owner_user_id'])?.toString() ?? '',
+      plan:             json['plan']?.toString() ?? 'free',
+      suspended:        json['suspended'] as bool? ?? false,
+      createdAt:        createdAtRaw != null ? DateTime.parse(createdAtRaw) : DateTime.now(),
     );
   }
 

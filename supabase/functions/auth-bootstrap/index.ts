@@ -31,13 +31,12 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-// Service role client — bypasses RLS, targets app schema
+// Service role client — bypasses RLS
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   {
     auth: { persistSession: false },
-    db: { schema: "app" },
   },
 );
 
@@ -52,8 +51,8 @@ const supabaseClient = createClient(
 
 // ─── Selected columns returned to the client ───────────────────────────────
 const USER_COLS =
-  "id, firebase_uid, phone, role, household_id, display_name, notifications_enabled, voice_enabled, created_at";
-const HOUSEHOLD_COLS = "id, name, admin_firebase_uid, plan, suspended, created_at";
+  "id, firebase_uid, email, role, household_id, display_name, notifications_enabled, voice_enabled, created_at";
+const HOUSEHOLD_COLS = "id, name, owner_user_id, created_at";
 
 // ───────────────────────────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
@@ -131,50 +130,54 @@ Deno.serve(async (req: Request) => {
           .from("households")
           .select(HOUSEHOLD_COLS)
           .eq("id", existingUser.household_id)
-          .is("deleted_at", null)
           .maybeSingle();
 
         if (hhErr) throw hhErr;
         household = hh;
-
-        if (household?.suspended) {
-          return json({ error: "Household is suspended" }, 403);
-        }
       }
 
       return json({ user: existingUser, household }, 200);
     }
 
-    // ── 5a. New user + family_name → create household + admin user ────────
+    // ── 5a. New user + family_name → create user first, then household ────────
     if (familyName) {
-      // Create household
-      const { data: household, error: hErr } = await supabase
-        .from("households")
-        .insert({ name: familyName, admin_firebase_uid: supabaseUserId })
-        .select(HOUSEHOLD_COLS)
-        .single();
-
-      if (hErr) throw hErr;
-
-      // Create admin user
+      // Create admin user first (without household)
       const { data: user, error: uErr } = await supabase
         .from("users")
         .insert({
           firebase_uid: supabaseUserId,
-          phone: email,  // Store email in phone field for now
-          household_id: household.id,
+          email: email,
           role: "admin",
         })
         .select(USER_COLS)
         .single();
 
-      if (uErr) {
-        // Best-effort rollback — household has no members yet, safe to delete.
-        await supabase.from("households").delete().eq("id", household.id);
-        throw uErr;
+      if (uErr) throw uErr;
+
+      // Create household with user as owner
+      const { data: household, error: hErr } = await supabase
+        .from("households")
+        .insert({ name: familyName, owner_user_id: user.id })
+        .select(HOUSEHOLD_COLS)
+        .single();
+
+      if (hErr) {
+        // Best-effort rollback — delete user that was just created
+        await supabase.from("users").delete().eq("id", user.id);
+        throw hErr;
       }
 
-      return json({ user, household }, 201);
+      // Update user with household_id
+      const { data: updatedUser, error: updateErr } = await supabase
+        .from("users")
+        .update({ household_id: household.id })
+        .eq("id", user.id)
+        .select(USER_COLS)
+        .single();
+
+      if (updateErr) throw updateErr;
+
+      return json({ user: updatedUser, household }, 201);
     }
 
     // ── 5b. New user, no family_name → create user without household ──────
@@ -183,7 +186,7 @@ Deno.serve(async (req: Request) => {
       .from("users")
       .insert({ 
         firebase_uid: supabaseUserId, 
-        phone: email  // Store email in phone field for now
+        email: email
       })
       .select(USER_COLS)
       .single();

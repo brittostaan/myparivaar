@@ -16,6 +16,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   List<Expense> _expenses = [];
   bool _isLoading = true;
   String? _error;
+  String? _errorDiagnostics;
 
   @override
   void initState() {
@@ -48,6 +49,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       if (mounted) {
         setState(() {
           _error = e.toString();
+          _errorDiagnostics = e is ExpenseException ? e.diagnostics : 'Exception type: ${e.runtimeType}\n$e';
           _isLoading = false;
         });
       }
@@ -186,19 +188,47 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     }
 
     if (_error != null) {
-      return Center(
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
-            const SizedBox(height: 16),
-            Text('Error loading expenses', style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            Text(_error!, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadExpenses,
-              child: const Text('Retry'),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Icon(Icons.error_outline, size: 32, color: Colors.red.shade600),
+                const SizedBox(width: 8),
+                Text('Error loading expenses',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.red.shade700)),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                border: Border.all(color: Colors.red.shade200),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: SelectableText(
+                _errorDiagnostics ?? _error!,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Diagnostic info above is selectable — long-press to copy.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _loadExpenses,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
             ),
           ],
         ),

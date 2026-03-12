@@ -30,7 +30,7 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    // Verify Firebase authentication
+    // Verify Supabase authentication
     const authHeader = req.headers.get('Authorization')
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
@@ -66,8 +66,9 @@ Deno.serve(async (req: Request) => {
       })
     }
 
+    const normalizedCategory = (category || '').toLowerCase().trim()
     const validCategories = ['food', 'transport', 'shopping', 'utilities', 'healthcare', 'entertainment', 'education', 'other']
-    if (!category || !validCategories.includes(category)) {
+    if (!normalizedCategory || !validCategories.includes(normalizedCategory)) {
       return new Response(JSON.stringify({ error: 'Invalid category' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -101,9 +102,8 @@ Deno.serve(async (req: Request) => {
     // Get user's household
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('household_id, is_active')
+      .select('household_id')
       .eq('firebase_uid', decodedToken.uid)
-      .eq('is_active', true)
       .single()
 
     if (userError || !userData?.household_id) {
@@ -113,15 +113,15 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    // Check household status
+    // Ensure household exists
     const { data: household, error: householdError } = await supabase
       .from('households')
-      .select('is_active, suspended_at')
+      .select('id')
       .eq('id', userData.household_id)
       .single()
 
-    if (householdError || !household?.is_active || household.suspended_at) {
-      return new Response(JSON.stringify({ error: 'Household suspended or inactive' }), {
+    if (householdError || !household?.id) {
+      return new Response(JSON.stringify({ error: 'Household not found' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -133,7 +133,6 @@ Deno.serve(async (req: Request) => {
       .select('id, household_id, source')
       .eq('id', expense_id)
       .eq('household_id', userData.household_id)
-      .eq('is_active', true)
       .single()
 
     if (expenseError || !existingExpense) {
@@ -156,7 +155,7 @@ Deno.serve(async (req: Request) => {
       .from('transactions')
       .update({
         amount,
-        category,
+        category: normalizedCategory,
         description: description.trim(),
         date,
         notes: notes?.trim() || null,

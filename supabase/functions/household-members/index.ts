@@ -40,7 +40,6 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   {
     auth: { persistSession: false },
-    db: { schema: "app" },
   },
 );
 
@@ -119,7 +118,7 @@ Deno.serve(async (req: Request) => {
   // ── 3. Validate household (suspended check) ──────────────────────────────
   const { data: household, error: hhErr } = await supabase
     .from("households")
-    .select("id, suspended")
+    .select("id")
     .eq("id", caller.household_id)
     .maybeSingle();
 
@@ -130,9 +129,6 @@ Deno.serve(async (req: Request) => {
   if (!household) {
     return json({ error: "Household not found" }, 404);
   }
-  if (household.suspended) {
-    return json({ error: "Household is suspended" }, 403);
-  }
 
   // ── 4. Fetch active household members ────────────────────────────────────
   // Selects the actual DB column names (phone, display_name) and remaps them
@@ -140,7 +136,7 @@ Deno.serve(async (req: Request) => {
   // firebase_uid is intentionally absent from this select list.
   const { data: rows, error: membersErr } = await supabase
     .from("users")
-    .select("id, display_name, phone, role, is_active, created_at")
+    .select("id, display_name, name, phone, phone_number, role, is_active, created_at")
     .eq("household_id", caller.household_id)
     .eq("is_active", true)
     .order("created_at", { ascending: true });
@@ -154,8 +150,8 @@ Deno.serve(async (req: Request) => {
   const members: MemberResponse[] = (rows ?? [])
     .map((row) => ({
       id:           row.id           as string,
-      name:         (row.display_name ?? null) as string | null,
-      phone_number: row.phone        as string,
+      name:         ((row.display_name ?? row.name) ?? null) as string | null,
+      phone_number: ((row.phone_number ?? row.phone) ?? "") as string,
       role:         row.role         as string,
       is_active:    row.is_active    as boolean,
       created_at:   row.created_at   as string,

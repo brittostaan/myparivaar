@@ -180,12 +180,12 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                         child: Text(
                           (user.displayName?.isNotEmpty == true 
                             ? user.displayName![0] 
-                            : user.phone.substring(user.phone.length - 4))
+                            : user.email.substring(0, 1))
                             .toUpperCase(),
                         ),
                       ),
                       title: Text(user.displayName ?? 'User'),
-                      subtitle: Text(user.phone),
+                      subtitle: Text(user.email),
                       trailing: IconButton(
                         onPressed: () {
                           // In a real app, would show edit profile dialog
@@ -365,6 +365,32 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                         ),
                       );
                     },
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Integrations Section
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Integrations',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  ListTile(
+                    leading: const Icon(Icons.email_outlined),
+                    title: const Text('Email Settings'),
+                    subtitle: const Text('Connect email accounts for expense tracking'),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () => Navigator.of(context).pushNamed('/email-settings'),
                   ),
                 ],
               ),

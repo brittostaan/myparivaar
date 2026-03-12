@@ -246,10 +246,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   Widget build(BuildContext context) {
     final authService = context.watch<AuthService>();
     final user = authService.currentUser;
-    final household = authService.currentHousehold;
 
-    // Check if current user is admin
-    final isAdmin = user?.supabaseUserId == household?.adminFirebaseUid;
+    // Role-based check is resilient across schema variations.
+    final isAdmin = user?.isAdmin == true || user?.isSuperAdmin == true;
 
     if (!isAdmin) {
       return Scaffold(

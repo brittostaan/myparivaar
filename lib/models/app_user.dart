@@ -3,7 +3,7 @@ class AppUser {
   const AppUser({
     required this.id,
     required this.supabaseUserId,
-    required this.phone,
+    required this.email,
     required this.role,
     required this.notificationsEnabled,
     required this.voiceEnabled,
@@ -14,7 +14,7 @@ class AppUser {
 
   final String id;
   final String supabaseUserId;  // Supabase Auth UID (stored as firebase_uid in DB for compatibility)
-  final String phone;
+  final String email;
 
   /// 'admin' | 'member' | 'super_admin'
   final String role;
@@ -30,16 +30,17 @@ class AppUser {
   bool get isSuperAdmin => role == 'super_admin';
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
+    final createdAtRaw = json['created_at']?.toString();
     return AppUser(
-      id:                   json['id']                    as String,
-      supabaseUserId:       json['firebase_uid']          as String,  // DB column still named firebase_uid
-      phone:                json['phone']                 as String,
-      role:                 json['role']                  as String,
+      id:                   json['id']?.toString() ?? '',
+      supabaseUserId:       json['firebase_uid']?.toString() ?? '',  // DB column still named firebase_uid
+      email:                json['email']?.toString() ?? '',
+      role:                 json['role']?.toString() ?? 'member',
       householdId:          json['household_id']          as String?,
       displayName:          json['display_name']          as String?,
       notificationsEnabled: json['notifications_enabled'] as bool? ?? true,
       voiceEnabled:         json['voice_enabled']         as bool? ?? true,
-      createdAt:            DateTime.parse(json['created_at'] as String),
+      createdAt:            createdAtRaw != null ? DateTime.parse(createdAtRaw) : DateTime.now(),
     );
   }
 
@@ -53,7 +54,7 @@ class AppUser {
     return AppUser(
       id:                   id,
       supabaseUserId:       supabaseUserId,
-      phone:                phone,
+      email:                email,
       role:                 role                 ?? this.role,
       householdId:          householdId          ?? this.householdId,
       displayName:          displayName          ?? this.displayName,

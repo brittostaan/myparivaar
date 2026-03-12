@@ -1,11 +1,25 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/expense.dart';
 
 class ExpenseException implements Exception {
   final String message;
-  ExpenseException(this.message);
-  
+  final int? statusCode;
+  final String? rawBody;
+  final String? url;
+
+  ExpenseException(this.message, {this.statusCode, this.rawBody, this.url});
+
+  String get diagnostics {
+    final parts = <String>[];
+    if (url != null) parts.add('URL: $url');
+    if (statusCode != null) parts.add('HTTP Status: $statusCode');
+    parts.add('Error: $message');
+    if (rawBody != null && rawBody!.isNotEmpty) parts.add('Response: $rawBody');
+    return parts.join('\n');
+  }
+
   @override
   String toString() => message;
 }
@@ -46,12 +60,34 @@ class ExpenseService {
             .toList();
         return expenses;
       } else {
-        final error = jsonDecode(response.body);
-        throw ExpenseException(error['error'] ?? 'Failed to load expenses');
+        String errorMsg = 'Failed to load expenses';
+        String debugInfo = '';
+        try {
+          final error = jsonDecode(response.body);
+          errorMsg = error['error'] ?? errorMsg;
+          if (error['debug'] != null) {
+            debugInfo = '\nDEBUG: ${jsonEncode(error['debug'])}';
+          }
+        } catch (_) {}
+        debugPrint('=== expense-list FAILED ===');
+        debugPrint('URL: $uri');
+        debugPrint('Status: ${response.statusCode}');
+        debugPrint('Body: ${response.body}');
+        debugPrint('==========================');
+        throw ExpenseException(
+          errorMsg,
+          statusCode: response.statusCode,
+          rawBody: '${response.body}$debugInfo',
+          url: uri.toString(),
+        );
       }
     } catch (e) {
       if (e is ExpenseException) rethrow;
-      throw ExpenseException('Network error: Unable to load expenses');
+      debugPrint('=== expense-list EXCEPTION ===\n$e\n==============================');
+      throw ExpenseException(
+        'Network/parse error: $e',
+        url: '$supabaseUrl/functions/v1/expense-list',
+      );
     }
   }
 

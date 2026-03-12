@@ -83,7 +83,7 @@ class EmailService {
     }
 
     final response = await http.post(
-      Uri.parse('$supabaseUrl/functions/v1/email-connect'),
+      Uri.parse('$supabaseUrl/functions/v1/email-connectUrl'),
       headers: {
         'Authorization': 'Bearer $idToken',
         'Content-Type': 'application/json',
@@ -134,7 +134,7 @@ class EmailService {
     }
 
     final response = await http.post(
-      Uri.parse('$supabaseUrl/functions/v1/email-sync'),
+      Uri.parse('$supabaseUrl/functions/v1/email-syncNow'),
       headers: {
         'Authorization': 'Bearer $idToken',
         'Content-Type': 'application/json',

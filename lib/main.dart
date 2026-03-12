@@ -235,7 +235,13 @@ class _AppRouterState extends State<_AppRouter> {
 
   Future<void> _restoreSession() async {
     final auth = context.read<AuthService>();
-    final status = await auth.refreshSession();
+    AuthStatus? status;
+    try {
+      status = await auth.refreshSession();
+    } catch (e) {
+      debugPrint('_restoreSession error: $e');
+      status = null;
+    }
     if (!mounted) return;
 
     switch (status) {
@@ -299,7 +305,7 @@ class _HomeShell extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 32),
               child: Text(
-                'Welcome, ${user?.displayName ?? user?.phone ?? 'Developer'}',
+                'Welcome, ${user?.displayName ?? user?.email ?? 'Developer'}',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
@@ -325,12 +331,6 @@ class _HomeShell extends StatelessWidget {
               icon: const Icon(Icons.auto_awesome),
               label: const Text('AI Insights'),
               onPressed: () => Navigator.of(context).pushNamed('/ai'),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.tonalIcon(
-              icon: const Icon(Icons.email),
-              label: const Text('Email Settings'),
-              onPressed: () => Navigator.of(context).pushNamed('/email-settings'),
             ),
             const SizedBox(height: 16),
             FilledButton.tonalIcon(
@@ -535,7 +535,7 @@ class _LoginScreenState extends State<_LoginScreen> {
                   color: Theme.of(context).colorScheme.errorContainer,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
+                child: SelectableText(
                   _error!,
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onErrorContainer,
@@ -618,7 +618,10 @@ class _NeedsHouseholdScreenState extends State<_NeedsHouseholdScreen> {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Join Household')),
+      appBar: AppBar(
+        title: const Text('Join Household'),
+        automaticallyImplyLeading: false, // Remove back button
+      ),
       resizeToAvoidBottomInset: true,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),

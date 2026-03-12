@@ -1,23 +1,13 @@
 /**
- * Firebase ID token verification for Deno Edge Functions.
+ * Token verification helper used across Edge Functions.
  *
- * Uses Firebase's JWK endpoint (RS256).
- * Caches the JWKS in module scope — reused across warm invocations.
+ * NOTE: Kept function name for backward compatibility with existing imports,
+ * but this now verifies Supabase Auth JWTs via supabase.auth.getUser().
  */
-import { createRemoteJWKSet, jwtVerify } from "https://deno.land/x/jose@v5.2.4/index.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const FIREBASE_JWKS_URL =
-  "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
-
-// Module-level cache — survives across warm invocations of the same worker.
-let _jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
-
-function getJwks(): ReturnType<typeof createRemoteJWKSet> {
-  if (!_jwks) {
-    _jwks = createRemoteJWKSet(new URL(FIREBASE_JWKS_URL));
-  }
-  return _jwks;
-}
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 export interface FirebaseClaims {
   uid: string;
@@ -25,25 +15,24 @@ export interface FirebaseClaims {
 }
 
 /**
- * Verifies a Firebase Phone Auth ID token.
+ * Verifies a Supabase Auth JWT by calling supabase.auth.getUser().
+ * This works without needing the JWT secret as an env var.
  * Throws on invalid/expired tokens.
  */
 export async function verifyFirebaseToken(
   idToken: string,
-  projectId: string,
+  _projectId?: string,
 ): Promise<FirebaseClaims> {
-  const { payload } = await jwtVerify(idToken, getJwks(), {
-    issuer: `https://securetoken.google.com/${projectId}`,
-    audience: projectId,
-    algorithms: ["RS256"],
-  });
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  if (!payload.sub) {
-    throw new Error("Token missing sub claim");
+  const { data: { user }, error } = await supabase.auth.getUser(idToken);
+
+  if (error || !user) {
+    throw new Error(error?.message ?? "Invalid or expired token");
   }
 
   return {
-    uid: payload.sub,
-    phone_number: payload["phone_number"] as string | undefined,
+    uid: user.id,
+    phone_number: user.phone ?? undefined,
   };
 }

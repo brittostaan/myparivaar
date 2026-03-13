@@ -3,3 +3,30 @@ supabase/.temp/
 
 # Binary tools
 tools/supabase/supabase.exe
+
+# Dart and Flutter generated
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+build/
+
+# Flutter generated iOS/macOS environment files
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+macos/Flutter/ephemeral/
+
+# IDE and local files
+.idea/
+.vscode/
+*.iml
+hotreload.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local font/source bundles not used by app assets
+Fonts/
+FONT_SETUP.md

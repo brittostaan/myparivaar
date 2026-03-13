@@ -42,7 +42,9 @@ Deno.serve(async (req: Request) => {
     }
 
     // Initialize Supabase client
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      db: { schema: "app" },
+    })
 
     // Get user's household
     const { data: userData, error: userError } = await supabase
@@ -62,39 +64,32 @@ Deno.serve(async (req: Request) => {
     // Check household status
     const { data: household, error: householdError } = await supabase
       .from('households')
-      .select('id, name, is_active, suspended_at, plan_id')
+      .select('id, name, suspended')
       .eq('id', userData.household_id)
       .single()
 
-    if (householdError || !household?.is_active || household.suspended_at) {
+    if (householdError || household?.suspended) {
       return new Response(JSON.stringify({ error: 'Household suspended or inactive' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    // Get plan limits
-    const { data: planData } = await supabase
-      .from('plans')
-      .select('ai_weekly_summaries')
-      .eq('id', household.plan_id)
-      .single()
-
-    const weeklyLimit = planData?.ai_weekly_summaries || 1
+    const weeklyLimit = 1
 
     // Check AI usage for current week
     const startOfWeek = new Date()
     startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay())
     startOfWeek.setHours(0, 0, 0, 0)
 
-    const { data: currentWeekUsage, error: usageError } = await supabase
+    const { data: currentWeekUsage } = await supabase
       .from('ai_usage')
-      .select('weekly_summaries_used')
+      .select('summary_generated_at')
       .eq('household_id', userData.household_id)
       .eq('month', startOfWeek.toISOString().substring(0, 7))
-      .single()
+      .maybeSingle()
 
-    const weeklyUsed = currentWeekUsage?.weekly_summaries_used || 0
+    const weeklyUsed = currentWeekUsage?.summary_generated_at && new Date(currentWeekUsage.summary_generated_at) >= startOfWeek ? 1 : 0
 
     if (weeklyUsed >= weeklyLimit) {
       return new Response(JSON.stringify({ 
@@ -141,7 +136,7 @@ Deno.serve(async (req: Request) => {
       .select('amount, category, description, date, source')
       .eq('household_id', userData.household_id)
       .gte('date', oneWeekAgo.toISOString().split('T')[0])
-      .eq('is_active', true)
+      .is('deleted_at', null)
       .order('date', { ascending: false })
 
     const { data: budgets } = await supabase
@@ -160,13 +155,13 @@ Deno.serve(async (req: Request) => {
       summary,
       data_from: oneWeekAgo.toISOString().split('T')[0],
       data_to: new Date().toISOString().split('T')[0]
-    })
+    }).then(() => null).catch(() => null)
 
     // Update usage counter
     await supabase.from('ai_usage').upsert({
       household_id: userData.household_id,
       month: startOfWeek.toISOString().substring(0, 7),
-      weekly_summaries_used: weeklyUsed + 1
+      summary_generated_at: new Date().toISOString()
     }, {
       onConflict: 'household_id,month'
     })

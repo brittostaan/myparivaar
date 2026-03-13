@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../widgets/app_header.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 
 class UserSettingsScreen extends StatefulWidget {
   const UserSettingsScreen({super.key});
@@ -125,7 +128,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('Delete Account'),
           ),
         ],
@@ -148,76 +151,63 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     final user = authService.currentUser;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            onPressed: _saveSettings,
-            icon: const Icon(Icons.save),
-            tooltip: 'Save Settings',
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16.0),
-        children: [
-          // User Profile Section
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const AppHeader(
+              title: 'Settings',
+              avatarIcon: AppIcons.settings,
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(16.0),
                 children: [
-                  Text(
-                    'Account Information',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  if (user != null) ...[
-                    ListTile(
-                      leading: CircleAvatar(
-                        child: Text(
-                          (user.displayName?.isNotEmpty == true 
-                            ? user.displayName![0] 
-                            : user.email.substring(0, 1))
-                            .toUpperCase(),
-                        ),
-                      ),
-                      title: Text(user.displayName ?? 'User'),
-                      subtitle: Text(user.email),
-                      trailing: IconButton(
-                        onPressed: () {
-                          // In a real app, would show edit profile dialog
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Profile editing coming soon!'),
+                  // User Profile Section
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Account Information',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 16),
+                          if (user != null) ...[
+                            ListTile(
+                              leading: CircleAvatar(
+                                child: Text(
+                                  (user.displayName?.isNotEmpty == true 
+                                    ? user.displayName![0] 
+                                    : user.email.substring(0, 1))
+                                    .toUpperCase(),
+                                ),
+                              ),
+                              title: Text(user.displayName ?? 'User'),
+                              subtitle: Text(user.email),
+                              trailing: IconButton(
+                                onPressed: () {
+                                  // In a real app, would show edit profile dialog
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Profile editing coming soon!'),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(AppIcons.edit),
+                              ),
                             ),
-                          );
-                        },
-                        icon: const Icon(Icons.edit),
+                          ],
+                        ],
                       ),
                     ),
-                  ],
-                  const SizedBox(height: 8),
-                  ListTile(
-                    leading: const Icon(Icons.home),
-                    title: const Text('Household'),
-                    subtitle: Text(authService.currentHousehold?.name ?? 'Not in household'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {
-                      Navigator.of(context).pushNamed('/family');
-                    },
                   ),
-                ],
-              ),
-            ),
-          ),
 
-          const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-          // Notifications Section
-          Card(
+                  // Notifications Section
+                  Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -297,7 +287,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                   ListTile(
                     title: const Text('Language'),
                     subtitle: Text(_selectedLanguage),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    trailing: const Icon(AppIcons.arrowForward, size: 16),
                     onTap: () {
                       showDialog(
                         context: context,
@@ -321,7 +311,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                   ListTile(
                     title: const Text('Currency'),
                     subtitle: Text(_selectedCurrency),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    trailing: const Icon(AppIcons.arrowForward, size: 16),
                     onTap: () {
                       showDialog(
                         context: context,
@@ -345,7 +335,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                   ListTile(
                     title: const Text('Theme'),
                     subtitle: Text(_selectedTheme),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    trailing: const Icon(AppIcons.arrowForward, size: 16),
                     onTap: () {
                       showDialog(
                         context: context,
@@ -386,10 +376,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   ListTile(
-                    leading: const Icon(Icons.email_outlined),
+                    leading: const Icon(AppIcons.email),
                     title: const Text('Email Settings'),
                     subtitle: const Text('Connect email accounts for expense tracking'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    trailing: const Icon(AppIcons.arrowForward, size: 16),
                     onTap: () => Navigator.of(context).pushNamed('/email-settings'),
                   ),
                 ],
@@ -412,16 +402,16 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                   ),
                   const SizedBox(height: 16),
                   ListTile(
-                    leading: const Icon(Icons.download),
+                    leading: const Icon(AppIcons.download),
                     title: const Text('Export Data'),
                     subtitle: const Text('Download your family data'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    trailing: const Icon(AppIcons.arrowForward, size: 16),
                     onTap: _exportData,
                   ),
                   ListTile(
-                    leading: const Icon(Icons.privacy_tip),
+                    leading: const Icon(AppIcons.privacyTip),
                     title: const Text('Privacy Policy'),
-                    trailing: const Icon(Icons.open_in_new, size: 16),
+                    trailing: const Icon(AppIcons.openInNew, size: 16),
                     onTap: () {
                       // In a real app, would open privacy policy
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -432,9 +422,9 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                     },
                   ),
                   ListTile(
-                    leading: const Icon(Icons.description),
+                    leading: const Icon(AppIcons.document),
                     title: const Text('Terms of Service'),
-                    trailing: const Icon(Icons.open_in_new, size: 16),
+                    trailing: const Icon(AppIcons.openInNew, size: 16),
                     onTap: () {
                       // In a real app, would open terms of service
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -453,7 +443,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
           // Danger Zone Section
           Card(
-            color: Colors.red.shade50,
+            color: AppColors.errorLight,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -462,18 +452,18 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                   Text(
                     'Danger Zone',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.red.shade700,
+                      color: AppColors.errorDark,
                     ),
                   ),
                   const SizedBox(height: 16),
                   ListTile(
-                    leading: Icon(Icons.delete_forever, color: Colors.red.shade700),
-                    title: Text(
-                      'Delete Account',
-                      style: TextStyle(color: Colors.red.shade700),
+                    leading: const Icon(AppIcons.deleteForever, color: AppColors.errorDark),
+                    title: const Text(
+                      'Delete My Account',
+                      style: TextStyle(color: AppColors.errorDark),
                     ),
                     subtitle: const Text('Permanently delete your account and data'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    trailing: const Icon(AppIcons.arrowForward, size: 16),
                     onTap: _deleteAccount,
                   ),
                 ],
@@ -502,6 +492,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
           const SizedBox(height: 32),
         ],
+      ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -40,10 +40,9 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   {
     auth: { persistSession: false },
+    db: { schema: "app" },
   },
 );
-
-const FIREBASE_PROJECT_ID = Deno.env.get("FIREBASE_PROJECT_ID")!;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -83,10 +82,7 @@ Deno.serve(async (req: Request) => {
 
   let uid: string;
   try {
-    const claims = await verifyFirebaseToken(
-      authHeader.slice(7).trim(),
-      FIREBASE_PROJECT_ID,
-    );
+    const claims = await verifyFirebaseToken(authHeader.slice(7).trim());
     uid = claims.uid;
   } catch {
     return json({ error: "Invalid or expired token" }, 401);
@@ -136,7 +132,7 @@ Deno.serve(async (req: Request) => {
   // firebase_uid is intentionally absent from this select list.
   const { data: rows, error: membersErr } = await supabase
     .from("users")
-    .select("id, display_name, name, phone, phone_number, role, is_active, created_at")
+    .select("id, display_name, phone, role, is_active, created_at")
     .eq("household_id", caller.household_id)
     .eq("is_active", true)
     .order("created_at", { ascending: true });
@@ -150,8 +146,8 @@ Deno.serve(async (req: Request) => {
   const members: MemberResponse[] = (rows ?? [])
     .map((row) => ({
       id:           row.id           as string,
-      name:         ((row.display_name ?? row.name) ?? null) as string | null,
-      phone_number: ((row.phone_number ?? row.phone) ?? "") as string,
+      name:         (row.display_name ?? null) as string | null,
+      phone_number: (row.phone ?? "") as string,
       role:         row.role         as string,
       is_active:    row.is_active    as boolean,
       created_at:   row.created_at   as string,

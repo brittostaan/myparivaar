@@ -63,7 +63,9 @@ Deno.serve(async (req: Request) => {
     }
 
     // Initialize Supabase client
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      db: { schema: "app" },
+    })
 
     // Get user's household
     const { data: userData, error: userError } = await supabase
@@ -83,37 +85,31 @@ Deno.serve(async (req: Request) => {
     // Check household status
     const { data: household, error: householdError } = await supabase
       .from('households')
-      .select('id, name, is_active, suspended_at, plan_id')
+      .select('id, name, suspended')
       .eq('id', userData.household_id)
       .single()
 
-    if (householdError || !household?.is_active || household.suspended_at) {
+    if (householdError || household?.suspended) {
       return new Response(JSON.stringify({ error: 'Household suspended or inactive' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    // Get plan limits
-    const { data: planData } = await supabase
-      .from('plans')
-      .select('ai_chat_queries')
-      .eq('id', household.plan_id)
-      .single()
-
-    const monthlyLimit = planData?.ai_chat_queries || 5
+    // Keep a fixed default until plan-based limits are fully standardized.
+    const monthlyLimit = 5
 
     // Check AI usage for current month
     const currentMonth = new Date().toISOString().substring(0, 7)
 
-    const { data: currentUsage, error: usageError } = await supabase
+    const { data: currentUsage } = await supabase
       .from('ai_usage')
-      .select('chat_queries_used')
+      .select('chat_count')
       .eq('household_id', userData.household_id)
       .eq('month', currentMonth)
-      .single()
+      .maybeSingle()
 
-    const queriesUsed = currentUsage?.chat_queries_used || 0
+    const queriesUsed = currentUsage?.chat_count || 0
 
     if (queriesUsed >= monthlyLimit) {
       return new Response(JSON.stringify({ 
@@ -136,7 +132,7 @@ Deno.serve(async (req: Request) => {
       .select('amount, category, description, date, source')
       .eq('household_id', userData.household_id)
       .gte('date', oneMonthAgo.toISOString().split('T')[0])
-      .eq('is_active', true)
+      .is('deleted_at', null)
       .order('date', { ascending: false })
       .limit(50)
 
@@ -167,13 +163,13 @@ Deno.serve(async (req: Request) => {
       user_message: message.substring(0, 500), // truncate for storage
       ai_response: response.substring(0, 1000),
       created_by: decodedToken.uid
-    })
+    }).then(() => null).catch(() => null)
 
     // Update usage counter
     await supabase.from('ai_usage').upsert({
       household_id: userData.household_id,
       month: currentMonth,
-      chat_queries_used: queriesUsed + 1
+      chat_count: queriesUsed + 1
     }, {
       onConflict: 'household_id,month'
     })

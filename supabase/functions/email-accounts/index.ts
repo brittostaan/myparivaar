@@ -40,7 +40,9 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      db: { schema: "app" },
+    })
 
     // Resolve user
     const { data: userData, error: userError } = await supabase

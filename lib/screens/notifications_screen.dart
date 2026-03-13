@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/notification_service.dart';
+import '../widgets/app_header.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -30,63 +33,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return ChangeNotifierProvider.value(
       value: _notificationService,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Notifications'),
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          actions: [
-            Consumer<NotificationService>(
-              builder: (context, service, child) {
-                if (service.notifications.isEmpty) return const SizedBox.shrink();
-                
-                return PopupMenuButton<String>(
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'mark_all_read':
-                        service.markAllAsRead();
-                        break;
-                      case 'clear_all':
-                        _confirmClearAll();
-                        break;
-                    }
+        body: SafeArea(
+          child: Column(
+            children: [
+              const AppHeader(
+                title: 'Notifications',
+                avatarIcon: AppIcons.notifications,
+              ),
+              Expanded(
+                child: Consumer<NotificationService>(
+                  builder: (context, service, child) {
+                    return _buildBody(service);
                   },
-                  itemBuilder: (context) => [
-                    if (service.unreadCount > 0)
-                      const PopupMenuItem(
-                        value: 'mark_all_read',
-                        child: Row(
-                          children: [
-                            Icon(Icons.mark_email_read),
-                            SizedBox(width: 8),
-                            Text('Mark all as read'),
-                          ],
-                        ),
-                      ),
-                    const PopupMenuItem(
-                      value: 'clear_all',
-                      child: Row(
-                        children: [
-                          Icon(Icons.clear_all),
-                          SizedBox(width: 8),
-                          Text('Clear all'),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
-        body: Consumer<NotificationService>(
-          builder: (context, service, child) {
-            return _buildBody(service);
-          },
+                ),
+              ),
+            ],
+          ),
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _showTestNotificationDialog,
-          icon: const Icon(Icons.notifications_active),
+          icon: const Icon(AppIcons.notificationsActive),
           label: const Text('Test Notification'),
-          backgroundColor: Theme.of(context).primaryColor,
+backgroundColor: Theme.of(context).primaryColor,
         ),
       ),
     );
@@ -98,22 +66,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.notifications_outlined,
+            const Icon(
+              AppIcons.notificationsOutlined,
               size: 64,
-              color: Colors.grey.shade400,
+              color: AppColors.grey400,
             ),
             const SizedBox(height: 16),
             Text(
               'No Notifications',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Colors.grey.shade600,
+                color: AppColors.grey600,
               ),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'You\'ll see bill reminders, budget alerts, and weekly reports here.',
-              style: TextStyle(color: Colors.grey.shade600),
+              style: TextStyle(color: AppColors.grey600),
               textAlign: TextAlign.center,
             ),
           ],
@@ -156,9 +124,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             const SizedBox(height: 4),
             Text(
               notification.formattedTime,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
-                color: Colors.grey.shade600,
+                color: AppColors.grey600,
               ),
             ),
           ],
@@ -183,7 +151,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 value: 'mark_read',
                 child: Row(
                   children: [
-                    Icon(Icons.mark_email_read),
+                    Icon(AppIcons.markEmailRead),
                     SizedBox(width: 8),
                     Text('Mark as read'),
                   ],
@@ -193,7 +161,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               value: 'delete',
               child: Row(
                 children: [
-                  Icon(Icons.delete),
+                  Icon(AppIcons.delete),
                   SizedBox(width: 8),
                   Text('Delete'),
                 ],
@@ -217,20 +185,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     switch (type) {
       case NotificationType.billReminder:
-        icon = Icons.receipt_long;
-        color = Colors.orange;
+        icon = AppIcons.receiptOutlined;
+        color = AppColors.warning;
         break;
       case NotificationType.expenseAlert:
-        icon = Icons.warning;
-        color = Colors.red;
+        icon = AppIcons.warning;
+        color = AppColors.error;
         break;
       case NotificationType.weeklyReport:
-        icon = Icons.analytics;
-        color = Colors.blue;
+        icon = AppIcons.analytics;
+        color = AppColors.info;
         break;
       case NotificationType.general:
-        icon = Icons.notifications;
-        color = Colors.grey;
+        icon = AppIcons.notifications;
+        color = AppColors.grey600;
         break;
     }
 
@@ -258,18 +226,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             const SizedBox(height: 16),
             Text(
               'Received: ${notification.formattedTime}',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
-                color: Colors.grey.shade600,
+                color: AppColors.grey600,
               ),
             ),
             if (notification.scheduledDate != null) ...[
               const SizedBox(height: 4),
               Text(
                 'Scheduled for: ${_formatDate(notification.scheduledDate!)}',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
-                  color: Colors.grey.shade600,
+                  color: AppColors.grey600,
                 ),
               ),
             ],
@@ -282,7 +250,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               const SizedBox(height: 4),
               ...notification.data.entries.map((entry) => Text(
                 '${entry.key}: ${entry.value}',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                style: const TextStyle(fontSize: 12, color: AppColors.grey600),
               )),
             ],
           ],

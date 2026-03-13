@@ -55,7 +55,9 @@ Deno.serve(async (req: Request) => {
     }
 
     // Initialize Supabase client
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      db: { schema: "app" },
+    })
 
     // Exchange authorization code for tokens
     let tokenResponse: any

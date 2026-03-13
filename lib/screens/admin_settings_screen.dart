@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../widgets/app_header.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 
 class AdminSettingsScreen extends StatefulWidget {
   const AdminSettingsScreen({super.key});
@@ -61,7 +64,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Household name updated successfully'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
       }
@@ -101,7 +104,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('New invite code generated'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
       }
@@ -127,7 +130,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Invite code "$_inviteCode" copied to clipboard'),
-        backgroundColor: Colors.green,
+        backgroundColor: AppColors.success,
       ),
     );
   }
@@ -147,7 +150,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
-                color: Colors.red,
+                color: AppColors.error,
               ),
             ),
           ],
@@ -213,7 +216,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
-                color: Colors.red,
+                color: AppColors.error,
               ),
             ),
           ],
@@ -225,7 +228,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('Delete Household'),
           ),
         ],
@@ -254,13 +257,12 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Admin Settings'),
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         ),
         body: const Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.admin_panel_settings, size: 64, color: Colors.grey),
+              Icon(AppIcons.adminPanel, size: 64, color: AppColors.grey600),
               SizedBox(height: 16),
               Text(
                 'Admin Access Required',
@@ -278,13 +280,17 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Settings'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16.0),
-        children: [
+      body: SafeArea(
+        child: Column(
+          children: [
+            const AppHeader(
+              title: 'Admin Settings',
+              avatarIcon: AppIcons.adminPanel,
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(16.0),
+                children: [
           // Household Management Section
           Card(
             child: Padding(
@@ -294,7 +300,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.home, color: Theme.of(context).primaryColor),
+                      Icon(AppIcons.home, color: Theme.of(context).primaryColor),
                       const SizedBox(width: 8),
                       Text(
                         'Household Management',
@@ -320,7 +326,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.save),
+                        : const Icon(AppIcons.save),
                     label: Text(_isLoading ? 'Saving...' : 'Save Changes'),
                   ),
                   if (_error != null) ...[
@@ -328,18 +334,18 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade50,
+                        color: AppColors.errorLight,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red.shade200),
+                        border: Border.all(color: AppColors.errorLight),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                          const Icon(AppIcons.error, color: AppColors.errorDark, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _error!,
-                              style: TextStyle(color: Colors.red.shade700),
+                              style: const TextStyle(color: AppColors.errorDark),
                             ),
                           ),
                         ],
@@ -362,7 +368,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.person_add, color: Theme.of(context).primaryColor),
+                      Icon(AppIcons.personAdd, color: Theme.of(context).primaryColor),
                       const SizedBox(width: 8),
                       Text(
                         'Invite Family Members',
@@ -375,9 +381,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.green.shade50,
+                        color: AppColors.successLight,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.green.shade200),
+                        border: Border.all(color: AppColors.successLight),
                       ),
                       child: Row(
                         children: [
@@ -408,7 +414,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                           ),
                           IconButton(
                             onPressed: _copyInviteCode,
-                            icon: const Icon(Icons.copy),
+                            icon: const Icon(AppIcons.copy),
                             tooltip: 'Copy Code',
                           ),
                         ],
@@ -421,18 +427,18 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                       Expanded(
                         child: FilledButton.icon(
                           onPressed: _isLoading ? null : _generateInviteCode,
-                          icon: const Icon(Icons.refresh),
+                          icon: const Icon(AppIcons.refresh),
                           label: Text(_inviteCode == null ? 'Generate Invite Code' : 'Generate New Code'),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Text(
+                  const Text(
                     'Invite codes expire after 7 days and can be used by up to 7 family members.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey.shade600,
+                      color: AppColors.grey600,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -452,7 +458,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.account_balance_wallet, color: Theme.of(context).primaryColor),
+                      Icon(AppIcons.wallet, color: Theme.of(context).primaryColor),
                       const SizedBox(width: 8),
                       Text(
                         'Financial Settings',
@@ -462,17 +468,17 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                   ),
                   const SizedBox(height: 16),
                   ListTile(
-                    leading: const Icon(Icons.trending_up),
+                    leading: const Icon(AppIcons.trendingUp),
                     title: const Text('Budget Limits'),
                     subtitle: const Text('Set monthly spending limits by category'),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: _setBudgetLimits,
                   ),
                   ListTile(
-                    leading: const Icon(Icons.category),
+                    leading: const Icon(AppIcons.category),
                     title: const Text('Manage Categories'),
-                    subtitle: const Text('Add, edit, or remove expense categories'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    subtitle: const Text('Add, edit, or delete expense categories'),
+                    trailing: const Icon(AppIcons.arrowForward, size: 16),
                     onTap: _manageCategories,
                   ),
                 ],
@@ -491,7 +497,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.admin_panel_settings, color: Theme.of(context).primaryColor),
+                      Icon(AppIcons.adminPanel, color: Theme.of(context).primaryColor),
                       const SizedBox(width: 8),
                       Text(
                         'Admin Actions',
@@ -501,10 +507,10 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                   ),
                   const SizedBox(height: 16),
                   ListTile(
-                    leading: const Icon(Icons.swap_horiz),
+                    leading: const Icon(AppIcons.swapHoriz),
                     title: const Text('Transfer Admin Rights'),
                     subtitle: const Text('Make another family member the admin'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    trailing: const Icon(AppIcons.arrowForward, size: 16),
                     onTap: _transferAdmin,
                   ),
                 ],
@@ -516,7 +522,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
 
           // Danger Zone Section
           Card(
-            color: Colors.red.shade50,
+            color: AppColors.errorLight,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -524,32 +530,36 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.warning, color: Colors.red.shade700),
+                      const Icon(AppIcons.warning, color: AppColors.errorDark),
                       const SizedBox(width: 8),
                       Text(
                         'Danger Zone',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.red.shade700,
+                          color: AppColors.errorDark,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   ListTile(
-                    leading: Icon(Icons.delete_forever, color: Colors.red.shade700),
-                    title: Text(
+                    leading: const Icon(AppIcons.deleteForever, color: AppColors.errorDark),
+                    title: const Text(
                       'Delete Household',
-                      style: TextStyle(color: Colors.red.shade700),
+                      style: TextStyle(color: AppColors.errorDark),
                     ),
                     subtitle: const Text('Permanently delete the entire household and all data'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    trailing: const Icon(AppIcons.arrowForward, size: 16),
                     onTap: _deleteHousehold,
                   ),
                 ],
               ),
             ),
           ),
-        ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -626,7 +636,7 @@ class _BudgetLimitsDialogState extends State<_BudgetLimitsDialog> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Budget limits updated'),
-                backgroundColor: Colors.green,
+                backgroundColor: AppColors.success,
               ),
             );
           },
@@ -702,7 +712,7 @@ class _ManageCategoriesDialogState extends State<_ManageCategoriesDialog> {
                 const SizedBox(width: 8),
                 IconButton(
                   onPressed: _addCategory,
-                  icon: const Icon(Icons.add),
+                  icon: const Icon(AppIcons.add),
                 ),
               ],
             ),
@@ -719,8 +729,8 @@ class _ManageCategoriesDialogState extends State<_ManageCategoriesDialog> {
                   trailing: _categories.length > 1
                       ? IconButton(
                           onPressed: () => _removeCategory(category),
-                          icon: const Icon(Icons.delete),
-                          color: Colors.red,
+                          icon: const Icon(AppIcons.delete),
+                          color: AppColors.error,
                         )
                       : null,
                 ),
@@ -740,7 +750,7 @@ class _ManageCategoriesDialogState extends State<_ManageCategoriesDialog> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Categories updated'),
-                backgroundColor: Colors.green,
+                backgroundColor: AppColors.success,
               ),
             );
           },

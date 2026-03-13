@@ -11,19 +11,35 @@ import 'screens/voice_expense_screen.dart';
 import 'screens/user_settings_screen.dart';
 import 'screens/admin_settings_screen.dart';
 import 'screens/notifications_screen.dart';
+import 'screens/more_screen.dart';
+import 'screens/dashboard_screen.dart';
+import 'screens/profile_screen.dart';
 import 'services/auth_service.dart';
 import 'services/family_service.dart';
 import 'services/import_service.dart';
+import 'widgets/navigation_shell.dart';
+import 'theme/app_theme.dart';
+import 'theme/app_icons.dart';
 
-const _kSupabaseUrl = 'https://qimqakfjryptyhxmrjsj.supabase.co';
-const _kSupabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpbXFha2ZqcnlwdHloeG1yanNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NDQ3NzQsImV4cCI6MjA4ODQyMDc3NH0.SIySX0aILaLTp08K-TurhhS4dMWl0VqKzgKp3PPFlM0';
+const _kDefaultSupabaseUrl = 'https://qimqakfjryptyhxmrjsj.supabase.co';
+const _kDefaultSupabaseAnonKey =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpbXFha2ZqcnlwdHloeG1yanNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NDQ3NzQsImV4cCI6MjA4ODQyMDc3NH0.SIySX0aILaLTp08K-TurhhS4dMWl0VqKzgKp3PPFlM0';
+
+const _kSupabaseUrl = String.fromEnvironment(
+  'SUPABASE_URL',
+  defaultValue: _kDefaultSupabaseUrl,
+);
+const _kSupabaseAnonKey = String.fromEnvironment(
+  'SUPABASE_ANON_KEY',
+  defaultValue: _kDefaultSupabaseAnonKey,
+);
 
 // ── View Mode (Responsive Design) ────────────────────────────────────────────
 
 enum ViewMode {
-  desktop(label: 'Browser Mode', icon: Icons.laptop, width: null),
-  tablet(label: 'Tablet', icon: Icons.tablet_mac, width: 768),
-  mobile(label: 'Mobile', icon: Icons.phone_iphone, width: 375);
+  desktop(label: 'Browser Mode', icon: AppIcons.laptop, width: null),
+  tablet(label: 'Tablet', icon: AppIcons.tablet, width: 768),
+  mobile(label: 'Mobile', icon: AppIcons.phone, width: 375);
 
   const ViewMode({
     required this.label,
@@ -51,7 +67,9 @@ class ViewModeProvider extends ChangeNotifier {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  _validateSupabaseConfig();
+
   await Supabase.initialize(
     url: _kSupabaseUrl,
     anonKey: _kSupabaseAnonKey,
@@ -60,12 +78,26 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthService(supabaseUrl: _kSupabaseUrl)),
+        ChangeNotifierProvider(
+            create: (_) => AuthService(supabaseUrl: _kSupabaseUrl)),
         ChangeNotifierProvider(create: (_) => ViewModeProvider()),
       ],
       child: const MyParivaaarApp(),
     ),
   );
+}
+
+void _validateSupabaseConfig() {
+  final hasValidUrl = _kSupabaseUrl.startsWith('https://') &&
+      _kSupabaseUrl.contains('.supabase.co');
+  final hasAnonKey = _kSupabaseAnonKey.trim().isNotEmpty &&
+      _kSupabaseAnonKey.split('.').length == 3;
+
+  if (!hasValidUrl || !hasAnonKey) {
+    throw StateError(
+      'Invalid Supabase configuration. Provide valid values via --dart-define=SUPABASE_URL=... and --dart-define=SUPABASE_ANON_KEY=...',
+    );
+  }
 }
 
 // ── Root widget ──────────────────────────────────────────────────────────────
@@ -80,10 +112,9 @@ class MyParivaaarApp extends StatelessWidget {
         return MaterialApp(
           title: 'myParivaar',
           debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            colorSchemeSeed: Colors.deepOrange,
-            useMaterial3: true,
-          ),
+          theme: AppTheme.lightTheme(),
+          darkTheme: AppTheme.darkTheme(),
+          themeMode: ThemeMode.light, // Force light mode
           builder: (context, child) {
             return _ResponsiveWrapper(
               viewMode: viewModeProvider.mode,
@@ -101,6 +132,8 @@ class MyParivaaarApp extends StatelessWidget {
   /// free of hardcoded dependencies, and the Provider/AuthService context
   /// is available for guarded screens (e.g. FamilyManagementScreen).
   static Route<dynamic> _onGenerateRoute(RouteSettings settings) {
+    final routeName = settings.name ?? '';
+
     switch (settings.name) {
       case '/login':
         return MaterialPageRoute(
@@ -111,7 +144,10 @@ class MyParivaaarApp extends StatelessWidget {
       case '/home':
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => const _HomeShell(),
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const _HomeShell(),
+          ),
         );
 
       case '/household-setup':
@@ -133,10 +169,13 @@ class MyParivaaarApp extends StatelessWidget {
           settings: settings,
           builder: (ctx) {
             final auth = Provider.of<AuthService>(ctx, listen: false);
-            return CsvImportScreen(
-              importService: ImportService(
-                supabaseUrl: _kSupabaseUrl,
-                authService: auth,
+            return NavigationShell(
+              currentRoute: routeName,
+              child: CsvImportScreen(
+                importService: ImportService(
+                  supabaseUrl: _kSupabaseUrl,
+                  authService: auth,
+                ),
               ),
             );
           },
@@ -150,18 +189,23 @@ class MyParivaaarApp extends StatelessWidget {
             final currentUser = auth.currentUser;
             if (currentUser == null) {
               // Redirect to login if not authenticated
-              Future.microtask(() => Navigator.of(ctx).pushReplacementNamed('/login'));
+              Future.microtask(
+                  () => Navigator.of(ctx).pushReplacementNamed('/login'));
               return const Scaffold(
                 body: Center(child: CircularProgressIndicator()),
               );
             }
-            return FamilyManagementScreen(
-              familyService: FamilyService(
-                supabaseUrl: _kSupabaseUrl,
-                authService: auth,
+            return NavigationShell(
+              currentRoute: routeName,
+              child: FamilyManagementScreen(
+                familyService: FamilyService(
+                  supabaseUrl: _kSupabaseUrl,
+                  authService: auth,
+                ),
+                currentUser: currentUser,
+                householdName:
+                    auth.currentHousehold?.name ?? 'Unknown Household',
               ),
-              currentUser: currentUser,
-              householdName: auth.currentHousehold?.name ?? 'Unknown Household',
             );
           },
         );
@@ -169,43 +213,96 @@ class MyParivaaarApp extends StatelessWidget {
       case '/expenses':
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => const ExpenseManagementScreen(),
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const ExpenseManagementScreen(),
+          ),
         );
 
       case '/ai':
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => const AIFeaturesScreen(),
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const AIFeaturesScreen(),
+          ),
         );
 
       case '/email-settings':
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => const EmailSettingsScreen(),
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const EmailSettingsScreen(),
+          ),
         );
 
       case '/voice-expense':
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => const VoiceExpenseScreen(),
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const VoiceExpenseScreen(),
+          ),
         );
 
       case '/user-settings':
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => const UserSettingsScreen(),
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const UserSettingsScreen(),
+          ),
         );
 
       case '/admin-settings':
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => const AdminSettingsScreen(),
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const AdminSettingsScreen(),
+          ),
+        );
+
+      case '/more':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => const MoreScreen(),
         );
 
       case '/notifications':
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => const NotificationsScreen(),
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const NotificationsScreen(),
+          ),
+        );
+
+      case '/profile':
+        return PageRouteBuilder(
+          settings: settings,
+          pageBuilder: (context, animation, secondaryAnimation) {
+            return const ProfileScreen();
+          },
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const begin = Offset(-1.0, 0.0);
+            const end = Offset.zero;
+            const curve = Curves.easeInOut;
+
+            final tween = Tween(begin: begin, end: end).chain(
+              CurveTween(curve: curve),
+            );
+
+            return SlideTransition(
+              position: animation.drive(tween),
+              child: FadeTransition(
+                opacity: animation,
+                child: child,
+              ),
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 300),
         );
 
       default:
@@ -265,101 +362,13 @@ class _AppRouterState extends State<_AppRouter> {
 // ── Home Shell ───────────────────────────────────────────────────────────────
 
 /// Main screen shown to authenticated users with a household.
-/// Provides navigation to all top-level features.
+/// Uses the new DashboardScreen for a modern UI.
 class _HomeShell extends StatelessWidget {
   const _HomeShell();
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthService>();
-    final user = auth.currentUser;
-    final household = auth.currentHousehold;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(household?.name ?? 'myParivaar (Dev Mode)'),
-        actions: [
-          const _ViewModeSelector(),
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            tooltip: 'Notifications',
-            onPressed: () => Navigator.of(context).pushNamed('/notifications'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Sign out',
-            onPressed: () async {
-              await auth.signOut();
-              if (context.mounted) {
-                Navigator.of(context).pushReplacementNamed('/login');
-              }
-            },
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 32),
-              child: Text(
-                'Welcome, ${user?.displayName ?? user?.email ?? 'Developer'}',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            FilledButton.icon(
-              icon: const Icon(Icons.upload_file),
-              label: const Text('CSV Import'),
-              onPressed: () => Navigator.of(context).pushNamed('/csv-import'),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.tonalIcon(
-              icon: const Icon(Icons.receipt_long),
-              label: const Text('Manage Expenses'),
-              onPressed: () => Navigator.of(context).pushNamed('/expenses'),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.tonalIcon(
-              icon: const Icon(Icons.mic),
-              label: const Text('Voice Expense Entry'),
-              onPressed: () => Navigator.of(context).pushNamed('/voice-expense'),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.tonalIcon(
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('AI Insights'),
-              onPressed: () => Navigator.of(context).pushNamed('/ai'),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.tonalIcon(
-              icon: const Icon(Icons.people),
-              label: const Text('Family Management'),
-              onPressed: () => Navigator.of(context).pushNamed('/family'),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.tonalIcon(
-              icon: const Icon(Icons.settings),
-              label: const Text('Settings'),
-              onPressed: () => Navigator.of(context).pushNamed('/user-settings'),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.tonalIcon(
-              icon: const Icon(Icons.notifications),
-              label: const Text('Notifications'),
-              onPressed: () => Navigator.of(context).pushNamed('/notifications'),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.tonalIcon(
-              icon: const Icon(Icons.admin_panel_settings),
-              label: const Text('Admin Settings'),
-              onPressed: () => Navigator.of(context).pushNamed('/admin-settings'),
-            ),
-          ],
-        ),
-      ),
-    );
+    return const DashboardScreen();
   }
 }
 
@@ -375,12 +384,12 @@ class _LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<_LoginScreen> {
-  final _emailCtrl    = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  
+
   String? _error;
-  bool    _isBusy = false;
-  bool    _isSignUp = false;  // Toggle between sign in and sign up
+  bool _isBusy = false;
+  bool _isSignUp = false; // Toggle between sign in and sign up
 
   @override
   void dispose() {
@@ -392,9 +401,9 @@ class _LoginScreenState extends State<_LoginScreen> {
   // ── Sign In ────────────────────────────────────────────────────────────────
 
   Future<void> _signIn() async {
-    final email    = _emailCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
-    
+
     if (email.isEmpty || password.isEmpty) {
       setState(() => _error = 'Please enter email and password.');
       return;
@@ -402,19 +411,20 @@ class _LoginScreenState extends State<_LoginScreen> {
 
     setState(() {
       _isBusy = true;
-      _error  = null;
+      _error = null;
     });
 
     try {
       final status = await context.read<AuthService>().signInWithEmail(
-        email: email,
-        password: password,
-      );
+            email: email,
+            password: password,
+          );
       if (mounted) _navigateByStatus(status);
     } on AppAuthException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      if (mounted) setState(() => _error = 'Something went wrong. Please try again.');
+      if (mounted)
+        setState(() => _error = 'Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }
@@ -423,9 +433,9 @@ class _LoginScreenState extends State<_LoginScreen> {
   // ── Sign Up ────────────────────────────────────────────────────────────────
 
   Future<void> _signUp() async {
-    final email    = _emailCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
-    
+
     if (email.isEmpty || password.isEmpty) {
       setState(() => _error = 'Please enter email and password.');
       return;
@@ -433,19 +443,20 @@ class _LoginScreenState extends State<_LoginScreen> {
 
     setState(() {
       _isBusy = true;
-      _error  = null;
+      _error = null;
     });
 
     try {
       final status = await context.read<AuthService>().signUpWithEmail(
-        email: email,
-        password: password,
-      );
+            email: email,
+            password: password,
+          );
       if (mounted) _navigateByStatus(status);
     } on AppAuthException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      if (mounted) setState(() => _error = 'Something went wrong. Please try again.');
+      if (mounted)
+        setState(() => _error = 'Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }
@@ -475,44 +486,39 @@ class _LoginScreenState extends State<_LoginScreen> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 24),
-
             TextField(
-              controller:   _emailCtrl,
+              controller: _emailCtrl,
               keyboardType: TextInputType.emailAddress,
-              enabled:      !_isBusy,
-              autocorrect:  false,
+              enabled: !_isBusy,
+              autocorrect: false,
               decoration: const InputDecoration(
-                labelText:   'Email',
-                hintText:    'your.email@example.com',
-                prefixIcon:  Icon(Icons.email),
-                border:      OutlineInputBorder(),
+                labelText: 'Email',
+                hintText: 'your.email@example.com',
+                prefixIcon: Icon(AppIcons.email),
+                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
-
             TextField(
-              controller:   _passwordCtrl,
-              obscureText:  true,
-              enabled:      !_isBusy,
+              controller: _passwordCtrl,
+              obscureText: true,
+              enabled: !_isBusy,
               decoration: const InputDecoration(
-                labelText:   'Password',
-                hintText:    'Min. 6 characters',
-                prefixIcon:  Icon(Icons.lock),
-                border:      OutlineInputBorder(),
+                labelText: 'Password',
+                hintText: 'Min. 6 characters',
+                prefixIcon: Icon(AppIcons.lock),
+                border: OutlineInputBorder(),
               ),
               onSubmitted: (_) => _isSignUp ? _signUp() : _signIn(),
             ),
             const SizedBox(height: 24),
-
             FilledButton(
               onPressed: _isBusy ? null : (_isSignUp ? _signUp : _signIn),
               child: _isBusy
                   ? const _SmallSpinner()
                   : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
             ),
-            
             const SizedBox(height: 16),
-            
             TextButton(
               onPressed: _isBusy
                   ? null
@@ -526,7 +532,6 @@ class _LoginScreenState extends State<_LoginScreen> {
                     : 'Don\'t have an account? Sign up',
               ),
             ),
-
             if (_error != null) ...[
               const SizedBox(height: 16),
               Container(
@@ -565,7 +570,7 @@ class _NeedsHouseholdScreen extends StatefulWidget {
 
 class _NeedsHouseholdScreenState extends State<_NeedsHouseholdScreen> {
   final _codeCtrl = TextEditingController();
-  bool    _isBusy = false;
+  bool _isBusy = false;
   String? _error;
 
   @override
@@ -587,7 +592,7 @@ class _NeedsHouseholdScreenState extends State<_NeedsHouseholdScreen> {
 
     setState(() {
       _isBusy = true;
-      _error  = null;
+      _error = null;
     });
 
     try {
@@ -602,12 +607,14 @@ class _NeedsHouseholdScreenState extends State<_NeedsHouseholdScreen> {
         Navigator.of(context).pushReplacementNamed('/home');
       } else {
         // Unexpected: bootstrap still shows no household.
-        setState(() => _error = 'Joined successfully but could not load household. Please restart the app.');
+        setState(() => _error =
+            'Joined successfully but could not load household. Please restart the app.');
       }
     } on FamilyException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (_) {
-      if (mounted) setState(() => _error = 'Something went wrong. Please try again.');
+      if (mounted)
+        setState(() => _error = 'Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }
@@ -628,7 +635,7 @@ class _NeedsHouseholdScreenState extends State<_NeedsHouseholdScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(Icons.home_outlined, size: 56),
+            const Icon(AppIcons.home, size: 56),
             const SizedBox(height: 24),
             Text(
               'Enter your invite code',
@@ -643,30 +650,31 @@ class _NeedsHouseholdScreenState extends State<_NeedsHouseholdScreen> {
             ),
             const SizedBox(height: 32),
             TextField(
-              controller:      _codeCtrl,
-              enabled:         !_isBusy,
+              controller: _codeCtrl,
+              enabled: !_isBusy,
               textCapitalization: TextCapitalization.characters,
-              maxLength:       8,
-              textAlign:       TextAlign.center,
-              style:           const TextStyle(
-                fontSize:      28,
-                fontWeight:    FontWeight.w700,
+              maxLength: 8,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
                 letterSpacing: 6,
               ),
               decoration: const InputDecoration(
-                labelText:  'Invite code',
-                hintText:   'ABCD1234',
-                border:     OutlineInputBorder(),
+                labelText: 'Invite code',
+                hintText: 'ABCD1234',
+                border: OutlineInputBorder(),
                 counterText: '',
               ),
               onSubmitted: (_) => _joinHousehold(),
             ),
-            if (_error != null) ...[  
+            if (_error != null) ...[
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color:        cs.errorContainer,
+                  color: cs.errorContainer,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -678,7 +686,8 @@ class _NeedsHouseholdScreenState extends State<_NeedsHouseholdScreen> {
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _isBusy ? null : _joinHousehold,
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+              style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52)),
               child: _isBusy
                   ? const _SmallSpinner()
                   : const Text('Join household'),
@@ -711,8 +720,8 @@ class _SmallSpinner extends StatelessWidget {
   Widget build(BuildContext context) {
     return const SizedBox(
       height: 20,
-      width:  20,
-      child:  CircularProgressIndicator(strokeWidth: 2),
+      width: 20,
+      child: CircularProgressIndicator(strokeWidth: 2),
     );
   }
 }
@@ -737,7 +746,7 @@ class _ResponsiveWrapper extends StatelessWidget {
 
     // Mobile/Tablet modes - constrained width with device frame
     return Container(
-      color: Colors.grey.shade900,
+      color: Colors.white,
       child: Center(
         child: Container(
           width: viewMode.width,
@@ -745,7 +754,7 @@ class _ResponsiveWrapper extends StatelessWidget {
             color: Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withOpacity(0.1),
                 blurRadius: 20,
                 spreadRadius: 5,
               ),
@@ -781,26 +790,24 @@ class _ViewModeSelector extends StatelessWidget {
             children: [
               Icon(
                 mode.icon,
-                color: mode == currentMode 
-                    ? Theme.of(context).primaryColor 
-                    : null,
+                color:
+                    mode == currentMode ? Theme.of(context).primaryColor : null,
               ),
               const SizedBox(width: 12),
               Text(
                 mode.label,
                 style: TextStyle(
-                  fontWeight: mode == currentMode 
-                      ? FontWeight.bold 
-                      : FontWeight.normal,
-                  color: mode == currentMode 
-                      ? Theme.of(context).primaryColor 
+                  fontWeight:
+                      mode == currentMode ? FontWeight.bold : FontWeight.normal,
+                  color: mode == currentMode
+                      ? Theme.of(context).primaryColor
                       : null,
                 ),
               ),
               if (mode == currentMode) ...[
                 const Spacer(),
                 Icon(
-                  Icons.check,
+                  AppIcons.check,
                   color: Theme.of(context).primaryColor,
                   size: 20,
                 ),
@@ -812,4 +819,3 @@ class _ViewModeSelector extends StatelessWidget {
     );
   }
 }
-

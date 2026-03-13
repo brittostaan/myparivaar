@@ -51,7 +51,9 @@ Deno.serve(async (req: Request) => {
     const { limit = 100, category, start_date, end_date }: ExpenseListRequest = await req.json().catch(() => ({}))
 
     // Initialize Supabase client
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      db: { schema: "app" },
+    })
 
     // Get user's household
     const { data: userData, error: userError } = await supabase

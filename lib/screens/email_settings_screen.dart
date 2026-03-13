@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/email_service.dart';
+import '../widgets/app_header.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 
 class EmailSettingsScreen extends StatefulWidget {
   const EmailSettingsScreen({super.key});
@@ -99,18 +102,18 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
+                    color: AppColors.warningLight,
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.orange.shade200),
+                    border: Border.all(color: AppColors.warningLight),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.info_outline, color: Colors.orange, size: 16),
+                      Icon(AppIcons.info, color: AppColors.warning, size: 16),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'We only read emails to detect transactions. Your emails remain private.',
-                          style: TextStyle(fontSize: 12, color: Colors.orange),
+                          style: TextStyle(fontSize: 12, color: AppColors.warning),
                         ),
                       ),
                     ],
@@ -164,7 +167,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: AppColors.grey100,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: SelectableText(
@@ -206,7 +209,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('Disconnect'),
           ),
         ],
@@ -269,21 +272,21 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Email Settings'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          if (_emailAccounts.isNotEmpty)
-            IconButton(
-              onPressed: _syncEmails,
-              icon: const Icon(Icons.sync),
-              tooltip: 'Sync Emails Now',
+      body: SafeArea(
+        child: Column(
+          children: [
+            const AppHeader(
+              title: 'Email Settings',
+              avatarIcon: AppIcons.email,
             ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadEmailAccounts,
-        child: _buildBody(),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _loadEmailAccounts,
+                child: _buildBody(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -298,7 +301,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
+            const Icon(AppIcons.error, size: 64, color: AppColors.error),
             const SizedBox(height: 16),
             Text('Error loading email accounts', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 8),
@@ -325,7 +328,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.email, color: Theme.of(context).primaryColor),
+                    Icon(AppIcons.email, color: Theme.of(context).primaryColor),
                     const SizedBox(width: 8),
                     Text(
                       'Automatic Transaction Detection',
@@ -376,14 +379,14 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: Colors.red.shade100,
+                    color: AppColors.errorLight,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.email, color: Colors.red.shade700),
+                  child: const Icon(AppIcons.email, color: AppColors.errorDark),
                 ),
                 title: const Text('Gmail'),
                 subtitle: const Text('Connect your Google account'),
-                trailing: const Icon(Icons.add),
+                trailing: const Icon(AppIcons.add),
                 onTap: () => _connectEmailAccount('gmail'),
               ),
               const Divider(height: 1),
@@ -392,14 +395,14 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade100,
+                    color: AppColors.infoLight,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.email, color: Colors.blue.shade700),
+                  child: const Icon(AppIcons.email, color: AppColors.infoDark),
                 ),
                 title: const Text('Outlook'),
                 subtitle: const Text('Connect your Microsoft account'),
-                trailing: const Icon(Icons.add),
+                trailing: const Icon(AppIcons.add),
                 onTap: () => _connectEmailAccount('outlook'),
               ),
             ],
@@ -417,15 +420,15 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
           height: 40,
           decoration: BoxDecoration(
             color: account.provider == 'gmail' 
-                ? Colors.red.shade100 
-                : Colors.blue.shade100,
+                ? AppColors.errorLight
+                : AppColors.infoLight,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
-            Icons.email,
+            AppIcons.email,
             color: account.provider == 'gmail' 
-                ? Colors.red.shade700 
-                : Colors.blue.shade700,
+                ? AppColors.errorDark
+                : AppColors.infoDark,
           ),
         ),
         title: Text(account.emailAddress),

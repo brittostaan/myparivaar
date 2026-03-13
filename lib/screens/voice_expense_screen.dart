@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import '../services/voice_service.dart';
 import '../services/auth_service.dart';
 import '../services/expense_service.dart';
+import '../widgets/app_header.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 
 class VoiceExpenseScreen extends StatefulWidget {
   const VoiceExpenseScreen({super.key});
@@ -106,7 +109,7 @@ class _VoiceExpenseScreenState extends State<VoiceExpenseScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Expense added: ${_parsedExpense!.description} - ₹${_parsedExpense!.amount}'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
 
@@ -145,24 +148,28 @@ class _VoiceExpenseScreenState extends State<VoiceExpenseScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Voice Expense Entry'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
+      body: SafeArea(
         child: Column(
           children: [
-            // Instructions
-            Card(
+            const AppHeader(
+              title: 'Voice Expense',
+              avatarIcon: AppIcons.mic,
+            ),
+            Expanded(
               child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  children: [
+                    // Instructions
+                    Card(
+                      child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.mic, color: Theme.of(context).primaryColor),
+                        Icon(AppIcons.micOutlined, color: Theme.of(context).primaryColor),
                         const SizedBox(width: 8),
                         Text(
                           'Voice Expense Entry',
@@ -207,20 +214,20 @@ class _VoiceExpenseScreenState extends State<VoiceExpenseScreen>
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: _voiceService.isListening
-                                    ? Colors.red.shade100
+                                    ? AppColors.errorLight
                                     : Theme.of(context).primaryColor.withValues(alpha: 0.1),
                                 border: Border.all(
                                   color: _voiceService.isListening
-                                      ? Colors.red
+                                      ? AppColors.error
                                       : Theme.of(context).primaryColor,
                                   width: 3,
                                 ),
                               ),
                               child: Icon(
-                                _voiceService.isListening ? Icons.stop : Icons.mic,
+                                _voiceService.isListening ? AppIcons.stop : AppIcons.micOutlined,
                                 size: 64,
                                 color: _voiceService.isListening
-                                    ? Colors.red
+                                    ? AppColors.error
                                     : Theme.of(context).primaryColor,
                               ),
                             ),
@@ -244,18 +251,18 @@ class _VoiceExpenseScreenState extends State<VoiceExpenseScreen>
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.red.shade50,
+                          color: AppColors.errorLight,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red.shade200),
+                          border: Border.all(color: AppColors.errorLight),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                            const Icon(AppIcons.error, color: AppColors.errorDark, size: 20),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 _error!,
-                                style: TextStyle(color: Colors.red.shade700),
+                                style: const TextStyle(color: AppColors.errorDark),
                               ),
                             ),
                           ],
@@ -270,6 +277,10 @@ class _VoiceExpenseScreenState extends State<VoiceExpenseScreen>
                   ],
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
             ),
           ],
         ),
@@ -289,12 +300,12 @@ class _VoiceExpenseScreenState extends State<VoiceExpenseScreen>
           children: [
             Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.green.shade600),
+                const Icon(AppIcons.checkCircle, color: AppColors.success),
                 const SizedBox(width: 8),
                 Text(
                   'Expense Detected',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.green.shade600,
+                    color: AppColors.success,
                   ),
                 ),
               ],
@@ -360,17 +371,17 @@ class _VoiceExpenseScreenState extends State<VoiceExpenseScreen>
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: AppColors.grey100,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'You said:',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey.shade600,
+                      color: AppColors.grey600,
                     ),
                   ),
                   Text(
@@ -391,7 +402,7 @@ class _VoiceExpenseScreenState extends State<VoiceExpenseScreen>
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: _editExpense,
-                    icon: const Icon(Icons.edit),
+                    icon: const Icon(AppIcons.edit),
                     label: const Text('Edit'),
                   ),
                 ),
@@ -405,7 +416,7 @@ class _VoiceExpenseScreenState extends State<VoiceExpenseScreen>
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.check),
+                        : const Icon(AppIcons.check),
                     label: Text(_isConfirming ? 'Saving...' : 'Confirm'),
                   ),
                 ),

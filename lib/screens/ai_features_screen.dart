@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/ai_service.dart';
+import '../widgets/app_header.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 
 class AIFeaturesScreen extends StatefulWidget {
   const AIFeaturesScreen({super.key});
@@ -122,21 +125,29 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('AI Insights'),
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          bottom: const TabBar(
-            tabs: [
-              Tab(icon: Icon(Icons.summarize), text: 'Weekly Summary'),
-              Tab(icon: Icon(Icons.chat_bubble_outline), text: 'AI Chat'),
+        body: SafeArea(
+          child: Column(
+            children: [
+              const AppHeader(
+                title: 'AI Insights',
+                avatarIcon: AppIcons.smartToy,
+              ),
+              const TabBar(
+                tabs: [
+                  Tab(icon: Icon(AppIcons.summarize), text: 'Weekly Summary'),
+                  Tab(icon: Icon(AppIcons.chat), text: 'AI Chat'),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    _buildWeeklySummaryTab(),
+                    _buildChatTab(),
+                  ],
+                ),
+              ),
             ],
           ),
-        ),
-        body: TabBarView(
-          children: [
-            _buildWeeklySummaryTab(),
-            _buildChatTab(),
-          ],
         ),
       ),
     );
@@ -159,7 +170,7 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.insights, color: Theme.of(context).primaryColor),
+                        Icon(AppIcons.insights, color: Theme.of(context).primaryColor),
                         const SizedBox(width: 8),
                         Text(
                           'This Week\'s Insights',
@@ -181,7 +192,7 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
                     else if (_summaryError != null)
                       Column(
                         children: [
-                          Icon(Icons.error_outline, size: 48, color: Colors.orange.shade600),
+                          const Icon(AppIcons.error, size: 48, color: AppColors.warning),
                           const SizedBox(height: 16),
                           Text(
                             'Unable to generate weekly summary',
@@ -192,7 +203,7 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
                           Text(
                             _summaryError!,
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.grey.shade600),
+                            style: const TextStyle(color: AppColors.grey600),
                           ),
                           const SizedBox(height: 16),
                           ElevatedButton(
@@ -214,8 +225,8 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
                           const SizedBox(height: 16),
                           Text(
                             'Generated: ${DateTime.now().toString().substring(0, 16)}',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
+                            style: const TextStyle(
+                              color: AppColors.grey600,
                               fontSize: 12,
                             ),
                           ),
@@ -224,7 +235,7 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
                     else
                       const Column(
                         children: [
-                          Icon(Icons.timeline, size: 48, color: Colors.grey),
+                          Icon(AppIcons.timeline, size: 48, color: AppColors.grey600),
                           SizedBox(height: 16),
                           Text(
                             'No summary available',
@@ -288,7 +299,7 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey.shade400),
+                      const Icon(AppIcons.chat, size: 64, color: AppColors.grey400),
                       const SizedBox(height: 16),
                       Text(
                         'Ask me about your finances',
@@ -316,16 +327,16 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
         if (_sendingMessage)
           Container(
             padding: const EdgeInsets.all(8.0),
-            child: Row(
+            child: const Row(
               children: [
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-                const SizedBox(width: 8),
-                const Text('AI is thinking...'),
+                SizedBox(width: 8),
+                Text('AI is thinking...'),
               ],
             ),
           ),
@@ -333,9 +344,9 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
         // Input field
         Container(
           padding: const EdgeInsets.all(8.0),
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             border: Border(
-              top: BorderSide(color: Colors.grey.shade300),
+              top: BorderSide(color: AppColors.grey300),
             ),
           ),
           child: Row(
@@ -359,7 +370,7 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
                 onPressed: (!_sendingMessage && _chatQueriesUsed < _chatQueriesLimit) 
                     ? _sendChatMessage 
                     : null,
-                icon: const Icon(Icons.send),
+                icon: const Icon(AppIcons.send),
               ),
             ],
           ),
@@ -380,13 +391,13 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
             CircleAvatar(
               radius: 16,
               backgroundColor: message.isError 
-                  ? Colors.red.shade100 
+                  ? AppColors.errorLight
                   : Theme.of(context).primaryColor.withValues(alpha: 0.1),
               child: Icon(
-                message.isError ? Icons.error_outline : Icons.smart_toy,
+                message.isError ? AppIcons.error : AppIcons.smartToy,
                 size: 16,
                 color: message.isError 
-                    ? Colors.red.shade700 
+                    ? AppColors.errorDark
                     : Theme.of(context).primaryColor,
               ),
             ),
@@ -400,8 +411,8 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
                 color: message.isUser 
                     ? Theme.of(context).primaryColor
                     : message.isError 
-                        ? Colors.red.shade50
-                        : Colors.grey.shade100,
+                        ? AppColors.errorLight
+                        : AppColors.grey100,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -413,7 +424,7 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
                       color: message.isUser 
                           ? Colors.white
                           : message.isError 
-                              ? Colors.red.shade700
+                              ? AppColors.errorDark
                               : Colors.black,
                     ),
                   ),
@@ -424,7 +435,7 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
                       fontSize: 10,
                       color: message.isUser 
                           ? Colors.white70
-                          : Colors.grey.shade600,
+                          : AppColors.grey600,
                     ),
                   ),
                 ],
@@ -438,7 +449,7 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
               radius: 16,
               backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
               child: Icon(
-                Icons.person,
+                AppIcons.person,
                 size: 16,
                 color: Theme.of(context).primaryColor,
               ),

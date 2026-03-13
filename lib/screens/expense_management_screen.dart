@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/expense_service.dart';
 import '../models/expense.dart';
+import '../widgets/app_header.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 
 class ExpenseManagementScreen extends StatefulWidget {
   const ExpenseManagementScreen({super.key});
@@ -95,7 +98,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('Delete'),
           ),
         ],
@@ -136,48 +139,28 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  Color _getCategoryColor(String category) {
-    switch (category.toLowerCase()) {
-      case 'food':
-        return Colors.orange.shade100;
-      case 'transport':
-        return Colors.blue.shade100;
-      case 'shopping':
-        return Colors.purple.shade100;
-      case 'utilities':
-        return Colors.green.shade100;
-      case 'healthcare':
-        return Colors.red.shade100;
-      case 'entertainment':
-        return Colors.pink.shade100;
-      default:
-        return Colors.grey.shade100;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Expenses'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.of(context).pushNamed('/voice-expense');
-            },
-            icon: const Icon(Icons.mic),
-            tooltip: 'Voice Entry',
-          ),
-        ],
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addExpense,
-        child: const Icon(Icons.add),
+        child: const Icon(AppIcons.add),
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadExpenses,
-        child: _buildBody(),
+      body: SafeArea(
+        child: Column(
+          children: [
+            const AppHeader(
+              title: 'Expenses',
+              avatarIcon: AppIcons.wallet,
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _loadExpenses,
+                child: _buildBody(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -196,10 +179,10 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             const SizedBox(height: 24),
             Row(
               children: [
-                Icon(Icons.error_outline, size: 32, color: Colors.red.shade600),
+                const Icon(AppIcons.error, size: 32, color: AppColors.error),
                 const SizedBox(width: 8),
                 Text('Error loading expenses',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.red.shade700)),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(color: AppColors.errorDark)),
               ],
             ),
             const SizedBox(height: 20),
@@ -207,8 +190,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                border: Border.all(color: Colors.red.shade200),
+                color: AppColors.errorLight,
+                border: Border.all(color: AppColors.errorLight),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: SelectableText(
@@ -219,14 +202,14 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             const SizedBox(height: 12),
             const Text(
               'Diagnostic info above is selectable — long-press to copy.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12, color: AppColors.grey600),
             ),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _loadExpenses,
-                icon: const Icon(Icons.refresh),
+                icon: const Icon(AppIcons.refresh),
                 label: const Text('Retry'),
               ),
             ),
@@ -240,7 +223,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey.shade400),
+            const Icon(AppIcons.receiptOutlined, size: 64, color: AppColors.grey400),
             const SizedBox(height: 16),
             Text('No expenses yet', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 8),
@@ -281,7 +264,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   Widget _buildExpenseItem(Expense expense) {
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: _getCategoryColor(expense.category),
+        backgroundColor: AppColors.getCategoryColor(expense.category),
         child: Icon(_getCategoryIcon(expense.category), size: 20),
       ),
       title: Text(expense.description),
@@ -295,7 +278,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           if (expense.source == 'email')
-            Icon(Icons.email, size: 16, color: Colors.grey.shade600),
+            const Icon(AppIcons.email, size: 16, color: AppColors.grey600),
         ],
       ),
       onTap: () => _editExpense(expense),
@@ -304,22 +287,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   }
 
   IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'food':
-        return Icons.restaurant;
-      case 'transport':
-        return Icons.directions_car;
-      case 'shopping':
-        return Icons.shopping_bag;
-      case 'utilities':
-        return Icons.home;
-      case 'healthcare':
-        return Icons.local_hospital;
-      case 'entertainment':
-        return Icons.movie;
-      default:
-        return Icons.category;
-    }
+    return AppIcons.getCategoryIcon(category);
   }
 
   String _getMonthName(String monthKey) {
@@ -346,32 +314,18 @@ class AddEditExpenseScreen extends StatefulWidget {
 }
 
 class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
-  final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
-  final _descriptionController = TextEditingController();
   final _notesController = TextEditingController();
   
   String _selectedCategory = 'food';
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
 
-  final List<String> _categories = [
-    'food',
-    'transport',
-    'shopping',
-    'utilities',
-    'healthcare',
-    'entertainment',
-    'education',
-    'other',
-  ];
-
   @override
   void initState() {
     super.initState();
     if (widget.expense != null) {
       _amountController.text = widget.expense!.amount.toStringAsFixed(2);
-      _descriptionController.text = widget.expense!.description;
       _notesController.text = widget.expense!.notes ?? '';
       _selectedCategory = widget.expense!.category;
       _selectedDate = widget.expense!.date;
@@ -381,7 +335,6 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
   @override
   void dispose() {
     _amountController.dispose();
-    _descriptionController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -401,8 +354,333 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
     }
   }
 
-  Future<void> _saveExpense() async {
-    if (!_formKey.currentState!.validate()) return;
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header with back button
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.arrow_back_ios, size: 20),
+                  ),
+                  const Expanded(
+                    child: Center(
+                      child: Text(
+                        'New Expense',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 48), // Balance the back button
+                ],
+              ),
+            ),
+            
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 40),
+                    
+                    // Amount Display
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: 20),
+                          child: Text(
+                            '\$',
+                            style: TextStyle(
+                              fontSize: 40,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _amountController.text.isEmpty ? '0.00' : _amountController.text,
+                          style: const TextStyle(
+                            fontSize: 80,
+                            fontWeight: FontWeight.bold,
+                            height: 1.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Note field
+                    TextField(
+                      controller: _notesController,
+                      decoration: InputDecoration(
+                        hintText: 'Add a note...',
+                        hintStyle: TextStyle(
+                          color: Colors.grey[300],
+                          fontSize: 16,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 60),
+                    
+                    // Category Selection
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'SELECT CATEGORY',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[400],
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Category Grid
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 3,
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 16,
+                      childAspectRatio: 1.0,
+                      children: [
+                        _buildCategoryButton('food', 'Food', AppIcons.food, Colors.orange),
+                        _buildCategoryButton('transport', 'Transport', AppIcons.transport, Colors.blue),
+                        _buildCategoryButton('shopping', 'Shopping', AppIcons.shopping, Colors.pink),
+                        _buildCategoryButton('utilities', 'Bills', AppIcons.utilities, Colors.green),
+                        _buildCategoryButton('entertainment', 'Entertain', AppIcons.entertainment, Colors.purple),
+                        _buildCategoryButton('other', 'Others', Icons.more_horiz, Colors.grey),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 40),
+                    
+                    // Bottom options row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Today button
+                        InkWell(
+                          onTap: _selectDate,
+                          child: Row(
+                            children: [
+                              Icon(AppIcons.calendar, color: Colors.grey[600], size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                _selectedDate.day == DateTime.now().day &&
+                                _selectedDate.month == DateTime.now().month &&
+                                _selectedDate.year == DateTime.now().year
+                                  ? 'Today'
+                                  : '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Add Receipt button
+                        InkWell(
+                          onTap: () {
+                            // TODO: Add receipt upload functionality
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Receipt upload coming soon!')),
+                            );
+                          },
+                          child: Row(
+                            children: [
+                              Icon(Icons.camera_alt_outlined, color: Colors.grey[600], size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Add Receipt',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Save Button
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : () => _showAmountDialog(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1A1D2E),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: _isLoading
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Save Transaction',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Icon(Icons.check, size: 20),
+                        ],
+                      ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryButton(String category, String label, IconData icon, Color color) {
+    final isSelected = _selectedCategory == category;
+    
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _selectedCategory = category;
+        });
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.1) : Colors.grey[50],
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? color : Colors.grey[200]!,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 36,
+              color: isSelected ? color : Colors.grey[400],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                color: isSelected ? color : Colors.grey[600],
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showAmountDialog(BuildContext context) async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter Amount'),
+        content: TextFormField(
+          controller: _amountController,
+          decoration: const InputDecoration(
+            labelText: 'Amount',
+            prefixText: '\$ ',
+            border: OutlineInputBorder(),
+          ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          autofocus: true,
+          onFieldSubmitted: (value) {
+            Navigator.pop(context, value);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, _amountController.text),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {});
+      // Now save the expense
+      await _saveExpenseWithValidation();
+    }
+  }
+
+  Future<void> _saveExpenseWithValidation() async {
+    // Validate amount
+    if (_amountController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter an amount')),
+      );
+      return;
+    }
+
+    final amount = double.tryParse(_amountController.text);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid amount')),
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -412,8 +690,7 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
       final authService = Provider.of<AuthService>(context, listen: false);
       final expenseService = ExpenseService();
 
-      final amount = double.parse(_amountController.text);
-      final description = _descriptionController.text.trim();
+      final description = _notesController.text.trim();
       final notes = _notesController.text.trim();
 
       if (widget.expense == null) {
@@ -421,7 +698,7 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
         await expenseService.createExpense(
           amount: amount,
           category: _selectedCategory,
-          description: description,
+          description: description.isEmpty ? _selectedCategory : description,
           date: _selectedDate,
           notes: notes.isEmpty ? null : notes,
           supabaseUrl: authService.supabaseUrl,
@@ -433,7 +710,7 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
           expenseId: widget.expense!.id,
           amount: amount,
           category: _selectedCategory,
-          description: description,
+          description: description.isEmpty ? _selectedCategory : description,
           date: _selectedDate,
           notes: notes.isEmpty ? null : notes,
           supabaseUrl: authService.supabaseUrl,
@@ -461,160 +738,6 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
           SnackBar(content: Text('Error saving expense: $e')),
         );
       }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.expense == null ? 'Add Expense' : 'Edit Expense'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          TextButton(
-            onPressed: _isLoading ? null : _saveExpense,
-            child: _isLoading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('SAVE'),
-          ),
-        ],
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16.0),
-          children: [
-            // Amount field
-            TextFormField(
-              controller: _amountController,
-              decoration: const InputDecoration(
-                labelText: 'Amount *',
-                prefixText: '₹ ',
-                border: OutlineInputBorder(),
-                helperText: 'Enter amount in rupees',
-              ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter an amount';
-                }
-                final amount = double.tryParse(value.trim());
-                if (amount == null || amount <= 0) {
-                  return 'Please enter a valid amount';
-                }
-                if (amount > 999999.99) {
-                  return 'Amount cannot exceed ₹999,999.99';
-                }
-                return null;
-              },
-            ),
-            
-            const SizedBox(height: 16),
-
-            // Category dropdown
-            DropdownButtonFormField<String>(
-              initialValue: _selectedCategory,
-              decoration: const InputDecoration(
-                labelText: 'Category *',
-                border: OutlineInputBorder(),
-              ),
-              items: _categories.map((category) => DropdownMenuItem(
-                value: category,
-                child: Row(
-                  children: [
-                    Icon(_getCategoryIcon(category), size: 20),
-                    const SizedBox(width: 8),
-                    Text(category.substring(0, 1).toUpperCase() + category.substring(1)),
-                  ],
-                ),
-              )).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() {
-                    _selectedCategory = value;
-                  });
-                }
-              },
-            ),
-
-            const SizedBox(height: 16),
-
-            // Description field
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description *',
-                border: OutlineInputBorder(),
-                helperText: 'What did you spend on?',
-              ),
-              maxLength: 100,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter a description';
-                }
-                if (value.trim().length < 3) {
-                  return 'Description must be at least 3 characters';
-                }
-                return null;
-              },
-            ),
-
-            const SizedBox(height: 16),
-
-            // Date picker
-            InkWell(
-              onTap: _selectDate,
-              child: InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: 'Date *',
-                  border: OutlineInputBorder(),
-                  suffixIcon: Icon(Icons.calendar_today),
-                ),
-                child: Text('${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Notes field
-            TextFormField(
-              controller: _notesController,
-              decoration: const InputDecoration(
-                labelText: 'Notes (Optional)',
-                border: OutlineInputBorder(),
-                helperText: 'Additional details about this expense',
-              ),
-              maxLines: 3,
-              maxLength: 200,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'food':
-        return Icons.restaurant;
-      case 'transport':
-        return Icons.directions_car;
-      case 'shopping':
-        return Icons.shopping_bag;
-      case 'utilities':
-        return Icons.home;
-      case 'healthcare':
-        return Icons.local_hospital;
-      case 'entertainment':
-        return Icons.movie;
-      case 'education':
-        return Icons.school;
-      default:
-        return Icons.category;
     }
   }
 }

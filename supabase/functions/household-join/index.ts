@@ -50,8 +50,6 @@ const supabase = createClient(
   },
 );
 
-const FIREBASE_PROJECT_ID = Deno.env.get("FIREBASE_PROJECT_ID")!;
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -62,7 +60,7 @@ function json(body: unknown, status = 200): Response {
 
 // Columns returned to the client — never expose internal fields
 const USER_COLS =
-  "id, firebase_uid, phone, role, household_id, display_name, notifications_enabled, voice_enabled, created_at";
+  "id, firebase_uid, email, phone, role, household_id, display_name, first_name, last_name, date_of_birth, photo_url, notifications_enabled, voice_enabled, created_at";
 const HOUSEHOLD_COLS = "id, name, plan, suspended, created_at";
 
 // ── Handler ──────────────────────────────────────────────────────────────────
@@ -82,10 +80,7 @@ Deno.serve(async (req: Request) => {
 
   let uid: string;
   try {
-    const claims = await verifyFirebaseToken(
-      authHeader.slice(7).trim(),
-      FIREBASE_PROJECT_ID,
-    );
+    const claims = await verifyFirebaseToken(authHeader.slice(7).trim());
     uid = claims.uid;
   } catch {
     return json({ error: "Invalid or expired token" }, 401);

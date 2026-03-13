@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 
 import '../models/import_result.dart';
 import '../services/import_service.dart';
-
+import '../widgets/app_header.dart';
+import '../theme/app_icons.dart';
 // ── Stage machine ─────────────────────────────────────────────────────────────
 enum _Stage { setup, previewing, previewReady, committing, done }
 
@@ -166,25 +167,24 @@ class _CsvImportScreenState extends State<CsvImportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Import CSV'),
-        centerTitle: false,
-        actions: [
-          if (_stage != _Stage.setup && _stage != _Stage.done)
-            TextButton(
-              onPressed: _reset,
-              child: const Text('Start Over'),
-            ),
-        ],
-      ),
       body: SafeArea(
-        child: switch (_stage) {
-          _Stage.setup        => _buildSetup(context),
-          _Stage.previewing   => _buildLoading('Validating rows…'),
-          _Stage.previewReady => _buildPreview(context),
-          _Stage.committing   => _buildLoading('Importing data…'),
-          _Stage.done         => _buildDone(context),
-        },
+        child: Column(
+          children: [
+            const AppHeader(
+              title: 'Import CSV',
+              avatarIcon: AppIcons.upload,
+            ),
+            Expanded(
+              child: switch (_stage) {
+                _Stage.setup        => _buildSetup(context),
+                _Stage.previewing   => _buildLoading('Validating rows…'),
+                _Stage.previewReady => _buildPreview(context),
+                _Stage.committing   => _buildLoading('Importing data…'),
+                _Stage.done         => _buildDone(context),
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -238,7 +238,7 @@ class _CsvImportScreenState extends State<CsvImportScreen> {
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: _pickFile,
-          icon:  const Icon(Icons.upload_file),
+          icon:  const Icon(AppIcons.upload),
           label: Text(_fileName ?? 'Choose CSV file'),
           style: OutlinedButton.styleFrom(
             minimumSize: const Size.fromHeight(52),
@@ -250,7 +250,7 @@ class _CsvImportScreenState extends State<CsvImportScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(Icons.check_circle, color: cs.primary, size: 16),
+              Icon(AppIcons.checkCircle, color: cs.primary, size: 16),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
@@ -285,7 +285,7 @@ class _CsvImportScreenState extends State<CsvImportScreen> {
         // Validate button
         FilledButton.icon(
           onPressed: _canValidate ? _runPreview : null,
-          icon:  const Icon(Icons.fact_check_outlined),
+          icon:  const Icon(AppIcons.factCheck),
           label: const Text('Validate'),
           style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
         ),
@@ -385,7 +385,7 @@ class _CsvImportScreenState extends State<CsvImportScreen> {
             padding: const EdgeInsets.all(16),
             child: OutlinedButton.icon(
               onPressed: _reset,
-              icon:  const Icon(Icons.upload_file),
+              icon:  const Icon(AppIcons.upload),
               label: const Text('Upload corrected file'),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(52),
@@ -407,7 +407,7 @@ class _CsvImportScreenState extends State<CsvImportScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.check_circle_outline, color: cs.primary, size: 72),
+            Icon(AppIcons.checkCircle, color: cs.primary, size: 72),
             const SizedBox(height: 16),
             Text(
               'Import complete',
@@ -496,7 +496,7 @@ class _FormatHintCardState extends State<_FormatHintCard> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.info_outline, size: 16, color: cs.primary),
+                  Icon(AppIcons.info, size: 16, color: cs.primary),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -505,7 +505,7 @@ class _FormatHintCardState extends State<_FormatHintCard> {
                     ),
                   ),
                   Icon(
-                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    _expanded ? AppIcons.expandLess : AppIcons.expandMore,
                     size: 18,
                     color: cs.outline,
                   ),
@@ -554,7 +554,7 @@ class _ErrorBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.error_outline, color: cs.onErrorContainer, size: 18),
+          Icon(AppIcons.error, color: cs.onErrorContainer, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -586,7 +586,7 @@ class _PreviewSummaryBanner extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            isClean ? Icons.check_circle_outline : Icons.warning_amber_outlined,
+            isClean ? AppIcons.checkCircle : AppIcons.warningAmber,
             color: isClean ? cs.onPrimaryContainer : cs.onErrorContainer,
           ),
           const SizedBox(width: 10),
@@ -699,7 +699,7 @@ class _PreviewRowCard extends StatelessWidget {
       child: ListTile(
         dense: true,
         leading: Icon(
-          importType == 'expenses' ? Icons.receipt_long : Icons.account_balance_wallet,
+          importType == 'expenses' ? AppIcons.receiptOutlined : AppIcons.wallet,
           color: cs.primary,
           size:  20,
         ),
@@ -735,7 +735,7 @@ class _ImportActionBar extends StatelessWidget {
         top: false,
         child: FilledButton.icon(
           onPressed: onImport,
-          icon:  const Icon(Icons.cloud_upload_outlined),
+          icon:  const Icon(AppIcons.cloudUpload),
           label: Text('Import $rowCount ${importType == 'expenses' ? 'expense' : 'budget'} row${rowCount == 1 ? '' : 's'}'),
           style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
         ),

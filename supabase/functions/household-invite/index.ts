@@ -48,8 +48,6 @@ const supabase = createClient(
   },
 );
 
-const FIREBASE_PROJECT_ID = Deno.env.get("FIREBASE_PROJECT_ID")!;
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -108,10 +106,7 @@ Deno.serve(async (req: Request) => {
 
   let uid: string;
   try {
-    const claims = await verifyFirebaseToken(
-      authHeader.slice(7).trim(),
-      FIREBASE_PROJECT_ID,
-    );
+    const claims = await verifyFirebaseToken(authHeader.slice(7).trim());
     uid = claims.uid;
   } catch {
     return json({ error: "Invalid or expired token" }, 401);
@@ -131,7 +126,7 @@ Deno.serve(async (req: Request) => {
   }
   if (!caller)              return json({ error: "User not found" }, 404);
   if (!caller.household_id) return json({ error: "User does not belong to a household" }, 403);
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super_admin") {
     return json({ error: "Only the household admin can invite members" }, 403);
   }
 

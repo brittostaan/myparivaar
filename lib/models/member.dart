@@ -31,11 +31,11 @@ class Member {
 
   factory Member.fromJson(Map<String, dynamic> json) => Member(
         id:          json['id']           as String,
-        // household-members returns phone_number (not phone)
-        phone:       json['phone_number'] as String,
+      // household-members returns phone_number, but keep fallback for older payloads.
+      phone:       (json['phone_number'] ?? json['phone']) as String,
         role:        json['role']         as String,
-        // household-members returns name (not display_name)
-        displayName: json['name']         as String?,
+      // household-members returns name, but keep fallback for older payloads.
+      displayName: (json['name'] ?? json['display_name']) as String?,
         joinedAt:    DateTime.parse(json['created_at'] as String),
       );
 }

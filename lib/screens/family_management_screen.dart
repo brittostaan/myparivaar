@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import '../models/app_user.dart';
 import '../models/member.dart';
 import '../services/family_service.dart';
+import '../widgets/app_header.dart';
+import '../theme/app_icons.dart';
 
 const _kMaxHouseholdSize = 8;
 
@@ -142,30 +144,23 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      body: SafeArea(
+        child: Column(
           children: [
-            const Text('Family'),
-            Text(
-              widget.householdName,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            AppHeader(
+              title: 'Family',
+              subtitle: widget.householdName,
+              avatarIcon: AppIcons.groupOutlined,
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _loadMembers,
+                child: _buildBody(),
+              ),
             ),
           ],
         ),
-        actions: [
-          if (!_isLoading)
-            IconButton(
-              icon:    const Icon(Icons.refresh),
-              tooltip: 'Refresh',
-              onPressed: _loadMembers,
-            ),
-        ],
       ),
-      body: _buildBody(),
       floatingActionButton: _isAdmin && !_isLoading && _errorMessage == null
           ? _InviteFab(isFull: _isFull, onPressed: _openInviteSheet)
           : null,
@@ -291,7 +286,7 @@ class _MemberTile extends StatelessWidget {
             )
           : onRemove != null
               ? IconButton(
-                  icon:    Icon(Icons.person_remove_outlined, color: cs.error),
+                  icon:    Icon(AppIcons.personRemove, color: cs.error),
                   tooltip: 'Remove member',
                   onPressed: onRemove,
                 )
@@ -426,7 +421,7 @@ class _InviteFab extends StatelessWidget {
   Widget build(BuildContext context) {
     return FloatingActionButton.extended(
       onPressed:   isFull ? null : onPressed,
-      icon:        const Icon(Icons.person_add_outlined),
+      icon:        const Icon(AppIcons.personAdd),
       label:       const Text('Invite'),
       tooltip:     isFull ? 'Household is full' : 'Invite a member',
     );
@@ -449,7 +444,7 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.wifi_off_rounded, size: 48, color: cs.outline),
+            Icon(AppIcons.wifiOff, size: 48, color: cs.outline),
             const SizedBox(height: 16),
             Text(
               message,
@@ -459,7 +454,7 @@ class _ErrorState extends StatelessWidget {
             const SizedBox(height: 24),
             OutlinedButton.icon(
               onPressed: onRetry,
-              icon:  const Icon(Icons.refresh),
+              icon:  const Icon(AppIcons.refresh),
               label: const Text('Retry'),
             ),
           ],
@@ -481,7 +476,7 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.group_outlined, size: 56, color: cs.outline),
+          Icon(AppIcons.groupOutlined, size: 56, color: cs.outline),
           const SizedBox(height: 16),
           Text('No members yet', style: TextStyle(color: cs.onSurfaceVariant)),
         ],
@@ -580,7 +575,7 @@ class _InviteSheetState extends State<_InviteSheet> {
               decoration: const InputDecoration(
                 labelText:  'Phone number',
                 hintText:   '+919876543210',
-                prefixIcon: Icon(Icons.phone_outlined),
+                prefixIcon: Icon(AppIcons.phone),
                 border:     OutlineInputBorder(),
               ),
               validator: (value) {
@@ -712,7 +707,7 @@ class _InviteCodeDialogState extends State<_InviteCodeDialog> {
           // Copy button
           OutlinedButton.icon(
             onPressed: _copyCode,
-            icon:  Icon(_copied ? Icons.check : Icons.copy_outlined, size: 18),
+            icon:  Icon(_copied ? AppIcons.check : AppIcons.copy, size: 18),
             label: Text(_copied ? 'Copied!' : 'Copy code'),
             style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44)),
           ),

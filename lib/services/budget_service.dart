@@ -107,7 +107,9 @@ class BudgetService {
       }
 
       throw BudgetException(
-        data['error'] as String? ?? 'Budget request failed',
+        data['error'] as String? ??
+            data['message'] as String? ??
+            'Budget request failed [HTTP ${response.statusCode}]: ${response.body}',
         statusCode: response.statusCode,
         rawBody: response.body,
       );

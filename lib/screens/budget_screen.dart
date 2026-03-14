@@ -28,23 +28,32 @@ class _BudgetScreenState extends State<BudgetScreen> {
   ];
 
   List<Budget> _budgets = [];
-  bool _isLoading = true;
+  bool _isLoading = false;
   String? _error;
+  // Technical detail (HTTP status + raw body) shown under the error for debugging.
+  String? _errorDetail;
+  // Budget Edge Functions are deployed. Set to false to disable the feature.
+  final bool _backendAvailable = true;
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  // Incremented on every load; stale async responses are discarded.
+  int _loadGeneration = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadBudgets();
+    if (_backendAvailable) _loadBudgets();
   }
 
   String get _monthKey =>
       '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}';
 
   Future<void> _loadBudgets() async {
+    if (!_backendAvailable) return;
+    final gen = ++_loadGeneration;
     setState(() {
       _isLoading = true;
       _error = null;
+      _errorDetail = null;
     });
 
     try {
@@ -55,21 +64,40 @@ class _BudgetScreenState extends State<BudgetScreen> {
         month: _monthKey,
       );
 
-      if (!mounted) return;
+      if (!mounted || gen != _loadGeneration) return;
       setState(() {
         _budgets = budgets;
         _isLoading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || gen != _loadGeneration) return;
+      final detail = _buildErrorDetail(e);
       setState(() {
-        _error = e.toString();
+        _error = e is BudgetException
+            ? e.message
+            : 'Unexpected error: ${e.runtimeType}';
+        _errorDetail = detail;
         _isLoading = false;
       });
     }
   }
 
+  /// Formats the technical diagnostic string shown under the error message.
+  String _buildErrorDetail(Object e) {
+    if (e is BudgetException) {
+      final lines = <String>[];
+      if (e.statusCode != null) lines.add('HTTP ${e.statusCode}');
+      if (e.rawBody != null && e.rawBody!.isNotEmpty) {
+        lines.add('Response: ${e.rawBody}');
+      }
+      return lines.isEmpty ? e.message : lines.join('\n');
+    }
+    return e.toString();
+  }
+
   Future<void> _addOrEditBudget({Budget? existing}) async {
+    // Capture authService before any await to avoid BuildContext across async gaps.
+    final authService = Provider.of<AuthService>(context, listen: false);
     final category = await showDialog<String>(
       context: context,
       builder: (context) {
@@ -154,7 +182,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
     if (selectedAmount == null) return;
 
     try {
-      final authService = Provider.of<AuthService>(context, listen: false);
       await _budgetService.upsertBudget(
         supabaseUrl: authService.supabaseUrl,
         idToken: await authService.getIdToken(),
@@ -181,6 +208,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Future<void> _deleteBudget(Budget budget) async {
+    // Capture authService before any await to avoid BuildContext across async gaps.
+    final authService = Provider.of<AuthService>(context, listen: false);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -204,7 +233,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
     if (!mounted) return;
 
     try {
-      final authService = Provider.of<AuthService>(context, listen: false);
       await _budgetService.deleteBudget(
         supabaseUrl: authService.supabaseUrl,
         idToken: await authService.getIdToken(),
@@ -236,10 +264,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
     final summary = BudgetSummary(month: _monthKey, budgets: _budgets);
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _addOrEditBudget(),
-        child: const Icon(AppIcons.add),
-      ),
+      floatingActionButton: _backendAvailable
+          ? FloatingActionButton(
+              onPressed: () => _addOrEditBudget(),
+              child: const Icon(AppIcons.add),
+            )
+          : null,
       body: SafeArea(
         child: Column(
           children: [
@@ -280,7 +310,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ),
           ),
           IconButton(
-            onPressed: () => _moveMonth(1),
+            onPressed: (_selectedMonth.year == DateTime.now().year &&
+                    _selectedMonth.month == DateTime.now().month)
+                ? null
+                : () => _moveMonth(1),
             icon: const Icon(Icons.chevron_right),
           ),
         ],
@@ -289,6 +322,32 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Widget _buildBody() {
+    if (!_backendAvailable) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(AppIcons.pieChart, size: 64, color: AppColors.grey400),
+              SizedBox(height: 16),
+              Text(
+                'Budget Feature Coming Soon',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Budget management is under development and will be available in an upcoming release.',
+                style: TextStyle(color: AppColors.grey400),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -303,9 +362,29 @@ class _BudgetScreenState extends State<BudgetScreen> {
               const Icon(AppIcons.error, size: 48, color: AppColors.error),
               const SizedBox(height: 8),
               Text(
-                _error!,
+                _error ?? 'Something went wrong.',
                 textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
+              if (_errorDetail != null) ...[
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.grey200,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SelectableText(
+                    _errorDetail!,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontFamily: 'monospace',
+                      color: AppColors.grey600,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               ElevatedButton.icon(
                 onPressed: _loadBudgets,

@@ -239,6 +239,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       final monthKey = '${expense.date.year}-${expense.date.month.toString().padLeft(2, '0')}';
       groupedExpenses.putIfAbsent(monthKey, () => []).add(expense);
     }
+    final now = DateTime.now();
+    final currentMonthKey = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
     return ListView.builder(
       itemCount: groupedExpenses.length,
@@ -252,6 +254,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         return Card(
           margin: const EdgeInsets.all(8.0),
           child: ExpansionTile(
+            initiallyExpanded: monthKey == currentMonthKey,
             title: Text(monthName, style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text('${monthExpenses.length} transactions • ${_formatCurrency(totalAmount)}'),
             children: monthExpenses.map((expense) => _buildExpenseItem(expense)).toList(),

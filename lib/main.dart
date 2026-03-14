@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'screens/csv_import_screen.dart';
 import 'screens/family_management_screen.dart';
 import 'screens/expense_management_screen.dart';
+import 'screens/budget_screen.dart';
 import 'screens/ai_features_screen.dart';
 import 'screens/email_settings_screen.dart';
-import 'screens/voice_expense_screen.dart';
 import 'screens/user_settings_screen.dart';
 import 'screens/admin_settings_screen.dart';
 import 'screens/notifications_screen.dart';
@@ -165,6 +166,23 @@ class MyParivaaarApp extends StatelessWidget {
         );
 
       case '/csv-import':
+        if (!kIsWeb) {
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => Scaffold(
+              appBar: AppBar(title: const Text('Import')),
+              body: const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text(
+                    'Spreadsheet import is available only in web advanced settings.',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
         return MaterialPageRoute(
           settings: settings,
           builder: (ctx) {
@@ -219,6 +237,15 @@ class MyParivaaarApp extends StatelessWidget {
           ),
         );
 
+      case '/budget':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const BudgetScreen(),
+          ),
+        );
+
       case '/ai':
         return MaterialPageRoute(
           settings: settings,
@@ -234,15 +261,6 @@ class MyParivaaarApp extends StatelessWidget {
           builder: (_) => NavigationShell(
             currentRoute: routeName,
             child: const EmailSettingsScreen(),
-          ),
-        );
-
-      case '/voice-expense':
-        return MaterialPageRoute(
-          settings: settings,
-          builder: (_) => NavigationShell(
-            currentRoute: routeName,
-            child: const VoiceExpenseScreen(),
           ),
         );
 
@@ -765,57 +783,6 @@ class _ResponsiveWrapper extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-// ── View Mode Selector ─────────────────────────────────────────────────────────
-
-class _ViewModeSelector extends StatelessWidget {
-  const _ViewModeSelector();
-
-  @override
-  Widget build(BuildContext context) {
-    final viewModeProvider = context.watch<ViewModeProvider>();
-    final currentMode = viewModeProvider.mode;
-
-    return PopupMenuButton<ViewMode>(
-      tooltip: 'View Mode',
-      icon: Icon(currentMode.icon),
-      onSelected: (mode) => viewModeProvider.setMode(mode),
-      itemBuilder: (context) => ViewMode.values.map((mode) {
-        return PopupMenuItem<ViewMode>(
-          value: mode,
-          child: Row(
-            children: [
-              Icon(
-                mode.icon,
-                color:
-                    mode == currentMode ? Theme.of(context).primaryColor : null,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                mode.label,
-                style: TextStyle(
-                  fontWeight:
-                      mode == currentMode ? FontWeight.bold : FontWeight.normal,
-                  color: mode == currentMode
-                      ? Theme.of(context).primaryColor
-                      : null,
-                ),
-              ),
-              if (mode == currentMode) ...[
-                const Spacer(),
-                Icon(
-                  AppIcons.check,
-                  color: Theme.of(context).primaryColor,
-                  size: 20,
-                ),
-              ],
-            ],
-          ),
-        );
-      }).toList(),
     );
   }
 }

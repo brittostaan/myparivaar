@@ -58,6 +58,25 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       db: { schema: "app" },
     })
+    const supabasePublic = createClient(supabaseUrl, supabaseServiceKey, {
+      db: { schema: 'public' },
+    })
+
+    // Validate state user and resolve app user id for public.email_accounts.user_id
+    const { data: appUser, error: appUserError } = await supabase
+      .from('users')
+      .select('id, household_id, is_active')
+      .eq('firebase_uid', oauthState.firebase_uid)
+      .eq('is_active', true)
+      .single()
+
+    if (appUserError || !appUser) {
+      throw new Error('Invalid OAuth state user')
+    }
+
+    if (appUser.household_id !== oauthState.household_id) {
+      throw new Error('OAuth state household mismatch')
+    }
 
     // Exchange authorization code for tokens
     let tokenResponse: any
@@ -141,18 +160,16 @@ Deno.serve(async (req: Request) => {
       : null
 
     // Store email account in database
-    const { error: insertError } = await supabase
+    const { error: insertError } = await supabasePublic
       .from('email_accounts')
       .upsert({
         household_id: oauthState.household_id,
+        user_id: appUser.id,
         provider: oauthState.provider,
         email_address: userInfo.email,
         access_token: tokenResponse.access_token,
         refresh_token: tokenResponse.refresh_token || null,
         token_expires_at: expiresAt,
-        scopes: oauthState.provider === 'gmail' 
-          ? ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/userinfo.email']
-          : ['https://graph.microsoft.com/Mail.Read', 'https://graph.microsoft.com/User.Read', 'offline_access'],
         is_active: true,
       }, {
         onConflict: 'household_id,email_address',

@@ -43,6 +43,9 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       db: { schema: "app" },
     })
+    const supabasePublic = createClient(supabaseUrl, supabaseServiceKey, {
+      db: { schema: 'public' },
+    })
 
     // Resolve user
     const { data: userData, error: userError } = await supabase
@@ -59,7 +62,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // List email accounts for this household (omit tokens for security)
-    const { data: accounts, error: accountsError } = await supabase
+    const { data: accounts, error: accountsError } = await supabasePublic
       .from('email_accounts')
       .select('id, email_address, provider, is_active, last_synced_at, created_at')
       .eq('household_id', userData.household_id)

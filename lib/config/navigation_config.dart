@@ -53,10 +53,10 @@ class NavigationConfig {
     // Main dashboard screens - standard navigation
     '/home': _mainNavigation,
     '/expenses': _mainNavigation,
+    '/budget': _mainNavigation,
     '/ai': _mainNavigation,
     '/user-settings': _mainNavigation,
     '/more': _mainNavigation,
-    '/voice-expense': _mainNavigation,
     '/family': _mainNavigation,
     '/admin-settings': _mainNavigation,
     '/email-settings': _mainNavigation,
@@ -73,10 +73,10 @@ class NavigationConfig {
       routeName: '/home',
     ),
     const NavigationItem(
-      label: 'Voice',
-      icon: AppIcons.micOutlined,
-      filledIcon: AppIcons.mic,
-      routeName: '/voice-expense',
+      label: 'Expenses',
+      icon: AppIcons.walletOutlined,
+      filledIcon: AppIcons.wallet,
+      routeName: '/expenses',
     ),
     const NavigationItem(
       label: 'More',

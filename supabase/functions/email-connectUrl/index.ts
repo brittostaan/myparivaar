@@ -78,11 +78,11 @@ Deno.serve(async (req: Request) => {
     // Check household status
     const { data: household, error: householdError } = await supabase
       .from('households')
-      .select('is_active, suspended_at')
+      .select('suspended, deleted_at')
       .eq('id', userData.household_id)
       .single()
 
-    if (householdError || !household?.is_active || household.suspended_at) {
+    if (householdError || household?.suspended || household?.deleted_at) {
       return new Response(JSON.stringify({ error: 'Household suspended or inactive' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -9,7 +9,7 @@
 **Meaning:** “My Family”  
 **Target Market:** Consumers in India (Primary focus: Women)  
 **Platforms:** Android, iOS (Primary), Web (Secondary)  
-**Authentication:** SMS OTP only  
+**Authentication:** Email + Password (MVP)  
 **Business Model:** Free tier (with controlled AI usage), future paid plans  
 
 **Vision:**  
@@ -27,7 +27,7 @@ myparivaar is an AI‑first personal finance management app designed for Indian 
 5. Keep operating costs low for a sustainable free tier.
 
 ### Success Metrics
-- Successful SMS login rate
+- Successful email/password login rate
 - Household creation completion
 - At least 10 expenses logged/imported per household
 - CSV import success rate
@@ -42,7 +42,7 @@ myparivaar is an AI‑first personal finance management app designed for Indian 
 - One **Admin** per family (creator)
 - Up to **7 family members**
 - Each member has:
-  - Own phone number login
+  - Own email + password login
   - Own settings
 - All financial data is **family‑shared**
 - Role based:
@@ -52,11 +52,10 @@ myparivaar is an AI‑first personal finance management app designed for Indian 
 ---
 
 ### 3.2 Authentication
-- **SMS OTP only**
+- **Email + Password only (MVP)**
 - Provider:
-  - Firebase Phone Authentication
-- No passwords
-- No email login
+  - Supabase Auth
+- No SMS OTP in MVP
 
 ---
 
@@ -162,7 +161,7 @@ myparivaar is an AI‑first personal finance management app designed for Indian 
 
 | Feature | Android | iOS | Web |
 |------|------|------|------|
-| SMS Login | ✅ | ✅ | ✅ |
+| Email Login | ✅ | ✅ | ✅ |
 | Family Accounts | ✅ | ✅ | ✅ |
 | Expenses / Budgets | ✅ | ✅ | ✅ |
 | CSV Import | ✅ | ✅ | ✅ |
@@ -192,7 +191,7 @@ myparivaar is an AI‑first personal finance management app designed for Indian 
 - Android, iOS, Web
 
 ### Authentication
-- Firebase Phone Authentication (SMS)
+- Supabase Auth (Email + Password)
 
 ### Backend
 - Supabase
@@ -232,7 +231,7 @@ myparivaar is an AI‑first personal finance management app designed for Indian 
 ## 9. Milestones
 
 ### MVP (2 Days)
-- SMS login
+- Email + password login
 - Family creation
 - Expenses, budgets, savings, bills
 - CSV import

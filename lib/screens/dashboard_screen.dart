@@ -197,22 +197,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       },
                                     ),
                                     QuickAction(
-                                      label: 'Voice',
-                                      icon: AppIcons.micOutlined,
-                                      onTap: () {
-                                        Navigator.of(context).pushNamed('/voice-expense');
-                                      },
-                                    ),
-                                    QuickAction(
                                       label: 'Budget',
                                       icon: AppIcons.pieChart,
                                       onTap: () {
-                                        // TODO: Implement budget screen
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Budget feature coming soon'),
-                                          ),
-                                        );
+                                        Navigator.of(context).pushNamed('/budget');
                                       },
                                     ),
                                   ],

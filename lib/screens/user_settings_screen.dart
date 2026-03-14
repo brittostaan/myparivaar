@@ -36,17 +36,6 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     // For MVP, using default values
   }
 
-  Future<void> _saveSettings() async {
-    // In a real app, these would be saved to SharedPreferences and/or backend
-    // For MVP, showing a confirmation message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Settings saved successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
   Future<void> _exportData() async {
     showDialog(
       context: context,
@@ -142,6 +131,13 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           content: Text('Account deletion feature coming soon!'),
         ),
       );
+    }
+  }
+
+  Future<void> _logout() async {
+    await context.read<AuthService>().signOut();
+    if (mounted) {
+      Navigator.of(context).pushReplacementNamed('/login');
     }
   }
 
@@ -435,6 +431,21 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                     },
                   ),
                 ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ListTile(
+                leading: const Icon(Icons.logout),
+                title: const Text('Logout'),
+                subtitle: const Text('Sign out from your account'),
+                trailing: const Icon(AppIcons.arrowForward, size: 16),
+                onTap: _logout,
               ),
             ),
           ),

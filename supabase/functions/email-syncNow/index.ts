@@ -62,6 +62,9 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       db: { schema: "app" },
     })
+    const supabasePublic = createClient(supabaseUrl, supabaseServiceKey, {
+      db: { schema: "public" },
+    })
 
     // Get user's household
     const { data: userData, error: userError } = await supabase
@@ -81,11 +84,11 @@ Deno.serve(async (req: Request) => {
     // Check household status
     const { data: household, error: householdError } = await supabase
       .from('households')
-      .select('is_active, suspended_at')
+      .select('suspended, deleted_at')
       .eq('id', userData.household_id)
       .single()
 
-    if (householdError || !household?.is_active || household.suspended_at) {
+    if (householdError || household?.suspended || household?.deleted_at) {
       return new Response(JSON.stringify({ error: 'Household suspended or inactive' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -93,7 +96,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Get email accounts to sync
-    let emailAccountsQuery = supabase
+    let emailAccountsQuery = supabasePublic
       .from('email_accounts')
       .select('*')
       .eq('household_id', userData.household_id)
@@ -192,9 +195,8 @@ async function syncEmailAccount(account: any, daysBack: number, supabase: any) {
       description: transaction.description,
       date: transaction.date,
       source: 'email',
-      notes: `From email: ${transaction.email_subject || 'Unknown'}`,
-      is_approved: false, // Requires user approval
-      confidence_score: transaction.confidence
+      notes: `From email: ${transaction.email_subject || 'Unknown'} (confidence: ${Math.round(transaction.confidence * 100)}%)`,
+      status: 'pending'
     })
   }
 

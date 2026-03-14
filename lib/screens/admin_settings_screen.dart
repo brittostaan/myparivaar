@@ -245,6 +245,13 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     }
   }
 
+  Future<void> _logout() async {
+    await context.read<AuthService>().signOut();
+    if (mounted) {
+      Navigator.of(context).pushReplacementNamed('/login');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authService = context.watch<AuthService>();
@@ -514,6 +521,21 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                     onTap: _transferAdmin,
                   ),
                 ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ListTile(
+                leading: const Icon(Icons.logout),
+                title: const Text('Logout'),
+                subtitle: const Text('Sign out from your admin account'),
+                trailing: const Icon(AppIcons.arrowForward, size: 16),
+                onTap: _logout,
               ),
             ),
           ),

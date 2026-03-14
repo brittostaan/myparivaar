@@ -242,33 +242,6 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
     }
   }
 
-  Future<void> _syncEmails() async {
-    try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final result = await _emailService.syncEmails(
-        supabaseUrl: authService.supabaseUrl,
-        idToken: await authService.getIdToken(),
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Email sync completed! Processed ${result['total_emails_processed']} emails, '
-              'found ${result['total_transactions_found']} potential transactions.'
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error syncing emails: $e')),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(

@@ -34,6 +34,9 @@ const _kSupabaseAnonKey = String.fromEnvironment(
   'SUPABASE_ANON_KEY',
   defaultValue: _kDefaultSupabaseAnonKey,
 );
+const _kAppEnv = String.fromEnvironment('APP_ENV', defaultValue: '');
+
+bool get _isPreviewEnvironment => _kAppEnv.toLowerCase().trim() == 'preview';
 
 // ── View Mode (Responsive Design) ────────────────────────────────────────────
 
@@ -489,85 +492,109 @@ class _LoginScreenState extends State<_LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final showPreviewLabel = _isPreviewEnvironment;
+
     return Scaffold(
       appBar: AppBar(title: Text(_isSignUp ? 'Create Account' : 'Sign in')),
       resizeToAvoidBottomInset: true,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              _isSignUp
-                  ? 'Create a new account to get started'
-                  : 'Sign in to your account',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              enabled: !_isBusy,
-              autocorrect: false,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                hintText: 'your.email@example.com',
-                prefixIcon: Icon(AppIcons.email),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passwordCtrl,
-              obscureText: true,
-              enabled: !_isBusy,
-              decoration: const InputDecoration(
-                labelText: 'Password',
-                hintText: 'Min. 6 characters',
-                prefixIcon: Icon(AppIcons.lock),
-                border: OutlineInputBorder(),
-              ),
-              onSubmitted: (_) => _isSignUp ? _signUp() : _signIn(),
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: _isBusy ? null : (_isSignUp ? _signUp : _signIn),
-              child: _isBusy
-                  ? const _SmallSpinner()
-                  : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
-            ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: _isBusy
-                  ? null
-                  : () => setState(() {
-                        _isSignUp = !_isSignUp;
-                        _error = null;
-                      }),
-              child: Text(
-                _isSignUp
-                    ? 'Already have an account? Sign in'
-                    : 'Don\'t have an account? Sign up',
-              ),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(8),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            padding:
+                EdgeInsets.fromLTRB(24, showPreviewLabel ? 48 : 24, 24, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  _isSignUp
+                      ? 'Create a new account to get started'
+                      : 'Sign in to your account',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
-                child: SelectableText(
-                  _error!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onErrorContainer,
+                const SizedBox(height: 24),
+                TextField(
+                  controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  enabled: !_isBusy,
+                  autocorrect: false,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    hintText: 'your.email@example.com',
+                    prefixIcon: Icon(AppIcons.email),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _passwordCtrl,
+                  obscureText: true,
+                  enabled: !_isBusy,
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    hintText: 'Min. 6 characters',
+                    prefixIcon: Icon(AppIcons.lock),
+                    border: OutlineInputBorder(),
+                  ),
+                  onSubmitted: (_) => _isSignUp ? _signUp() : _signIn(),
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: _isBusy ? null : (_isSignUp ? _signUp : _signIn),
+                  child: _isBusy
+                      ? const _SmallSpinner()
+                      : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: _isBusy
+                      ? null
+                      : () => setState(() {
+                            _isSignUp = !_isSignUp;
+                            _error = null;
+                          }),
+                  child: Text(
+                    _isSignUp
+                        ? 'Already have an account? Sign in'
+                        : 'Don\'t have an account? Sign up',
+                  ),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: SelectableText(
+                      _error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (showPreviewLabel)
+            SafeArea(
+              bottom: false,
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Preview Environment',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-            ],
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }

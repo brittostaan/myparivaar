@@ -585,7 +585,7 @@ class _LoginScreenState extends State<_LoginScreen> {
                 child: Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    'Commit and push changes to dev',
+                    'DEV ENVIRONMENT',
                     style: TextStyle(
                       color: Colors.red,
                       fontWeight: FontWeight.bold,

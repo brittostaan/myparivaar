@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import '../config/navigation_config.dart';
-import '../models/expense.dart';
 import '../services/auth_service.dart';
-import '../services/expense_service.dart';
+import '../services/global_search_service.dart';
 import 'app_bottom_navigation_bar.dart';
 
 /// A shell widget that wraps screens with bottom navigation.
@@ -42,8 +41,9 @@ class NavigationShell extends StatefulWidget {
 class _NavigationShellState extends State<NavigationShell> {
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
-  List<Expense> _allExpenses = [];
-  List<Expense> _searchResults = [];
+  final GlobalSearchService _globalSearchService = GlobalSearchService();
+  List<SearchResultItem> _searchIndex = [];
+  List<SearchResultItem> _searchResults = [];
   bool _isSearchLoading = false;
   bool _isSearchLoaded = false;
   String? _searchError;
@@ -72,12 +72,12 @@ class _NavigationShellState extends State<NavigationShell> {
     if (!mounted) return;
     setState(() {});
     if (_searchFocusNode.hasFocus) {
-      _ensureSearchDataLoaded();
+      _ensureSearchDataLoaded(forceRefresh: true);
     }
   }
 
-  Future<void> _ensureSearchDataLoaded() async {
-    if (_isSearchLoaded || _isSearchLoading) return;
+  Future<void> _ensureSearchDataLoaded({bool forceRefresh = false}) async {
+    if ((_isSearchLoaded && !forceRefresh) || _isSearchLoading) return;
 
     setState(() {
       _isSearchLoading = true;
@@ -86,15 +86,10 @@ class _NavigationShellState extends State<NavigationShell> {
 
     try {
       final authService = context.read<AuthService>();
-      final idToken = await authService.getIdToken();
-      final expenses = await ExpenseService().getExpenses(
-        supabaseUrl: authService.supabaseUrl,
-        idToken: idToken,
-        limit: 500,
-      );
+      final indexedItems = await _globalSearchService.buildIndex(authService);
       if (!mounted) return;
       setState(() {
-        _allExpenses = expenses;
+        _searchIndex = indexedItems;
         _isSearchLoaded = true;
         _isSearchLoading = false;
       });
@@ -109,7 +104,7 @@ class _NavigationShellState extends State<NavigationShell> {
   }
 
   void _onSearchQueryChanged() {
-    final q = _searchController.text.trim().toLowerCase();
+    final q = _searchController.text.trim();
     if (q.isEmpty) {
       if (_searchResults.isNotEmpty) {
         setState(() => _searchResults = []);
@@ -117,69 +112,18 @@ class _NavigationShellState extends State<NavigationShell> {
       return;
     }
 
-    final filtered = _allExpenses.where((e) {
-      return e.description.toLowerCase().contains(q) ||
-          e.category.toLowerCase().contains(q) ||
-          e.amount.toStringAsFixed(2).contains(q);
-    }).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final filtered = _globalSearchService.search(_searchIndex, q);
 
     setState(() {
       _searchResults = filtered;
     });
   }
 
-  void _onSearchResultTap(Expense expense) {
-    _searchController.text = expense.description;
+  void _onSearchResultTap(SearchResultItem result) {
+    _searchController.text = result.title;
     _searchFocusNode.unfocus();
-    Navigator.of(context).pushReplacementNamed('/expenses');
+    Navigator.of(context).pushReplacementNamed(result.routeName);
   }
-
-  String _formatDate(DateTime date) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
-  }
-
-  IconData _categoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'food':
-      case 'food & dining':
-        return Icons.restaurant_outlined;
-      case 'shopping':
-        return Icons.shopping_bag_outlined;
-      case 'transport':
-        return Icons.directions_car_outlined;
-      case 'entertainment':
-        return Icons.movie_outlined;
-      case 'healthcare':
-        return Icons.local_hospital_outlined;
-      case 'utilities':
-        return Icons.bolt_outlined;
-      case 'rent':
-      case 'housing':
-        return Icons.home_outlined;
-      case 'education':
-        return Icons.school_outlined;
-      default:
-        return Icons.receipt_outlined;
-    }
-  }
-
-  String _capitalise(String s) =>
-      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 
   Widget _buildInlineSearchDropdown() {
     if (_searchError != null) {
@@ -203,7 +147,7 @@ class _NavigationShellState extends State<NavigationShell> {
             Text(
               _isSearchLoading
                   ? 'Loading transactions...'
-                  : 'Type to search across ${_allExpenses.length} transactions',
+                  : 'Type to search across ${_searchIndex.length} records',
               style: TextStyle(color: Colors.grey[500], fontSize: 12),
             ),
           ],
@@ -226,7 +170,7 @@ class _NavigationShellState extends State<NavigationShell> {
       itemCount: _searchResults.length,
       separatorBuilder: (_, __) => const Divider(height: 1, indent: 54),
       itemBuilder: (context, i) {
-        final expense = _searchResults[i];
+        final result = _searchResults[i];
         return ListTile(
           dense: true,
           leading: Container(
@@ -237,30 +181,30 @@ class _NavigationShellState extends State<NavigationShell> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
-              _categoryIcon(expense.category),
+              result.icon,
               size: 17,
               color: const Color(0xFF475569),
             ),
           ),
           title: Text(
-            expense.description,
+            result.title,
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           subtitle: Text(
-            '${_capitalise(expense.category)}  ·  ${_formatDate(expense.date)}',
+            '${result.sourceLabel} · ${result.subtitle}',
             style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
           ),
           trailing: Text(
-            '₹${expense.amount.toStringAsFixed(2)}',
+            result.amountText,
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: Color(0xFF0F172A),
             ),
           ),
-          onTap: () => _onSearchResultTap(expense),
+          onTap: () => _onSearchResultTap(result),
         );
       },
     );
@@ -290,6 +234,12 @@ class _NavigationShellState extends State<NavigationShell> {
         label: 'Investments',
         icon: Icons.query_stats,
         route: '/investments',
+        connected: true,
+      ),
+      _WebSidebarItem(
+        label: 'Bills',
+        icon: Icons.receipt_outlined,
+        route: '/bills',
         connected: true,
       ),
       _WebSidebarItem(

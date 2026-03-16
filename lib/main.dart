@@ -18,6 +18,7 @@ import 'screens/more_screen.dart';
 import 'screens/voice_expense_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/upcoming_bills_screen.dart';
 import 'services/auth_service.dart';
 import 'services/family_service.dart';
 import 'services/import_service.dart';
@@ -61,7 +62,9 @@ enum ViewMode {
 }
 
 class ViewModeProvider extends ChangeNotifier {
-  ViewMode _mode = ViewMode.mobile;
+  ViewModeProvider() : _mode = kIsWeb ? ViewMode.desktop : ViewMode.mobile;
+
+  ViewMode _mode;
 
   ViewMode get mode => _mode;
 
@@ -149,9 +152,14 @@ class MyParivaaarApp extends StatelessWidget {
           darkTheme: AppTheme.darkTheme(),
           themeMode: ThemeMode.light, // Force light mode
           builder: (context, child) {
-            return _ResponsiveWrapper(
-              viewMode: viewModeProvider.mode,
-              child: child!,
+            return Stack(
+              children: [
+                _ResponsiveWrapper(
+                  viewMode: viewModeProvider.mode,
+                  child: child!,
+                ),
+                const _GlobalUtilityActions(),
+              ],
             );
           },
           home: const _AppRouter(),
@@ -347,6 +355,15 @@ class MyParivaaarApp extends StatelessWidget {
           ),
         );
 
+      case '/bills':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const UpcomingBillsScreen(),
+          ),
+        );
+
       case '/voice-expense':
         return MaterialPageRoute(
           settings: settings,
@@ -357,32 +374,12 @@ class MyParivaaarApp extends StatelessWidget {
         );
 
       case '/profile':
-        return PageRouteBuilder(
+        return MaterialPageRoute(
           settings: settings,
-          pageBuilder: (context, animation, secondaryAnimation) {
-            return NavigationShell(
-              currentRoute: routeName,
-              child: const ProfileScreen(),
-            );
-          },
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            const begin = Offset(-1.0, 0.0);
-            const end = Offset.zero;
-            const curve = Curves.easeInOut;
-
-            final tween = Tween(begin: begin, end: end).chain(
-              CurveTween(curve: curve),
-            );
-
-            return SlideTransition(
-              position: animation.drive(tween),
-              child: FadeTransition(
-                opacity: animation,
-                child: child,
-              ),
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 300),
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const ProfileScreen(),
+          ),
         );
 
       default:
@@ -974,43 +971,6 @@ class _LoginScreenState extends State<_LoginScreen> {
               ),
             ),
           ),
-          // ViewMode selector – floating top-right corner
-          Positioned(
-            top: 16,
-            right: 16,
-            child: SafeArea(
-              child: Consumer<ViewModeProvider>(
-                builder: (context, viewModeProvider, _) {
-                  final currentMode = viewModeProvider.mode;
-                  return PopupMenuButton<ViewMode>(
-                    tooltip: 'View Mode',
-                    icon: Icon(currentMode.icon, color: Colors.grey[500]),
-                    onSelected: viewModeProvider.setMode,
-                    itemBuilder: (context) => ViewMode.values.map((mode) {
-                      return PopupMenuItem<ViewMode>(
-                        value: mode,
-                        child: Row(
-                          children: [
-                            Icon(mode.icon,
-                                color: mode == currentMode ? primary : null),
-                            const SizedBox(width: 12),
-                            Text(
-                              mode.label,
-                              style: TextStyle(
-                                fontWeight: mode == currentMode
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  );
-                },
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -1184,6 +1144,112 @@ class _SmallSpinner extends StatelessWidget {
       height: 20,
       width: 20,
       child: CircularProgressIndicator(strokeWidth: 2),
+    );
+  }
+}
+
+class _GlobalUtilityActions extends StatelessWidget {
+  const _GlobalUtilityActions();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Positioned(
+      top: 8,
+      right: 8,
+      child: SafeArea(
+        child: Material(
+          color: Colors.white.withOpacity(0.96),
+          elevation: 2,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Consumer<ViewModeProvider>(
+                  builder: (context, viewModeProvider, _) {
+                    final currentMode = viewModeProvider.mode;
+                    return PopupMenuButton<ViewMode>(
+                      tooltip: 'View Mode',
+                      icon: Icon(
+                        currentMode.icon,
+                        color: Colors.grey[600],
+                        size: 20,
+                      ),
+                      onSelected: viewModeProvider.setMode,
+                      itemBuilder: (context) => ViewMode.values.map((mode) {
+                        return PopupMenuItem<ViewMode>(
+                          value: mode,
+                          child: Row(
+                            children: [
+                              Icon(
+                                mode.icon,
+                                size: 18,
+                                color:
+                                    mode == currentMode ? theme.colorScheme.primary : null,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(mode.label),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  },
+                ),
+                IconButton(
+                  tooltip: 'Settings',
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    Icons.settings_outlined,
+                    size: 20,
+                    color: Colors.grey[700],
+                  ),
+                  onPressed: () {
+                    final routeName = ModalRoute.of(context)?.settings.name;
+                    if (routeName != '/user-settings') {
+                      Navigator.of(context).pushNamed('/user-settings');
+                    }
+                  },
+                ),
+                IconButton(
+                  tooltip: 'Notifications',
+                  visualDensity: VisualDensity.compact,
+                  icon: Stack(
+                    children: [
+                      Icon(
+                        Icons.notifications_none_rounded,
+                        size: 20,
+                        color: Colors.grey[700],
+                      ),
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  onPressed: () {
+                    final routeName = ModalRoute.of(context)?.settings.name;
+                    if (routeName != '/notifications') {
+                      Navigator.of(context).pushNamed('/notifications');
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

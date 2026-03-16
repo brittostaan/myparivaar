@@ -371,20 +371,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: primary,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: IconButton(
-                    tooltip: 'Add budget',
-                    onPressed: () => _addOrEditBudget(),
-                    icon: const Icon(Icons.add, color: Colors.white, size: 20),
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -400,6 +386,20 @@ class _BudgetScreenState extends State<BudgetScreen> {
                         style: TextStyle(fontSize: 14, color: Colors.grey[500]),
                       ),
                     ],
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: () => _addOrEditBudget(),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Add Budget'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ],

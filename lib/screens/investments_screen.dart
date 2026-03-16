@@ -131,7 +131,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
         out.add(',');
       }
     }
-    return '$signRs ${out.join()}';
+    return '${sign}Rs ${out.join()}';
   }
 
   String _formatDate(DateTime date) {

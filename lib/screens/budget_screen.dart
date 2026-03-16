@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 
 import '../models/budget.dart';
@@ -152,7 +153,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    final amount = double.tryParse(amountController.text.trim());
+                    final amount =
+                        double.tryParse(amountController.text.trim());
                     if (amount == null || amount <= 0) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -214,7 +216,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Budget'),
-        content: Text('Delete ${_titleCase(budget.category)} budget for $_monthKey?'),
+        content: Text(
+            'Delete ${_titleCase(budget.category)} budget for $_monthKey?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -254,7 +257,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   void _moveMonth(int delta) {
     setState(() {
-      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + delta);
+      _selectedMonth =
+          DateTime(_selectedMonth.year, _selectedMonth.month + delta);
     });
     _loadBudgets();
   }
@@ -262,6 +266,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
   @override
   Widget build(BuildContext context) {
     final summary = BudgetSummary(month: _monthKey, budgets: _budgets);
+    if (kIsWeb) {
+      return _buildWebLayout(context, summary);
+    }
 
     return Scaffold(
       floatingActionButton: _backendAvailable
@@ -284,6 +291,652 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ),
             Expanded(child: _buildBody()),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWebLayout(BuildContext context, BudgetSummary summary) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primary = theme.colorScheme.primary;
+
+    return Scaffold(
+      backgroundColor:
+          isDark ? AppColors.backgroundDark : const Color(0xFFF5F7F8),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? _buildWebError()
+              : _buildWebContent(summary, isDark, primary),
+    );
+  }
+
+  Widget _buildWebError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(AppIcons.error, size: 48, color: AppColors.error),
+            const SizedBox(height: 10),
+            Text(
+              _error ?? 'Something went wrong.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            if (_errorDetail != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: 560,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.grey200,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SelectableText(
+                  _errorDetail!,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                    color: AppColors.grey600,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: _loadBudgets,
+              icon: const Icon(AppIcons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWebContent(BudgetSummary summary, bool isDark, Color primary) {
+    final remaining = summary.totalRemaining;
+    final projectedSavings = remaining > 0 ? remaining * 0.8 : 0.0;
+
+    return RefreshIndicator(
+      onRefresh: _loadBudgets,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: primary,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconButton(
+                    tooltip: 'Add budget',
+                    onPressed: () => _addOrEditBudget(),
+                    icon: const Icon(Icons.add, color: Colors.white, size: 20),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Budget Analysis',
+                        style: TextStyle(
+                            fontSize: 28, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Detailed breakdown of your budget',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                _webTabChip(
+                  label: 'Current Month',
+                  icon: Icons.calendar_month,
+                  active: true,
+                ),
+                const SizedBox(width: 8),
+                _webTabChip(
+                  label: 'Historical Performance',
+                  icon: Icons.history,
+                  active: false,
+                  comingSoon: true,
+                ),
+                const SizedBox(width: 8),
+                _webTabChip(
+                  label: 'Spending Analytics',
+                  icon: Icons.insights,
+                  active: false,
+                  comingSoon: true,
+                ),
+                const Spacer(),
+                IconButton(
+                  tooltip: 'Previous month',
+                  onPressed: () => _moveMonth(-1),
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Text(
+                  _monthLabel(_selectedMonth),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                IconButton(
+                  tooltip: 'Next month',
+                  onPressed: (_selectedMonth.year == DateTime.now().year &&
+                          _selectedMonth.month == DateTime.now().month)
+                      ? null
+                      : () => _moveMonth(1),
+                  icon: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
+            Row(
+              children: [
+                Expanded(
+                  child: _budgetSummaryCard(
+                    title: 'Total Monthly Budget',
+                    value: '₹${summary.totalSpent.toStringAsFixed(0)}',
+                    subtitle: '/ ₹${summary.totalBudget.toStringAsFixed(0)}',
+                    progress: summary.totalBudget > 0
+                        ? (summary.totalSpent / summary.totalBudget)
+                            .clamp(0.0, 1.0)
+                        : 0,
+                    color: primary,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _budgetSummaryCard(
+                    title: 'Remaining to Spend',
+                    value: '₹${remaining.toStringAsFixed(0)}',
+                    subtitle: remaining >= 0
+                        ? 'Safe to spend'
+                        : 'Exceeded current budget',
+                    valueColor:
+                        remaining >= 0 ? AppColors.success : AppColors.error,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _budgetSummaryCard(
+                    title: 'Projected Savings',
+                    value: '₹${projectedSavings.toStringAsFixed(0)}',
+                    subtitle: 'Projected from current trend',
+                    valueColor: primary,
+                    comingSoon: true,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceDark : Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 18, 22, 12),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Category-wise Budgets',
+                            style: TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          _monthLabel(_selectedMonth),
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_budgets.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(
+                        child: Text('No budgets set for this month'),
+                      ),
+                    )
+                  else
+                    ..._budgets.map((budget) => _buildWebBudgetRow(
+                          budget,
+                          isDark,
+                          onEdit: () => _addOrEditBudget(existing: budget),
+                          onDelete: () => _deleteBudget(budget),
+                        )),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color:
+                          isDark ? AppColors.grey800 : const Color(0xFFF8FAFC),
+                      borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(16),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, color: primary, size: 18),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Looks like your food budget is tight. Tap Review & Adjust to quickly rebalance.',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: () => _addOrEditBudget(),
+                          child: const Text('Review & Adjust'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surfaceDark : Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.grey800
+                            : const Color(0xFFE2E8F0),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Budget Compliance (6 Months)',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            _miniBar(0.7, const Color(0xFF10B981)),
+                            const SizedBox(width: 6),
+                            _miniBar(0.75, const Color(0xFF10B981)),
+                            const SizedBox(width: 6),
+                            _miniBar(1, const Color(0xFFEF4444)),
+                            const SizedBox(width: 6),
+                            _miniBar(0.88, const Color(0xFFF59E0B)),
+                            const SizedBox(width: 6),
+                            _miniBar(0.65, const Color(0xFF10B981)),
+                            const SizedBox(width: 6),
+                            _miniBar(0.82, primary),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        const Row(
+                          children: [
+                            Icon(Icons.close_rounded,
+                                size: 12, color: Colors.red),
+                            SizedBox(width: 6),
+                            Text(
+                              'Historical trend breakdown is under development',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      color: primary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: primary.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.auto_awesome, color: primary, size: 18),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Smart Budget Insight',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.close_rounded,
+                                size: 12, color: Colors.red),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'AI recommendations are under development. You can still edit budgets manually using Review & Adjust.',
+                          style: TextStyle(fontSize: 13, height: 1.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _webTabChip({
+    required String label,
+    required IconData icon,
+    required bool active,
+    bool comingSoon = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        color: active ? Colors.white : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: active ? const Color(0xFF0D7FF2) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 15, color: active ? const Color(0xFF0D7FF2) : null),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: active ? const Color(0xFF0D7FF2) : null,
+            ),
+          ),
+          if (comingSoon) ...[
+            const SizedBox(width: 6),
+            const Icon(Icons.close_rounded, size: 11, color: Colors.red),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _budgetSummaryCard({
+    required String title,
+    required String value,
+    required String subtitle,
+    Color? valueColor,
+    double? progress,
+    Color? color,
+    bool comingSoon = false,
+  }) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                ),
+              ),
+              if (comingSoon)
+                const Icon(Icons.close_rounded, size: 12, color: Colors.red),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: valueColor,
+                ),
+              ),
+              if (subtitle.startsWith('/')) ...[
+                const SizedBox(width: 6),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (progress != null) ...[
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 7,
+                backgroundColor: const Color(0xFFF1F5F9),
+                color: color ?? primary,
+              ),
+            ),
+          ],
+          if (!subtitle.startsWith('/')) ...[
+            const SizedBox(height: 10),
+            Text(
+              subtitle,
+              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebBudgetRow(
+    Budget budget,
+    bool isDark, {
+    required VoidCallback onEdit,
+    required VoidCallback onDelete,
+  }) {
+    final percent = budget.usagePercent.clamp(0, 100).toDouble();
+    final isOver = budget.isOverBudget;
+    final statusColor = isOver
+        ? AppColors.error
+        : (percent >= 80 ? AppColors.warningDark : AppColors.success);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: isDark ? AppColors.grey800 : const Color(0xFFF1F5F9),
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _budgetCategoryIcon(budget.category),
+                  color: statusColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _titleCase(budget.category),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      '₹${budget.amount.toStringAsFixed(0)} budgeted',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '₹${budget.spent.toStringAsFixed(0)}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    isOver
+                        ? 'Exceeded by ₹${budget.remaining.abs().toStringAsFixed(0)}'
+                        : percent >= 80
+                            ? '${percent.toStringAsFixed(0)}% utilized'
+                            : 'Under budget',
+                    style: TextStyle(fontSize: 11, color: statusColor),
+                  ),
+                ],
+              ),
+              IconButton(
+                onPressed: onEdit,
+                tooltip: 'Edit budget',
+                icon: const Icon(Icons.edit_outlined, size: 18),
+              ),
+              IconButton(
+                onPressed: onDelete,
+                tooltip: 'Delete budget',
+                icon: const Icon(Icons.delete_outline,
+                    size: 18, color: AppColors.error),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: percent / 100,
+              minHeight: 8,
+              backgroundColor: const Color(0xFFF1F5F9),
+              valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                isOver
+                    ? 'Overspent: ${percent.toStringAsFixed(0)}%'
+                    : 'Spent: ${percent.toStringAsFixed(0)}%',
+                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+              ),
+              Text(
+                isOver
+                    ? 'Needs adjustment'
+                    : '₹${budget.remaining.toStringAsFixed(0)} left',
+                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _budgetCategoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'food':
+        return Icons.restaurant;
+      case 'shopping':
+        return Icons.shopping_bag;
+      case 'utilities':
+        return Icons.bolt;
+      case 'transport':
+        return Icons.directions_car;
+      case 'entertainment':
+        return Icons.movie;
+      case 'healthcare':
+        return Icons.local_hospital;
+      default:
+        return Icons.account_balance_wallet_outlined;
+    }
+  }
+
+  Widget _miniBar(double heightFactor, Color color) {
+    return Expanded(
+      child: SizedBox(
+        height: 96,
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: FractionallySizedBox(
+            heightFactor: heightFactor,
+            widthFactor: 1,
+            child: Container(
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(4)),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -546,8 +1199,9 @@ class _BudgetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final percent = budget.usagePercent.clamp(0, 100).toDouble();
     final isOver = budget.isOverBudget;
-    final progressColor =
-        isOver ? AppColors.errorDark : (percent >= 80 ? AppColors.warningDark : AppColors.successDark);
+    final progressColor = isOver
+        ? AppColors.errorDark
+        : (percent >= 80 ? AppColors.warningDark : AppColors.successDark);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -571,7 +1225,8 @@ class _BudgetCard extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: onDelete,
-                  icon: const Icon(AppIcons.delete, size: 18, color: AppColors.error),
+                  icon: const Icon(AppIcons.delete,
+                      size: 18, color: AppColors.error),
                   tooltip: 'Delete budget',
                 ),
               ],

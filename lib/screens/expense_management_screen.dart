@@ -15,7 +15,8 @@ class ExpenseManagementScreen extends StatefulWidget {
   const ExpenseManagementScreen({super.key});
 
   @override
-  State<ExpenseManagementScreen> createState() => _ExpenseManagementScreenState();
+  State<ExpenseManagementScreen> createState() =>
+      _ExpenseManagementScreenState();
 }
 
 class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
@@ -116,7 +117,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Expense'),
-        content: Text('Are you sure you want to delete "${expense.description}"?'),
+        content:
+            Text('Are you sure you want to delete "${expense.description}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -143,7 +145,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       );
 
       _loadExpenses();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Expense deleted successfully')),
@@ -217,7 +219,10 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                 const Icon(AppIcons.error, size: 32, color: AppColors.error),
                 const SizedBox(width: 8),
                 Text('Error loading expenses',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(color: AppColors.errorDark)),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(color: AppColors.errorDark)),
               ],
             ),
             const SizedBox(height: 20),
@@ -258,9 +263,11 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(AppIcons.receiptOutlined, size: 64, color: AppColors.grey400),
+            const Icon(AppIcons.receiptOutlined,
+                size: 64, color: AppColors.grey400),
             const SizedBox(height: 16),
-            Text('No expenses yet', style: Theme.of(context).textTheme.headlineSmall),
+            Text('No expenses yet',
+                style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 8),
             const Text('Tap the + button to add your first expense'),
           ],
@@ -271,18 +278,21 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     // Group expenses by month
     final groupedExpenses = <String, List<Expense>>{};
     for (final expense in _expenses) {
-      final monthKey = '${expense.date.year}-${expense.date.month.toString().padLeft(2, '0')}';
+      final monthKey =
+          '${expense.date.year}-${expense.date.month.toString().padLeft(2, '0')}';
       groupedExpenses.putIfAbsent(monthKey, () => []).add(expense);
     }
     final now = DateTime.now();
-    final currentMonthKey = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    final currentMonthKey =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
     return ListView.builder(
       itemCount: groupedExpenses.length,
       itemBuilder: (context, index) {
         final monthKey = groupedExpenses.keys.elementAt(index);
         final monthExpenses = groupedExpenses[monthKey]!;
-        final totalAmount = monthExpenses.fold<double>(0, (sum, e) => sum + e.amount);
+        final totalAmount =
+            monthExpenses.fold<double>(0, (sum, e) => sum + e.amount);
 
         final monthName = _getMonthName(monthKey);
 
@@ -290,9 +300,13 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           margin: const EdgeInsets.all(8.0),
           child: ExpansionTile(
             initiallyExpanded: monthKey == currentMonthKey,
-            title: Text(monthName, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('${monthExpenses.length} transactions • ${_formatCurrency(totalAmount)}'),
-            children: monthExpenses.map((expense) => _buildExpenseItem(expense)).toList(),
+            title: Text(monthName,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(
+                '${monthExpenses.length} transactions • ${_formatCurrency(totalAmount)}'),
+            children: monthExpenses
+                .map((expense) => _buildExpenseItem(expense))
+                .toList(),
           ),
         );
       },
@@ -332,12 +346,22 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     final parts = monthKey.split('-');
     final year = int.parse(parts[0]);
     final month = int.parse(parts[1]);
-    
+
     const monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
     ];
-    
+
     return '${monthNames[month - 1]} $year';
   }
 
@@ -350,109 +374,11 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     return Scaffold(
       backgroundColor:
           isDark ? AppColors.backgroundDark : const Color(0xFFF5F7F8),
-      body: Column(
-        children: [
-          _buildWebTopBar(context, isDark, theme, primary),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                    ? _buildWebError(context)
-                    : _buildWebContent(context, isDark, theme, primary),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWebTopBar(BuildContext context, bool isDark, ThemeData theme,
-      Color primary) {
-    final border =
-        isDark ? AppColors.grey800 : const Color(0xFFE2E8F0);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        border: Border(bottom: BorderSide(color: border)),
-      ),
-      child: Row(
-        children: [
-          InkWell(
-            onTap: () =>
-                Navigator.of(context).pushReplacementNamed('/home'),
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Icon(Icons.arrow_back_ios_new,
-                  size: 18, color: Colors.grey[600]),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Expense Analysis',
-                  style: TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.bold)),
-              Text('Detailed breakdown of your spending habits',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[500])),
-            ],
-          ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: ['Daily', 'Weekly', 'Monthly']
-                  .asMap()
-                  .entries
-                  .map((e) => GestureDetector(
-                        onTap: () =>
-                            setState(() => _selectedPeriod = e.key),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: _selectedPeriod == e.key
-                                ? (isDark ? AppColors.grey700 : Colors.white)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(e.value,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: _selectedPeriod == e.key
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                                color: _selectedPeriod == e.key
-                                    ? primary
-                                    : Colors.grey[500],
-                              )),
-                        ),
-                      ))
-                  .toList(),
-            ),
-          ),
-          const SizedBox(width: 16),
-          ElevatedButton.icon(
-            onPressed: _addExpense,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add Expense',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
-          ),
-        ],
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? _buildWebError(context)
+              : _buildWebContent(context, isDark, theme, primary),
     );
   }
 
@@ -482,28 +408,120 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  Widget _buildWebContent(BuildContext context, bool isDark, ThemeData theme,
-      Color primary) {
+  Widget _buildWebContent(
+      BuildContext context, bool isDark, ThemeData theme, Color primary) {
     final filtered = _filteredExpenses;
+    final previousMonthSpend = _previousMonthSpend;
+    final spendDelta = _monthlySpendTotal - previousMonthSpend;
+    final spendDeltaPct = previousMonthSpend > 0
+        ? (spendDelta.abs() / previousMonthSpend) * 100
+        : 0.0;
+
     return RefreshIndicator(
       onRefresh: _loadExpenses,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(30),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: primary,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconButton(
+                    tooltip: 'Add expense',
+                    onPressed: _addExpense,
+                    icon: const Icon(Icons.add, color: Colors.white, size: 20),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Expense Analysis',
+                        style: TextStyle(
+                            fontSize: 28, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Detailed breakdown of your spending habits',
+                        style: const TextStyle(
+                            fontSize: 14, color: Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: ['Daily', 'Weekly', 'Monthly']
+                        .asMap()
+                        .entries
+                        .map((e) => GestureDetector(
+                              onTap: () =>
+                                  setState(() => _selectedPeriod = e.key),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _selectedPeriod == e.key
+                                      ? (isDark
+                                          ? AppColors.grey700
+                                          : Colors.white)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  e.value,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: _selectedPeriod == e.key
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                    color: _selectedPeriod == e.key
+                                        ? primary
+                                        : Colors.grey[500],
+                                  ),
+                                ),
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 30),
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: _webStatCard(
-                    isDark: isDark,
-                    primary: primary,
-                    icon: Icons.account_balance_wallet_outlined,
-                    label: 'Total Spent this Month',
-                    value: _fmtCurrency(_monthlySpendTotal),
-                  ),
-                ),
+                    child: _webStatCard(
+                  isDark: isDark,
+                  primary: primary,
+                  icon: Icons.account_balance_wallet_outlined,
+                  label: 'Total Spent this Month',
+                  value: '${_fmtCurrency(_monthlySpendTotal)}.00',
+                  trendLabel:
+                      '${spendDelta >= 0 ? '+' : '-'}${spendDeltaPct.toStringAsFixed(0)}%',
+                  trendUp: spendDelta >= 0,
+                  footer: spendDelta == 0
+                      ? 'No change from last month'
+                      : '${_fmtCurrency(spendDelta.abs())} ${spendDelta >= 0 ? 'higher' : 'lower'} than last month',
+                )),
                 const SizedBox(width: 20),
                 Expanded(
                   child: _webComingSoonCard(
@@ -511,50 +529,52 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                     primary: primary,
                     title: 'Smart Insights',
                     icon: Icons.lightbulb_outlined,
-                    message: 'AI-powered spending insights coming soon',
+                    message:
+                        'You spent more on dining this month. Personalized recommendations are under development.',
                   ),
                 ),
                 const SizedBox(width: 20),
                 Expanded(child: _webCategoryDistCard(isDark, primary)),
               ],
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 30),
             Row(
               children: [
                 Expanded(
-                  child: Container(
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.surfaceDark : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: isDark
-                              ? AppColors.grey800
-                              : const Color(0xFFE2E8F0)),
-                    ),
-                    child: Row(children: [
-                      const SizedBox(width: 14),
-                      Icon(Icons.search, color: Colors.grey[400], size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          onChanged: (v) =>
-                              setState(() => _searchQuery = v),
-                          decoration: InputDecoration(
-                            hintText: 'Search transactions, merchants...',
-                            hintStyle: TextStyle(
-                                color: Colors.grey[400], fontSize: 13),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                      ),
-                    ]),
+                    child: Container(
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceDark : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: isDark
+                            ? AppColors.grey800
+                            : const Color(0xFFE2E8F0)),
                   ),
-                ),
+                  child: Row(children: [
+                    const SizedBox(width: 14),
+                    Icon(Icons.search, color: Colors.grey[400], size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        onChanged: (v) => setState(() => _searchQuery = v),
+                        decoration: InputDecoration(
+                          hintText: 'Search transactions, merchants...',
+                          hintStyle:
+                              TextStyle(color: Colors.grey[400], fontSize: 13),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  ]),
+                )),
                 const SizedBox(width: 12),
-                _filterChip(isDark, 'All Accounts', Icons.filter_alt_outlined),
+                _filterChip(isDark, 'Member', Icons.filter_alt_outlined),
+                const SizedBox(width: 8),
+                _filterChip(
+                    isDark, 'Payment Method', Icons.credit_card_outlined),
                 const SizedBox(width: 8),
                 _filterChip(isDark, 'Category', Icons.category_outlined),
                 const SizedBox(width: 8),
@@ -563,9 +583,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.grey800
-                          : const Color(0xFFE2E8F0),
+                      color:
+                          isDark ? AppColors.grey800 : const Color(0xFFE2E8F0),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(children: const [
@@ -577,15 +596,14 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 22),
             Container(
               decoration: BoxDecoration(
                 color: isDark ? AppColors.surfaceDark : Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(18),
                 border: Border.all(
-                    color: isDark
-                        ? AppColors.grey800
-                        : const Color(0xFFE2E8F0)),
+                    color:
+                        isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -597,7 +615,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                       children: [
                         const Text('Recent Transactions',
                             style: TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.bold)),
+                                fontSize: 16, fontWeight: FontWeight.bold)),
                         Text('${filtered.length} results',
                             style: TextStyle(
                                 fontSize: 12, color: Colors.grey[500])),
@@ -619,7 +637,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                     child: Center(
                       child: TextButton(
                         onPressed: _loadExpenses,
-                        child: const Text('Refresh',
+                        child: const Text('View More Transactions',
                             style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
@@ -627,20 +645,74 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 30),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(child: _buildBudgetStatusCard(isDark, primary)),
                 const SizedBox(width: 20),
                 Expanded(
-                  child: _webComingSoonCard(
-                    isDark: isDark,
-                    primary: primary,
-                    title: 'Category Trend',
-                    icon: Icons.bar_chart,
-                    message: 'Multi-month trend analysis coming soon',
-                    dark: true,
+                  child: Container(
+                    padding: const EdgeInsets.all(26),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E2836),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Category Trend',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              'Last 5 Months',
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            _trendBar(0.42, primary.withOpacity(0.45)),
+                            const SizedBox(width: 6),
+                            _trendBar(0.58, primary.withOpacity(0.6)),
+                            const SizedBox(width: 6),
+                            _trendBar(0.5, primary.withOpacity(0.45)),
+                            const SizedBox(width: 6),
+                            _trendBar(0.72, primary.withOpacity(0.8)),
+                            const SizedBox(width: 6),
+                            _trendBar(0.9, primary),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        const Row(
+                          children: [
+                            Icon(Icons.close_rounded,
+                                size: 12, color: Colors.red),
+                            SizedBox(width: 6),
+                            Text(
+                              'Advanced trend analytics coming soon',
+                              style: TextStyle(
+                                  color: Colors.white54, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -658,12 +730,12 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     final iconColor = AppColors.getCategoryIconColor(expense.category);
     final d = expense.date;
     final dateStr = '${_webMonthAbbr(d.month)} ${d.day}, ${d.year}';
-    final rowBorder = BorderSide(
-        color: isDark ? AppColors.grey800 : const Color(0xFFF1F5F9));
+    final rowBorder =
+        BorderSide(color: isDark ? AppColors.grey800 : const Color(0xFFF1F5F9));
     return InkWell(
       onTap: () => _editExpense(expense),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(border: Border(top: rowBorder)),
         child: Row(children: [
           Container(
@@ -676,7 +748,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             child: Icon(AppIcons.getCategoryIcon(expense.category),
                 size: 22, color: iconColor),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -687,12 +759,11 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                 const SizedBox(height: 4),
                 Row(children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.grey800
-                          : const Color(0xFFF1F5F9),
+                      color:
+                          isDark ? AppColors.grey800 : const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(_webCapitalize(expense.category),
@@ -705,15 +776,12 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                           ? Icons.email_outlined
                           : expense.source == 'csv'
                               ? Icons.upload_file_outlined
-                              : Icons.edit_outlined,
+                              : Icons.qr_code_2,
                       size: 12,
                       color: Colors.grey[400]),
                   const SizedBox(width: 4),
-                  Text(
-                      expense.source[0].toUpperCase() +
-                          expense.source.substring(1),
-                      style: TextStyle(
-                          fontSize: 11, color: Colors.grey[500])),
+                  Text(_paymentMethodLabel(expense.source),
+                      style: TextStyle(fontSize: 11, color: Colors.grey[500])),
                 ]),
               ],
             ),
@@ -742,18 +810,17 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     final totalBudget = _budgets.fold<double>(0, (s, b) => s + b.amount);
     final monthlySpend = _monthlySpendTotal;
     final hasData = totalBudget > 0;
-    final ratio =
-        hasData ? (monthlySpend / totalBudget).clamp(0.0, 1.0) : 0.0;
+    final ratio = hasData ? (monthlySpend / totalBudget).clamp(0.0, 1.0) : 0.0;
     final withinBudget = !hasData || monthlySpend <= totalBudget;
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(26),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [primary, primary.withOpacity(0.8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
               color: primary.withOpacity(0.3),
@@ -766,11 +833,11 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Monthly Budget Status',
+              const Text('Weekly Budget Status',
                   style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16)),
+                      fontSize: 17)),
               const SizedBox(height: 6),
               Text(
                 hasData
@@ -803,8 +870,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               GestureDetector(
                 onTap: () => Navigator.of(context).pushNamed('/budget'),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(8),
@@ -845,35 +912,75 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     required IconData icon,
     required String label,
     required String value,
+    required String trendLabel,
+    required bool trendUp,
+    required String footer,
   }) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
             color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-                color: primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8)),
-            child: Icon(icon, color: primary, size: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8)),
+                child: Icon(icon, color: primary, size: 20),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: trendUp
+                      ? const Color(0xFFFEE2E2)
+                      : const Color(0xFFDCFCE7),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      trendUp ? Icons.trending_up : Icons.trending_down,
+                      size: 12,
+                      color: trendUp ? AppColors.error : AppColors.success,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      trendLabel,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: trendUp ? AppColors.error : AppColors.success,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           Text(label,
               style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   color: Colors.grey[500],
                   fontWeight: FontWeight.w500)),
           const SizedBox(height: 4),
           Text(value,
               style:
-                  const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                  const TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          Text(
+            footer,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+          ),
         ],
       ),
     );
@@ -894,10 +1001,10 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         .toList();
     final colors = [primary, Colors.amber, Colors.green, Colors.red];
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
             color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
       ),
@@ -906,12 +1013,48 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         children: [
           const Text('Category Distribution',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
+          Center(
+            child: Container(
+              width: 132,
+              height: 132,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border(
+                  top: BorderSide(color: colors[0], width: 12),
+                  right: BorderSide(color: colors[1], width: 12),
+                  bottom: BorderSide(color: colors[2], width: 12),
+                  left: BorderSide(color: colors[3], width: 12),
+                ),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _fmtCurrency(grand),
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      'Total',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey[500],
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           if (sorted.isEmpty)
             Text('No data', style: TextStyle(color: Colors.grey[400]))
           else
             Wrap(
-              spacing: 8,
+              spacing: 12,
               runSpacing: 8,
               children: sorted.asMap().entries.map((entry) {
                 final i = entry.key;
@@ -921,11 +1064,13 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                     : '0%';
                 return Row(mainAxisSize: MainAxisSize.min, children: [
                   Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                          color: colors[i % colors.length],
-                          shape: BoxShape.circle)),
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: colors[i % colors.length],
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                   const SizedBox(width: 4),
                   Text('${_webCapitalize(cat.key)} ($pct)',
                       style: TextStyle(fontSize: 11, color: Colors.grey[600])),
@@ -933,6 +1078,26 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               }).toList(),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _trendBar(double heightFactor, Color color) {
+    return Expanded(
+      child: Container(
+        height: 90,
+        alignment: Alignment.bottomCenter,
+        child: FractionallySizedBox(
+          heightFactor: heightFactor,
+          widthFactor: 1,
+          child: Container(
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(4)),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -986,8 +1151,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     return Tooltip(
       message: 'Feature coming soon',
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: isDark ? AppColors.surfaceDark : Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -997,8 +1161,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 15, color: Colors.grey[500]),
           const SizedBox(width: 6),
-          Text(label,
-              style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+          Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
           const SizedBox(width: 6),
           Icon(Icons.expand_more, size: 16, color: Colors.grey[400]),
           const SizedBox(width: 4),
@@ -1021,8 +1184,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       } else if (_selectedPeriod == 1) {
         inPeriod = now.difference(e.date).inDays < 7;
       } else {
-        inPeriod =
-            e.date.year == now.year && e.date.month == now.month;
+        inPeriod = e.date.year == now.year && e.date.month == now.month;
       }
       if (!inPeriod) return false;
       if (_searchQuery.isNotEmpty) {
@@ -1045,12 +1207,27 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         .fold(0.0, (s, e) => s + e.amount);
   }
 
+  double get _previousMonthSpend {
+    final now = DateTime.now();
+    final previous = DateTime(now.year, now.month - 1, 1);
+    return _expenses
+        .where((e) =>
+            e.date.year == previous.year &&
+            e.date.month == previous.month &&
+            e.category.toLowerCase() != 'income' &&
+            e.category.toLowerCase() != 'salary')
+        .fold(0.0, (s, e) => s + e.amount);
+  }
+
+  String _paymentMethodLabel(String source) {
+    if (source == 'email') return 'Email Imported';
+    if (source == 'csv') return 'CSV Imported';
+    return 'Manual Entry';
+  }
+
   String _fmtCurrency(double amount) {
-    final formatted = amount
-        .abs()
-        .toStringAsFixed(0)
-        .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-            (m) => '${m[1]},');
+    final formatted = amount.abs().toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
     return '\u20B9$formatted';
   }
 
@@ -1059,8 +1236,18 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
   String _webMonthAbbr(int month) {
     const abbrs = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
     ];
     return abbrs[(month - 1).clamp(0, 11)];
   }
@@ -1078,7 +1265,7 @@ class AddEditExpenseScreen extends StatefulWidget {
 class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
-  
+
   String _selectedCategory = 'food';
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
@@ -1147,7 +1334,7 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
                 ],
               ),
             ),
-            
+
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -1155,7 +1342,7 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 40),
-                    
+
                     // Amount Display
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1174,7 +1361,9 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          _amountController.text.isEmpty ? '0.00' : _amountController.text,
+                          _amountController.text.isEmpty
+                              ? '0.00'
+                              : _amountController.text,
                           style: const TextStyle(
                             fontSize: 80,
                             fontWeight: FontWeight.bold,
@@ -1183,9 +1372,9 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Note field
                     TextField(
                       controller: _notesController,
@@ -1204,9 +1393,9 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
                         color: Colors.grey,
                       ),
                     ),
-                    
+
                     const SizedBox(height: 60),
-                    
+
                     // Category Selection
                     Align(
                       alignment: Alignment.centerLeft,
@@ -1220,9 +1409,9 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 20),
-                    
+
                     // Category Grid
                     GridView.count(
                       shrinkWrap: true,
@@ -1232,17 +1421,23 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
                       crossAxisSpacing: 16,
                       childAspectRatio: 1.0,
                       children: [
-                        _buildCategoryButton('food', 'Food', AppIcons.food, Colors.orange),
-                        _buildCategoryButton('transport', 'Transport', AppIcons.transport, Colors.blue),
-                        _buildCategoryButton('shopping', 'Shopping', AppIcons.shopping, Colors.pink),
-                        _buildCategoryButton('utilities', 'Bills', AppIcons.utilities, Colors.green),
-                        _buildCategoryButton('entertainment', 'Entertain', AppIcons.entertainment, Colors.purple),
-                        _buildCategoryButton('other', 'Others', Icons.more_horiz, Colors.grey),
+                        _buildCategoryButton(
+                            'food', 'Food', AppIcons.food, Colors.orange),
+                        _buildCategoryButton('transport', 'Transport',
+                            AppIcons.transport, Colors.blue),
+                        _buildCategoryButton('shopping', 'Shopping',
+                            AppIcons.shopping, Colors.pink),
+                        _buildCategoryButton('utilities', 'Bills',
+                            AppIcons.utilities, Colors.green),
+                        _buildCategoryButton('entertainment', 'Entertain',
+                            AppIcons.entertainment, Colors.purple),
+                        _buildCategoryButton(
+                            'other', 'Others', Icons.more_horiz, Colors.grey),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 40),
-                    
+
                     // Bottom options row
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1252,14 +1447,17 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
                           onTap: _selectDate,
                           child: Row(
                             children: [
-                              Icon(AppIcons.calendar, color: Colors.grey[600], size: 20),
+                              Icon(AppIcons.calendar,
+                                  color: Colors.grey[600], size: 20),
                               const SizedBox(width: 8),
                               Text(
                                 _selectedDate.day == DateTime.now().day &&
-                                _selectedDate.month == DateTime.now().month &&
-                                _selectedDate.year == DateTime.now().year
-                                  ? 'Today'
-                                  : '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                                        _selectedDate.month ==
+                                            DateTime.now().month &&
+                                        _selectedDate.year ==
+                                            DateTime.now().year
+                                    ? 'Today'
+                                    : '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.grey[600],
@@ -1268,18 +1466,20 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
                             ],
                           ),
                         ),
-                        
+
                         // Add Receipt button
                         InkWell(
                           onTap: () {
                             // TODO: Add receipt upload functionality
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Receipt upload coming soon!')),
+                              const SnackBar(
+                                  content: Text('Receipt upload coming soon!')),
                             );
                           },
                           child: Row(
                             children: [
-                              Icon(Icons.camera_alt_outlined, color: Colors.grey[600], size: 20),
+                              Icon(Icons.camera_alt_outlined,
+                                  color: Colors.grey[600], size: 20),
                               const SizedBox(width: 8),
                               Text(
                                 'Add Receipt',
@@ -1293,13 +1493,13 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 24),
                   ],
                 ),
               ),
             ),
-            
+
             // Save Button
             Padding(
               padding: const EdgeInsets.all(24.0),
@@ -1307,7 +1507,8 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : () => _showAmountDialog(context),
+                  onPressed:
+                      _isLoading ? null : () => _showAmountDialog(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1A1D2E),
                     foregroundColor: Colors.white,
@@ -1317,28 +1518,29 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
                     elevation: 0,
                   ),
                   child: _isLoading
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Save Transaction',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
-                          SizedBox(width: 8),
-                          Icon(Icons.check, size: 20),
-                        ],
-                      ),
+                        )
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Save Transaction',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(Icons.check, size: 20),
+                          ],
+                        ),
                 ),
               ),
             ),
@@ -1348,9 +1550,10 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
     );
   }
 
-  Widget _buildCategoryButton(String category, String label, IconData icon, Color color) {
+  Widget _buildCategoryButton(
+      String category, String label, IconData icon, Color color) {
     final isSelected = _selectedCategory == category;
-    
+
     return InkWell(
       onTap: () {
         setState(() {
@@ -1484,9 +1687,9 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.expense == null 
-              ? 'Expense added successfully' 
-              : 'Expense updated successfully'),
+            content: Text(widget.expense == null
+                ? 'Expense added successfully'
+                : 'Expense updated successfully'),
           ),
         );
       }
@@ -1495,7 +1698,7 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
         setState(() {
           _isLoading = false;
         });
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error saving expense: $e')),
         );

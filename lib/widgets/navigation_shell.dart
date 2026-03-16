@@ -311,34 +311,6 @@ class _NavigationShellState extends State<NavigationShell> {
               ),
             ),
           ),
-          const SizedBox(width: 16),
-          Tooltip(
-            message: 'Feature coming soon',
-            child: Container(
-              height: 40,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: primary,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: const [
-                  Icon(Icons.qr_code_scanner, color: Colors.white, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Scan & Pay',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                  SizedBox(width: 6),
-                  Icon(Icons.close_rounded, color: Colors.white70, size: 12),
-                ],
-              ),
-            ),
-          ),
           const SizedBox(width: 12),
           Stack(
             children: [

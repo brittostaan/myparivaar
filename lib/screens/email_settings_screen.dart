@@ -55,6 +55,9 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
   }
 
   Future<void> _connectEmailAccount(String provider) async {
+    // Capture context-dependent objects before any async gap.
+    final authService = Provider.of<AuthService>(context, listen: false);
+
     try {
       // Show loading dialog
       showDialog(
@@ -72,15 +75,16 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
         ),
       );
 
-      final authService = Provider.of<AuthService>(context, listen: false);
       final authUrl = await _emailService.getEmailConnectUrl(
         provider: provider,
         supabaseUrl: authService.supabaseUrl,
         idToken: await authService.getIdToken(),
       );
 
+      if (!mounted) return;
+
       // Close loading dialog
-      if (mounted) Navigator.pop(context);
+      Navigator.pop(context);
 
       // Show instructions dialog
       if (mounted) {
@@ -217,6 +221,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
     );
 
     if (confirmed != true) return;
+    if (!mounted) return;
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);

@@ -18,7 +18,7 @@ class AppUser {
   });
 
   final String id;
-  final String supabaseUserId;  // Supabase Auth UID (stored as firebase_uid in DB for compatibility)
+  final String? supabaseUserId;  // Supabase Auth UID (stored as firebase_uid in DB for compatibility)
   final String email;
 
   /// 'admin' | 'member' | 'super_admin'
@@ -44,7 +44,7 @@ class AppUser {
     final dobRaw = json['date_of_birth']?.toString();
     return AppUser(
       id:                   json['id']?.toString() ?? '',
-      supabaseUserId:       json['firebase_uid']?.toString() ?? '',  // DB column still named firebase_uid
+      supabaseUserId:       json['firebase_uid']?.toString(),  // DB column still named firebase_uid
       email:                json['email']?.toString() ?? '',
       role:                 json['role']?.toString() ?? 'member',
       householdId:          json['household_id']          as String?,

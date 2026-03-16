@@ -11,9 +11,9 @@ class RowError {
   final String message;
 
   factory RowError.fromJson(Map<String, dynamic> json) => RowError(
-        row:     json['row']     as int,
-        field:   json['field']   as String,
-        message: json['message'] as String,
+        row:     (json['row'] as int?) ?? 0,
+        field:   json['field']?.toString() ?? '',
+        message: json['message']?.toString() ?? 'Unknown error',
       );
 
   @override

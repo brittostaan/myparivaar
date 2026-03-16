@@ -23,18 +23,29 @@ class Expense {
     required this.updatedAt,
   });
 
+  /// Parses a date string that may be date-only ("2026-03-01") or a full
+  /// ISO-8601 timestamp. Date-only strings are treated as local midnight to
+  /// avoid off-by-one-day issues for users east of UTC.
+  static DateTime _parseDate(String? raw) {
+    if (raw == null || raw.isEmpty) return DateTime.now();
+    // If the string has no time component, append local midnight explicitly.
+    final normalized = raw.contains('T') ? raw : '${raw}T00:00:00';
+    return DateTime.tryParse(normalized)?.toLocal() ?? DateTime.now();
+  }
+
   factory Expense.fromJson(Map<String, dynamic> json) {
     return Expense(
-      id: json['id'] as String,
-      amount: (json['amount'] as num).toDouble(),
-      category: json['category'] as String,
-      description: json['description'] as String,
-      date: DateTime.parse(json['date'] as String),
-      notes: json['notes'] as String?,
-      source: json['source'] as String,
-      isApproved: json['is_approved'] as bool? ?? true,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      id:          json['id']?.toString() ?? '',
+      amount:      (json['amount'] as num?)?.toDouble() ?? 0.0,
+      category:    json['category']?.toString() ?? 'other',
+      description: json['description']?.toString() ?? '',
+      date:        _parseDate(json['date']?.toString()),
+      notes:       json['notes']?.toString(),
+      source:      json['source']?.toString() ?? 'manual',
+      isApproved:  (json['status']?.toString() == 'approved') ||
+                   (json['status'] != null && json['status']?.toString() != 'pending'),
+      createdAt:   DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+      updatedAt:   DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 
@@ -47,7 +58,7 @@ class Expense {
       'date': date.toIso8601String().split('T')[0], // Date only
       'notes': notes,
       'source': source,
-      'is_approved': isApproved,
+      'status': isApproved ? 'approved' : 'pending',
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };

@@ -34,6 +34,7 @@ class AppIcons {
   
   static const IconData add = Icons.add;
   static const IconData addCircle = Icons.add_circle_outline;
+  static const IconData camera = Icons.camera_alt;
   static const IconData edit = Icons.edit;
   static const IconData delete = Icons.delete;
   static const IconData deleteForever = Icons.delete_forever;

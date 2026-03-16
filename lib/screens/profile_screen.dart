@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants/app_dimensions.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../theme/app_text_styles.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -105,7 +107,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Photo upload coming soon!'),
-        backgroundColor: Colors.blue,
+        backgroundColor: AppColors.info,
       ),
     );
   }
@@ -146,7 +148,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Profile updated successfully'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
       }
@@ -191,18 +193,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = authService?.currentUser;
     debugPrint('ProfileScreen build: user=${user?.email}, authService=${authService != null}');
 
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
         leading: IconButton(
-          icon: const Icon(AppIcons.close, color: Color(0xFF1a237e)),
+          icon: const Icon(AppIcons.close),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'My Profile',
-          style: TextStyle(color: Color(0xFF1a237e), fontWeight: FontWeight.bold),
+        title: const Text('My Profile'),
+        titleTextStyle: TextStyle(
+          fontFamily: AppTextStyles.fontFamily,
+          fontSize: 18,
+          fontWeight: AppTextStyles.bold,
+          color: colorScheme.onSurface,
         ),
         actions: [
           if (user != null && !_isEditing)
@@ -212,32 +217,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _isEditing = true;
                 });
               },
-              icon: const Icon(AppIcons.edit, size: 18, color: Color(0xFF1a237e)),
-              label: const Text('Edit', style: TextStyle(color: Color(0xFF1a237e))),
+              icon: const Icon(AppIcons.edit, size: AppDimensions.iconSmall),
+              label: const Text('Edit'),
             ),
           if (user != null && _isEditing) ...[
             TextButton(
               onPressed: () {
                 setState(() {
                   _isEditing = false;
-                  _loadUserProfile(); // Reset to original values
+                  _loadUserProfile();
                 });
               },
-              child: const Text('Cancel', style: TextStyle(color: Color(0xFF1a237e))),
+              child: const Text('Cancel'),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppDimensions.spacingSmall),
             FilledButton(
               onPressed: _isSaving ? null : _saveProfile,
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF1a237e)),
-              child: _isSaving 
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+              child: _isSaving
                   ? const SizedBox(
-                      width: 16,
-                      height: 16,
+                      width: AppDimensions.iconXs,
+                      height: AppDimensions.iconXs,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
-                  : const Text('Save', style: TextStyle(color: Colors.white)),
+                  : const Text('Save'),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: AppDimensions.spacingMedium),
           ],
         ],
       ),
@@ -246,271 +251,266 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(AppIcons.person, size: 64, color: Color(0xFF1a237e)),
-                  const SizedBox(height: 16),
-                  const Text(
+                  const Icon(AppIcons.person, size: AppDimensions.iconXxl, color: AppColors.primary),
+                  const SizedBox(height: AppDimensions.spacingMedium),
+                  Text(
                     'Unable to load profile',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1a237e)),
+                    style: AppTextStyles.cardTitle(colorScheme.onSurface),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppDimensions.spacingSmall),
                   Text(
                     'User session not available',
-                    style: TextStyle(color: const Color(0xFF1a237e).withOpacity(0.6)),
+                    style: AppTextStyles.hint(colorScheme.onSurface),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppDimensions.spacingLarge),
                   FilledButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFF1a237e)),
-                    child: const Text('Go Back', style: TextStyle(color: Colors.white)),
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                    child: const Text('Go Back'),
                   ),
                 ],
               ),
             )
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Profile Photo Section
-              Center(
-                child: Stack(
+              padding: AppDimensions.paddingAllLarge,
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF1a237e).withOpacity(0.1),
-                        border: Border.all(
-                          color: const Color(0xFF1a237e).withOpacity(0.3),
-                          width: 3,
-                        ),
+                    // Profile Photo Section
+                    Center(
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 120,
+                            height: 120,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.primary.withOpacity(0.1),
+                              border: Border.all(
+                                color: AppColors.primary.withOpacity(0.3),
+                                width: 3,
+                              ),
                         image: _profileImageUrl != null
-                            ? DecorationImage(
-                                image: NetworkImage(_profileImageUrl!),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                      ),
-                      child: _profileImageUrl == null
-                          ? Center(
-                              child: Text(
-                                _getInitials(user.email),
-                                style: const TextStyle(
-                                  fontSize: 42,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1a237e),
+                                  ? DecorationImage(
+                                      image: NetworkImage(_profileImageUrl!),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                            ),
+                            child: _profileImageUrl == null
+                                ? Center(
+                                    child: Text(
+                                      _getInitials(user.email),
+                                      style: TextStyle(
+                                        fontFamily: AppTextStyles.fontFamily,
+                                        fontSize: 42,
+                                        fontWeight: AppTextStyles.bold,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          if (_isEditing)
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: colorScheme.surface,
+                                    width: 3,
+                                  ),
+                                ),
+                                child: IconButton(
+                                  icon: const Icon(AppIcons.camera, color: Colors.white, size: AppDimensions.iconSmall),
+                                  onPressed: _uploadPhoto,
+                                  tooltip: 'Upload Photo',
                                 ),
                               ),
-                            )
-                          : null,
+                            ),
+                        ],
+                      ),
                     ),
-                    if (_isEditing)
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1a237e),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 3,
+                    const SizedBox(height: AppDimensions.spacingXl),
+                    // Personal Information Section
+                    _buildSectionCard(
+                      context,
+                      title: 'Personal Information',
+                      icon: AppIcons.person,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildTextField(
+                                controller: _firstNameController,
+                                label: 'First Name',
+                                icon: AppIcons.person,
+                                enabled: _isEditing,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'First name is required';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: AppDimensions.spacingMedium),
+                            Expanded(
+                              child: _buildTextField(
+                                controller: _lastNameController,
+                                label: 'Last Name',
+                                icon: AppIcons.person,
+                                enabled: _isEditing,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Last name is required';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppDimensions.spacingMedium),
+                        _buildDateField(
+                          label: 'Date of Birth',
+                          icon: AppIcons.calendar,
+                          date: _dateOfBirth,
+                          enabled: _isEditing,
+                          onTap: _isEditing ? _selectDate : null,
+                        ),
+                        const SizedBox(height: AppDimensions.spacingMedium),
+                        _buildTextField(
+                          controller: _phoneController,
+                          label: 'Phone Number',
+                          icon: AppIcons.phone,
+                          enabled: _isEditing,
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            if (value != null && value.isNotEmpty) {
+                              if (value.length < 10) {
+                                return 'Enter a valid phone number';
+                              }
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppDimensions.spacingMedium),
+
+                    // Contact Information Section
+                    _buildSectionCard(
+                      context,
+                      title: 'Contact Information',
+                      icon: AppIcons.email,
+                      children: [
+                        _buildTextField(
+                          controller: _emailController,
+                          label: 'Email',
+                          icon: AppIcons.email,
+                          enabled: false,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Email is required';
+                            }
+                            if (!value.contains('@')) {
+                              return 'Enter a valid email';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppDimensions.spacingMedium),
+
+                    // Household Information Section
+                    _buildSectionCard(
+                      context,
+                      title: 'Household Information',
+                      icon: AppIcons.home,
+                      children: [
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Container(
+                            width: AppDimensions.avatarMedium,
+                            height: AppDimensions.avatarMedium,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(AppDimensions.radiusLarge),
+                            ),
+                            child: const Icon(
+                              AppIcons.home,
+                              size: AppDimensions.iconMedium,
+                              color: AppColors.primary,
                             ),
                           ),
-                          child: IconButton(
-                            icon: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
-                            onPressed: _uploadPhoto,
-                            tooltip: 'Upload Photo',
+                          title: Text(
+                            authService?.currentHousehold?.name ?? 'No Household',
+                            style: textTheme.titleSmall?.copyWith(color: colorScheme.onSurface),
+                          ),
+                          subtitle: Text(
+                            user.isAdmin ? 'Admin' : 'Member',
+                            style: AppTextStyles.hint(colorScheme.onSurface),
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(AppIcons.arrowForward, size: AppDimensions.iconSmall, color: AppColors.primary),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              Navigator.of(context).pushNamed('/family');
+                            },
                           ),
                         ),
-                      ),
+                        if (authService?.currentHousehold != null) ...[
+                          const Divider(height: AppDimensions.spacingLarge),
+                          _buildInfoChip(
+                            context,
+                            icon: AppIcons.calendar,
+                            label: 'Member Since',
+                            value: _formatJoinDate(user.createdAt),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: AppDimensions.spacingMedium),
+
+                    // Account Information Section
+                    _buildSectionCard(
+                      context,
+                      title: 'Account Information',
+                      icon: AppIcons.info,
+                      children: [
+                        _buildInfoRow(
+                          context,
+                          label: 'User ID',
+                          value: user.id.substring(0, 8),
+                          icon: AppIcons.info,
+                        ),
+                        const Divider(height: AppDimensions.spacingLarge),
+                        _buildInfoRow(
+                          context,
+                          label: 'Role',
+                          value: user.role,
+                          icon: AppIcons.adminPanel,
+                        ),
+                        const Divider(height: AppDimensions.spacingLarge),
+                        _buildInfoRow(
+                          context,
+                          label: 'Member Since',
+                          value: _formatDate(user.createdAt),
+                          icon: AppIcons.calendar,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
-
-              // Personal Information Section
-              _buildSectionCard(
-                context,
-                title: 'Personal Information',
-                icon: AppIcons.person,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildTextField(
-                          controller: _firstNameController,
-                          label: 'First Name',
-                          icon: AppIcons.person,
-                          enabled: _isEditing,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'First name is required';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildTextField(
-                          controller: _lastNameController,
-                          label: 'Last Name',
-                          icon: AppIcons.person,
-                          enabled: _isEditing,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Last name is required';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _buildDateField(
-                    label: 'Date of Birth',
-                    icon: AppIcons.calendar,
-                    date: _dateOfBirth,
-                    enabled: _isEditing,
-                    onTap: _isEditing ? _selectDate : null,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildTextField(
-                    controller: _phoneController,
-                    label: 'Phone Number',
-                    icon: AppIcons.phone,
-                    enabled: _isEditing,
-                    keyboardType: TextInputType.phone,
-                    validator: (value) {
-                      if (value != null && value.isNotEmpty) {
-                        if (value.length < 10) {
-                          return 'Enter a valid phone number';
-                        }
-                      }
-                      return null;
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Contact Information Section
-              _buildSectionCard(
-                context,
-                title: 'Contact Information',
-                icon: AppIcons.email,
-                children: [
-                  _buildTextField(
-                    controller: _emailController,
-                    label: 'Email',
-                    icon: AppIcons.email,
-                    enabled: false, // Email cannot be changed
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Email is required';
-                      }
-                      if (!value.contains('@')) {
-                        return 'Enter a valid email';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Household Information Section
-              _buildSectionCard(
-                context,
-                title: 'Household Information',
-                icon: AppIcons.home,
-                children: [
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1a237e).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        AppIcons.home,
-                        color: Color(0xFF1a237e),
-                      ),
-                    ),
-                    title: Text(
-                      authService?.currentHousehold?.name ?? 'No Household',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Color(0xFF1a237e),
-                      ),
-                    ),
-                    subtitle: Text(
-                      user.isAdmin ? 'Admin' : 'Member',
-                      style: TextStyle(
-                        color: const Color(0xFF1a237e).withOpacity(0.6),
-                      ),
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(AppIcons.arrowForward, size: 20, color: Color(0xFF1a237e)),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        Navigator.of(context).pushNamed('/family');
-                      },
-                    ),
-                  ),
-                  if (authService?.currentHousehold != null) ...[
-                    const Divider(height: 24),
-                    _buildInfoChip(
-                      context,
-                      icon: AppIcons.calendar,
-                      label: 'Member Since',
-                      value: _formatJoinDate(user.createdAt),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Account Information Section
-              _buildSectionCard(
-                context,
-                title: 'Account Information',
-                icon: AppIcons.info,
-                children: [
-                  _buildInfoRow(
-                    context,
-                    label: 'User ID',
-                    value: user.id.substring(0, 8),
-                    icon: AppIcons.info,
-                  ),
-                  const Divider(height: 24),
-                  _buildInfoRow(
-                    context,
-                    label: 'Role',
-                    value: user.role,
-                    icon: AppIcons.adminPanel,
-                  ),
-                  const Divider(height: 24),
-                  _buildInfoRow(
-                    context,
-                    label: 'Member Since',
-                    value: _formatDate(user.createdAt),
-                    icon: AppIcons.calendar,
-                  ),
-                ],
-              ),
-            ],
           ),
-        ),
-      ),
     );
   }
 
@@ -520,14 +520,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required IconData icon,
     required List<Widget> children,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Card(
-      elevation: 2,
-      color: Colors.white,
+      elevation: AppDimensions.cardElevation,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(
-          color: Color(0xFFE3E8EF),
-        ),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
+        side: const BorderSide(color: AppColors.grey200),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -537,29 +535,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: AppDimensions.paddingAllSmall,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1a237e).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
                   ),
                   child: Icon(
                     icon,
-                    size: 20,
-                    color: const Color(0xFF1a237e),
+                    size: AppDimensions.iconSmall,
+                    color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1a237e),
-                  ),
+                  style: AppTextStyles.cardTitle(colorScheme.onSurface),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppDimensions.spacingLarge),
             ...children,
           ],
         ),
@@ -575,30 +569,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return TextFormField(
       controller: controller,
       enabled: enabled,
       keyboardType: keyboardType,
       validator: validator,
-      style: const TextStyle(color: Color(0xFF1a237e)),
+      style: TextStyle(
+        fontFamily: AppTextStyles.fontFamily,
+        color: onSurface,
+      ),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Color(0xFF1a237e)),
-        prefixIcon: Icon(icon, color: const Color(0xFF1a237e)),
+        floatingLabelStyle: const TextStyle(color: AppColors.primary),
+        prefixIcon: Icon(icon, size: AppDimensions.iconMedium, color: AppColors.primary),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF1a237e)),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusLarge),
+          borderSide: const BorderSide(color: AppColors.primary),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: const Color(0xFF1a237e).withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusLarge),
+          borderSide: BorderSide(color: AppColors.primary.withOpacity(0.3)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF1a237e), width: 2),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusLarge),
+          borderSide: const BorderSide(color: AppColors.primary, width: AppDimensions.borderWidthThick),
         ),
         filled: !enabled,
-        fillColor: enabled ? null : Colors.grey.withOpacity(0.1),
+        fillColor: enabled ? null : AppColors.grey100,
       ),
     );
   }
@@ -612,27 +610,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppDimensions.radiusLarge),
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: Color(0xFF1a237e)),
-          prefixIcon: Icon(icon, color: const Color(0xFF1a237e)),
+          floatingLabelStyle: const TextStyle(color: AppColors.primary),
+          prefixIcon: Icon(icon, size: AppDimensions.iconMedium, color: AppColors.primary),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF1a237e)),
+            borderRadius: BorderRadius.circular(AppDimensions.radiusLarge),
+            borderSide: const BorderSide(color: AppColors.primary),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: const Color(0xFF1a237e).withOpacity(0.3)),
+            borderRadius: BorderRadius.circular(AppDimensions.radiusLarge),
+            borderSide: BorderSide(color: AppColors.primary.withOpacity(0.3)),
           ),
           filled: !enabled,
-          fillColor: enabled ? null : Colors.grey.withOpacity(0.1),
+          fillColor: enabled ? null : AppColors.grey100,
         ),
         child: Text(
           date != null ? _formatDate(date) : 'Not set',
           style: TextStyle(
-            color: date != null ? const Color(0xFF1a237e) : const Color(0xFF1a237e).withOpacity(0.5),
+            fontFamily: AppTextStyles.fontFamily,
+            color: date != null
+                ? Theme.of(context).colorScheme.onSurface
+                : Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
           ),
         ),
       ),
@@ -645,12 +646,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String value,
     required IconData icon,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Row(
       children: [
         Icon(
           icon,
-          size: 20,
-          color: const Color(0xFF1a237e),
+          size: AppDimensions.iconSmall,
+          color: AppColors.primary,
         ),
         const SizedBox(width: 12),
         Column(
@@ -658,18 +660,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Text(
               label,
-              style: TextStyle(
-                fontSize: 12,
-                color: const Color(0xFF1a237e).withOpacity(0.6),
-              ),
+              style: AppTextStyles.hint(colorScheme.onSurface),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: AppDimensions.spacingXs),
             Text(
               value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1a237e),
+              style: AppTextStyles.cardSubtitle(colorScheme.onSurface).copyWith(
+                fontWeight: AppTextStyles.semiBold,
               ),
             ),
           ],
@@ -684,40 +681,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String label,
     required String value,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1a237e).withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.primary.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusLarge),
         border: Border.all(
-          color: const Color(0xFF1a237e).withOpacity(0.2),
+          color: AppColors.primary.withOpacity(0.2),
         ),
       ),
       child: Row(
         children: [
           Icon(
             icon,
-            size: 18,
-            color: const Color(0xFF1a237e),
+            size: AppDimensions.iconSmall,
+            color: AppColors.primary,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppDimensions.spacingSmall),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: const Color(0xFF1a237e).withOpacity(0.6),
-                  ),
+                  style: AppTextStyles.hint(colorScheme.onSurface),
                 ),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1a237e),
+                  style: AppTextStyles.cardSubtitle(colorScheme.onSurface).copyWith(
+                    fontWeight: AppTextStyles.bold,
                   ),
                 ),
               ],

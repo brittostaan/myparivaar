@@ -62,6 +62,7 @@ class NavigationConfig {
     '/email-settings': _mainNavigation,
     '/notifications': _mainNavigation,
     '/csv-import': _mainNavigation,
+    '/savings': _mainNavigation,
   };
 
   /// Standard navigation shown on main screens
@@ -73,10 +74,10 @@ class NavigationConfig {
       routeName: '/home',
     ),
     const NavigationItem(
-      label: 'Expenses',
-      icon: AppIcons.walletOutlined,
-      filledIcon: AppIcons.wallet,
-      routeName: '/expenses',
+      label: 'Voice',
+      icon: AppIcons.micOutlined,
+      filledIcon: AppIcons.mic,
+      routeName: '', // intentionally unconnected
     ),
     const NavigationItem(
       label: 'More',

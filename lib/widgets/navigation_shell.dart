@@ -60,13 +60,16 @@ class NavigationShell extends StatelessWidget {
         onTabChanged: (index) {
           final targetRoute = navItems[index].routeName;
           
+          // Empty routeName means the tab is intentionally unconnected
+          if (targetRoute.isEmpty) return;
+
           // Don't navigate if already on that route
           if (targetRoute == currentRoute) {
             return;
           }
           
-          // Navigate to the selected route
-          Navigator.of(context).pushNamed(targetRoute);
+          // Replace current route so tabs don't stack up the back history
+          Navigator.of(context).pushReplacementNamed(targetRoute);
         },
       ),
     );

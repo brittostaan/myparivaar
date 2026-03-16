@@ -30,13 +30,13 @@ class Member {
       : phone;
 
   factory Member.fromJson(Map<String, dynamic> json) => Member(
-        id:          json['id']           as String,
+        id:          json['id']?.toString() ?? '',
       // household-members returns phone_number, but keep fallback for older payloads.
-      phone:       (json['phone_number'] ?? json['phone']) as String,
-        role:        json['role']         as String,
+      phone:       (json['phone_number'] ?? json['phone'])?.toString() ?? '',
+        role:        json['role']?.toString() ?? 'member',
       // household-members returns name, but keep fallback for older payloads.
-      displayName: (json['name'] ?? json['display_name']) as String?,
-        joinedAt:    DateTime.parse(json['created_at'] as String),
+      displayName: (json['name'] ?? json['display_name'])?.toString(),
+        joinedAt:    DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
       );
 }
 

@@ -236,6 +236,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     );
 
     if (confirmed == true) {
+      if (!mounted) return;
       // In a real app, would call delete household API
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

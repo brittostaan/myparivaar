@@ -56,12 +56,13 @@ class EmailService {
       throw Exception('Not authenticated');
     }
 
-    final response = await http.get(
+    final response = await http.post(
       Uri.parse('$supabaseUrl/functions/v1/email-accounts'),
       headers: {
         'Authorization': 'Bearer $idToken',
         'Content-Type': 'application/json',
       },
+      body: jsonEncode({'action': 'list'}),
     );
 
     if (response.statusCode != 200) {
@@ -111,12 +112,13 @@ class EmailService {
       throw Exception('Not authenticated');
     }
 
-    final response = await http.delete(
-      Uri.parse('$supabaseUrl/functions/v1/email-accounts/$accountId'),
+    final response = await http.post(
+      Uri.parse('$supabaseUrl/functions/v1/email-accounts'),
       headers: {
         'Authorization': 'Bearer $idToken',
         'Content-Type': 'application/json',
       },
+      body: jsonEncode({'action': 'delete', 'account_id': accountId}),
     );
 
     if (response.statusCode != 200) {
@@ -139,6 +141,7 @@ class EmailService {
         'Authorization': 'Bearer $idToken',
         'Content-Type': 'application/json',
       },
+      body: jsonEncode({}),
     );
 
     if (response.statusCode != 200) {

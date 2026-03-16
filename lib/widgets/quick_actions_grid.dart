@@ -45,7 +45,7 @@ class QuickActionsGrid extends StatelessWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: actions.length.clamp(2, 4),
+              crossAxisCount: actions.length.clamp(1, 4),
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
               childAspectRatio: 0.85,

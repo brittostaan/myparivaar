@@ -125,6 +125,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     );
 
     if (confirmed == true) {
+      if (!mounted) return;
       // In a real app, would call delete account API
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

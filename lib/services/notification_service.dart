@@ -29,7 +29,9 @@ class NotificationService extends ChangeNotifier {
     }
   }
 
-  /// Schedule a bill reminder notification
+  /// Schedule a bill reminder notification.
+  /// No-ops if a notification for [billId] already exists, preventing duplicates
+  /// when called multiple times (e.g. on background refresh or screen re-entry).
   Future<void> scheduleBillReminder({
     required String title,
     required String body,
@@ -37,6 +39,12 @@ class NotificationService extends ChangeNotifier {
     required String billId,
   }) async {
     if (!_notificationsEnabled) return;
+
+    // Deduplicate: skip if a reminder for this bill is already in the list.
+    final alreadyExists = _notifications.any(
+      (n) => n.type == NotificationType.billReminder && n.data['billId'] == billId,
+    );
+    if (alreadyExists) return;
 
     // In a real app, would use flutter_local_notifications
     debugPrint('Scheduled bill reminder: $title for $scheduleDate');
@@ -186,25 +194,20 @@ class NotificationService extends ChangeNotifier {
   }
 
   /// Check for budget overages (would run after expense addition)
-  Future<void> checkBudgetAlerts(double expenseAmount, String category) async {
-    // Simulate budget checking
-    final monthlyBudgets = {
-      'Food': 10000.0,
-      'Transport': 5000.0,
-      'Shopping': 6000.0,
-    };
-
-    // Mock current spending (in real app, would query from database)
-    final currentSpending = {
-      'Food': 8500.0,
-      'Transport': 4200.0,
-      'Shopping': 5800.0,
-    };
-
+  /// [monthlyBudgets] and [currentSpending] must be supplied by the caller
+  /// from real BudgetService / ExpenseService data — keyed by category name.
+  Future<void> checkBudgetAlerts({
+    required double expenseAmount,
+    required String category,
+    required Map<String, double> monthlyBudgets,
+    required Map<String, double> currentSpending,
+  }) async {
     final budget = monthlyBudgets[category];
+    if (budget == null) return;
+
     final current = (currentSpending[category] ?? 0.0) + expenseAmount;
 
-    if (budget != null && current >= budget * 0.8) {
+    if (current >= budget * 0.8) {
       final percentage = ((current / budget) * 100).round();
       await scheduleExpenseAlert(
         title: 'Budget Alert: $category',

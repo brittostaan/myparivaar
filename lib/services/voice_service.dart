@@ -65,9 +65,13 @@ class VoiceService extends ChangeNotifier {
     try {
       final text = voiceText.toLowerCase();
       
-      // Extract amount
-      RegExp amountRegex = RegExp(r'(\d+(?:\.\d{1,2})?)\s*(?:rupees?|rs\.?|inr)?');
-      final amountMatch = amountRegex.firstMatch(text);
+      // Extract amount — prefer the number closest to (immediately before) a
+      // currency keyword so "bought 2 coffees at 150 rupees" captures 150, not 2.
+      RegExp amountWithCurrency = RegExp(r'(\d+(?:\.\d{1,2})?)\s*(?:rupees?|rs\.?|inr)');
+      RegExp amountAny = RegExp(r'(\d+(?:\.\d{1,2})?)');
+
+      RegExpMatch? amountMatch = amountWithCurrency.firstMatch(text);
+      amountMatch ??= amountAny.allMatches(text).lastOrNull;
       if (amountMatch == null) return null;
       
       final amount = double.parse(amountMatch.group(1)!);

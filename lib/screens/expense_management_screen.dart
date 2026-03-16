@@ -1,8 +1,12 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../main.dart' show ViewModeProvider, ViewMode;
 import '../services/auth_service.dart';
 import '../services/expense_service.dart';
+import '../services/budget_service.dart';
 import '../models/expense.dart';
+import '../models/budget.dart';
 import '../widgets/app_header.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
@@ -20,6 +24,10 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   bool _isLoading = true;
   String? _error;
   String? _errorDiagnostics;
+  String _searchQuery = '';
+  int _selectedPeriod = 2; // 0=Daily, 1=Weekly, 2=Monthly
+  final BudgetService _budgetService = BudgetService();
+  List<Budget> _budgets = [];
 
   @override
   void initState() {
@@ -29,7 +37,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
   Future<void> _loadExpenses() async {
     if (!mounted) return;
-    
+
     setState(() {
       _isLoading = true;
       _error = null;
@@ -37,14 +45,30 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
+      final idToken = await authService.getIdToken();
       final expenses = await _expenseService.getExpenses(
         supabaseUrl: authService.supabaseUrl,
-        idToken: await authService.getIdToken(),
+        idToken: idToken,
       );
+
+      // Load budgets for the web budget status card (optional)
+      List<Budget> budgets = [];
+      try {
+        final now = DateTime.now();
+        final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+        budgets = await _budgetService.getBudgets(
+          supabaseUrl: authService.supabaseUrl,
+          idToken: idToken,
+          month: month,
+        );
+      } catch (_) {
+        // Budget loading is optional; proceed without it
+      }
 
       if (mounted) {
         setState(() {
           _expenses = expenses;
+          _budgets = budgets;
           _isLoading = false;
         });
       }
@@ -52,7 +76,9 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       if (mounted) {
         setState(() {
           _error = e.toString();
-          _errorDiagnostics = e is ExpenseException ? e.diagnostics : 'Exception type: ${e.runtimeType}\n$e';
+          _errorDiagnostics = e is ExpenseException
+              ? e.diagnostics
+              : 'Exception type: ${e.runtimeType}\n$e';
           _isLoading = false;
         });
       }
@@ -106,6 +132,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
 
     if (confirmed != true) return;
+    if (!mounted) return;
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
@@ -141,6 +168,14 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final viewMode = context.watch<ViewModeProvider>().mode;
+    if (kIsWeb && viewMode == ViewMode.desktop) {
+      return _buildWebLayout(context);
+    }
+    return _buildMobileLayout(context);
+  }
+
+  Widget _buildMobileLayout(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: _addExpense,
@@ -305,7 +340,734 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     
     return '${monthNames[month - 1]} $year';
   }
-}
+
+  // ── Web (Desktop) Layout ─────────────────────────────────────────────────
+
+  Widget _buildWebLayout(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primary = theme.colorScheme.primary;
+    return Scaffold(
+      backgroundColor:
+          isDark ? AppColors.backgroundDark : const Color(0xFFF5F7F8),
+      body: Column(
+        children: [
+          _buildWebTopBar(context, isDark, theme, primary),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                    ? _buildWebError(context)
+                    : _buildWebContent(context, isDark, theme, primary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebTopBar(BuildContext context, bool isDark, ThemeData theme,
+      Color primary) {
+    final border =
+        isDark ? AppColors.grey800 : const Color(0xFFE2E8F0);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        border: Border(bottom: BorderSide(color: border)),
+      ),
+      child: Row(
+        children: [
+          InkWell(
+            onTap: () =>
+                Navigator.of(context).pushReplacementNamed('/home'),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Icon(Icons.arrow_back_ios_new,
+                  size: 18, color: Colors.grey[600]),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Expense Analysis',
+                  style: TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.bold)),
+              Text('Detailed breakdown of your spending habits',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+            ],
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: ['Daily', 'Weekly', 'Monthly']
+                  .asMap()
+                  .entries
+                  .map((e) => GestureDetector(
+                        onTap: () =>
+                            setState(() => _selectedPeriod = e.key),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _selectedPeriod == e.key
+                                ? (isDark ? AppColors.grey700 : Colors.white)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(e.value,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: _selectedPeriod == e.key
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                color: _selectedPeriod == e.key
+                                    ? primary
+                                    : Colors.grey[500],
+                              )),
+                        ),
+                      ))
+                  .toList(),
+            ),
+          ),
+          const SizedBox(width: 16),
+          ElevatedButton.icon(
+            onPressed: _addExpense,
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Add Expense',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebError(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(AppIcons.error, size: 48, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text('Error loading expenses',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[600])),
+          const SizedBox(height: 8),
+          SelectableText(_errorDiagnostics ?? _error ?? '',
+              style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: _loadExpenses,
+            icon: const Icon(AppIcons.refresh),
+            label: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebContent(BuildContext context, bool isDark, ThemeData theme,
+      Color primary) {
+    final filtered = _filteredExpenses;
+    return RefreshIndicator(
+      onRefresh: _loadExpenses,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _webStatCard(
+                    isDark: isDark,
+                    primary: primary,
+                    icon: Icons.account_balance_wallet_outlined,
+                    label: 'Total Spent this Month',
+                    value: _fmtCurrency(_monthlySpendTotal),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: _webComingSoonCard(
+                    isDark: isDark,
+                    primary: primary,
+                    title: 'Smart Insights',
+                    icon: Icons.lightbulb_outlined,
+                    message: 'AI-powered spending insights coming soon',
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(child: _webCategoryDistCard(isDark, primary)),
+              ],
+            ),
+            const SizedBox(height: 28),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surfaceDark : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: isDark
+                              ? AppColors.grey800
+                              : const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(children: [
+                      const SizedBox(width: 14),
+                      Icon(Icons.search, color: Colors.grey[400], size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          onChanged: (v) =>
+                              setState(() => _searchQuery = v),
+                          decoration: InputDecoration(
+                            hintText: 'Search transactions, merchants...',
+                            hintStyle: TextStyle(
+                                color: Colors.grey[400], fontSize: 13),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                    ]),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                _filterChip(isDark, 'All Accounts', Icons.filter_alt_outlined),
+                const SizedBox(width: 8),
+                _filterChip(isDark, 'Category', Icons.category_outlined),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Feature coming soon',
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.grey800
+                          : const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(children: const [
+                      Icon(Icons.download_outlined, size: 18),
+                      SizedBox(width: 4),
+                      Icon(Icons.close_rounded, size: 11, color: Colors.red),
+                    ]),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceDark : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                    color: isDark
+                        ? AppColors.grey800
+                        : const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Recent Transactions',
+                            style: TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.bold)),
+                        Text('${filtered.length} results',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey[500])),
+                      ],
+                    ),
+                  ),
+                  if (filtered.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Center(
+                        child: Text('No transactions found',
+                            style: TextStyle(color: Colors.grey[400])),
+                      ),
+                    )
+                  else
+                    ...filtered.map((e) => _buildWebTransactionRow(e, isDark)),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Center(
+                      child: TextButton(
+                        onPressed: _loadExpenses,
+                        child: const Text('Refresh',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _buildBudgetStatusCard(isDark, primary)),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: _webComingSoonCard(
+                    isDark: isDark,
+                    primary: primary,
+                    title: 'Category Trend',
+                    icon: Icons.bar_chart,
+                    message: 'Multi-month trend analysis coming soon',
+                    dark: true,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWebTransactionRow(Expense expense, bool isDark) {
+    final isIncome = expense.category.toLowerCase() == 'income' ||
+        expense.category.toLowerCase() == 'salary';
+    final bgColor = AppColors.getCategoryColor(expense.category);
+    final iconColor = AppColors.getCategoryIconColor(expense.category);
+    final d = expense.date;
+    final dateStr = '${_webMonthAbbr(d.month)} ${d.day}, ${d.year}';
+    final rowBorder = BorderSide(
+        color: isDark ? AppColors.grey800 : const Color(0xFFF1F5F9));
+    return InkWell(
+      onTap: () => _editExpense(expense),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: BoxDecoration(border: Border(top: rowBorder)),
+        child: Row(children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(AppIcons.getCategoryIcon(expense.category),
+                size: 22, color: iconColor),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(expense.description,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 4),
+                Row(children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.grey800
+                          : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(_webCapitalize(expense.category),
+                        style:
+                            TextStyle(fontSize: 11, color: Colors.grey[500])),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                      expense.source == 'email'
+                          ? Icons.email_outlined
+                          : expense.source == 'csv'
+                              ? Icons.upload_file_outlined
+                              : Icons.edit_outlined,
+                      size: 12,
+                      color: Colors.grey[400]),
+                  const SizedBox(width: 4),
+                  Text(
+                      expense.source[0].toUpperCase() +
+                          expense.source.substring(1),
+                      style: TextStyle(
+                          fontSize: 11, color: Colors.grey[500])),
+                ]),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${isIncome ? '+' : '- '}${_fmtCurrency(expense.amount)}',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: isIncome ? AppColors.success : AppColors.error),
+              ),
+              const SizedBox(height: 4),
+              Text(dateStr,
+                  style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+            ],
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildBudgetStatusCard(bool isDark, Color primary) {
+    final totalBudget = _budgets.fold<double>(0, (s, b) => s + b.amount);
+    final monthlySpend = _monthlySpendTotal;
+    final hasData = totalBudget > 0;
+    final ratio =
+        hasData ? (monthlySpend / totalBudget).clamp(0.0, 1.0) : 0.0;
+    final withinBudget = !hasData || monthlySpend <= totalBudget;
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [primary, primary.withOpacity(0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+              color: primary.withOpacity(0.3),
+              blurRadius: 16,
+              offset: const Offset(0, 6))
+        ],
+      ),
+      child: Row(children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Monthly Budget Status',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16)),
+              const SizedBox(height: 6),
+              Text(
+                hasData
+                    ? (withinBudget
+                        ? 'You are within your spending limit.'
+                        : 'You have exceeded your budget.')
+                    : 'Set up budgets to track spending here.',
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.85), fontSize: 13),
+              ),
+              if (hasData) ...[
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: ratio,
+                    backgroundColor: Colors.white.withOpacity(0.3),
+                    color: withinBudget ? Colors.white : Colors.red[200],
+                    minHeight: 6,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${_fmtCurrency(monthlySpend)} of ${_fmtCurrency(totalBudget)}',
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.85), fontSize: 12),
+                ),
+              ],
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () => Navigator.of(context).pushNamed('/budget'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text('Edit Budget',
+                      style: TextStyle(
+                          color: primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            withinBudget
+                ? Icons.check_circle_outline
+                : Icons.warning_amber_outlined,
+            color: Colors.white,
+            size: 32,
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _webStatCard({
+    required bool isDark,
+    required Color primary,
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+            color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+                color: primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8)),
+            child: Icon(icon, color: primary, size: 20),
+          ),
+          const SizedBox(height: 12),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[500],
+                  fontWeight: FontWeight.w500)),
+          const SizedBox(height: 4),
+          Text(value,
+              style:
+                  const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _webCategoryDistCard(bool isDark, Color primary) {
+    final totals = <String, double>{};
+    for (final e in _filteredExpenses) {
+      if (e.category.toLowerCase() != 'income' &&
+          e.category.toLowerCase() != 'salary') {
+        totals[e.category] = (totals[e.category] ?? 0) + e.amount;
+      }
+    }
+    final grand = totals.values.fold(0.0, (s, v) => s + v);
+    final sorted = (totals.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value)))
+        .take(4)
+        .toList();
+    final colors = [primary, Colors.amber, Colors.green, Colors.red];
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+            color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Category Distribution',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          if (sorted.isEmpty)
+            Text('No data', style: TextStyle(color: Colors.grey[400]))
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: sorted.asMap().entries.map((entry) {
+                final i = entry.key;
+                final cat = entry.value;
+                final pct = grand > 0
+                    ? '${(cat.value / grand * 100).toStringAsFixed(0)}%'
+                    : '0%';
+                return Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                          color: colors[i % colors.length],
+                          shape: BoxShape.circle)),
+                  const SizedBox(width: 4),
+                  Text('${_webCapitalize(cat.key)} ($pct)',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                ]);
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _webComingSoonCard({
+    required bool isDark,
+    required Color primary,
+    required String title,
+    required IconData icon,
+    required String message,
+    bool dark = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: dark
+            ? const Color(0xFF1E2836)
+            : (isDark ? AppColors.surfaceDark : Colors.white),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+            color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(icon, color: dark ? Colors.white70 : primary, size: 20),
+            const SizedBox(width: 8),
+            Text(title,
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: dark ? Colors.white : null)),
+            const SizedBox(width: 8),
+            const Tooltip(
+              message: 'Feature coming soon',
+              child: Icon(Icons.close_rounded, size: 13, color: Colors.red),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          Text(message,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: dark ? Colors.white54 : Colors.grey[400])),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterChip(bool isDark, String label, IconData icon) {
+    return Tooltip(
+      message: 'Feature coming soon',
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceDark : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 15, color: Colors.grey[500]),
+          const SizedBox(width: 6),
+          Text(label,
+              style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+          const SizedBox(width: 6),
+          Icon(Icons.expand_more, size: 16, color: Colors.grey[400]),
+          const SizedBox(width: 4),
+          const Icon(Icons.close_rounded, size: 11, color: Colors.red),
+        ]),
+      ),
+    );
+  }
+
+  // ── Computed helpers ──────────────────────────────────────────────────────
+
+  List<Expense> get _filteredExpenses {
+    final now = DateTime.now();
+    return _expenses.where((e) {
+      final bool inPeriod;
+      if (_selectedPeriod == 0) {
+        inPeriod = e.date.year == now.year &&
+            e.date.month == now.month &&
+            e.date.day == now.day;
+      } else if (_selectedPeriod == 1) {
+        inPeriod = now.difference(e.date).inDays < 7;
+      } else {
+        inPeriod =
+            e.date.year == now.year && e.date.month == now.month;
+      }
+      if (!inPeriod) return false;
+      if (_searchQuery.isNotEmpty) {
+        final q = _searchQuery.toLowerCase();
+        return e.description.toLowerCase().contains(q) ||
+            e.category.toLowerCase().contains(q);
+      }
+      return true;
+    }).toList();
+  }
+
+  double get _monthlySpendTotal {
+    final now = DateTime.now();
+    return _expenses
+        .where((e) =>
+            e.date.year == now.year &&
+            e.date.month == now.month &&
+            e.category.toLowerCase() != 'income' &&
+            e.category.toLowerCase() != 'salary')
+        .fold(0.0, (s, e) => s + e.amount);
+  }
+
+  String _fmtCurrency(double amount) {
+    final formatted = amount
+        .abs()
+        .toStringAsFixed(0)
+        .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+            (m) => '${m[1]},');
+    return '\u20B9$formatted';
+  }
+
+  String _webCapitalize(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1).toLowerCase();
+
+  String _webMonthAbbr(int month) {
+    const abbrs = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return abbrs[(month - 1).clamp(0, 11)];
+  }
+
+
+
+
 
 class AddEditExpenseScreen extends StatefulWidget {
   final Expense? expense;

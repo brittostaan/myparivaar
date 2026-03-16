@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -66,14 +65,21 @@ class AuthService extends ChangeNotifier {
 
   // ── Public methods ─────────────────────────────────────────────────────────
 
-  /// Get the current Supabase JWT token
+  /// Get the current Supabase JWT token, auto-refreshing if expired or stale.
   Future<String> getIdToken([bool forceRefresh = false]) async {
     final session = _supabase.auth.currentSession;
     if (session == null) {
       throw const AppAuthException('User not authenticated');
     }
 
-    if (forceRefresh) {
+    // Auto-refresh if:
+    //  - expiresAt is unknown (can't trust the token)
+    //  - token is within 60 seconds of expiry (or already expired)
+    final expiresAt = session.expiresAt;
+    final isExpired = expiresAt == null ||
+        DateTime.now().millisecondsSinceEpoch ~/ 1000 >= expiresAt - 60;
+
+    if (forceRefresh || isExpired) {
       final response = await _supabase.auth.refreshSession();
       if (response.session == null) {
         throw const AppAuthException('Unable to refresh token');
@@ -343,12 +349,22 @@ class AuthService extends ChangeNotifier {
         m.contains('missing authorization') ||
         m.contains('not authenticated') ||
         m.contains('token verification failed') ||
-        m.contains('jwt');
+        m.contains('invalid jwt') ||
+        m.contains('jwt expired');
   }
 
   bool _looksLikeTerminalAuthError(String message) {
     final m = message.toLowerCase();
-    return m.contains('auth') || m.contains('jwt') || m.contains('token');
+    // Match only specific, well-known terminal auth error strings to avoid
+    // signing out users on unrelated errors that happen to contain 'auth',
+    // 'jwt', or 'token' (e.g. network proxy errors, 503 response bodies).
+    return m.contains('invalid or expired token') ||
+        m.contains('missing authorization') ||
+        m.contains('not authenticated') ||
+        m.contains('token verification failed') ||
+        m.contains('invalid jwt') ||
+        m.contains('jwt expired') ||
+        m.contains('user not found');
   }
 
   Future<T> _withRetry<T>(
@@ -362,8 +378,6 @@ class AuthService extends ChangeNotifier {
       try {
         return await operation();
       } on AuthRetryableFetchException catch (e) {
-        lastError = e;
-      } on SocketException catch (e) {
         lastError = e;
       } on http.ClientException catch (e) {
         lastError = e;

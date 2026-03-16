@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import '../config/navigation_config.dart';
+import '../models/expense.dart';
 import '../services/auth_service.dart';
+import '../services/expense_service.dart';
 import 'app_bottom_navigation_bar.dart';
 
 /// A shell widget that wraps screens with bottom navigation.
@@ -42,6 +44,21 @@ class _NavigationShellState extends State<NavigationShell> {
     setState(() {
       NavigationShell.webSidebarVisible = !NavigationShell.webSidebarVisible;
     });
+  }
+
+  void _openSearch(BuildContext context) {
+    final authService = context.read<AuthService>();
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Search',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 150),
+      transitionBuilder: (ctx, anim, _, child) =>
+          FadeTransition(opacity: anim, child: child),
+      pageBuilder: (ctx, _, __) =>
+          _GlobalSearchDialog(authService: authService),
+    );
   }
 
   List<_WebSidebarItem> _webSidebarItems() {
@@ -282,32 +299,27 @@ class _NavigationShellState extends State<NavigationShell> {
             const SizedBox(width: 12),
           ],
           Expanded(
-            child: Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: [
-                  Icon(Icons.search, color: Colors.grey[400], size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Search transactions...',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 13),
-                  ),
-                  const Spacer(),
-                  const Tooltip(
-                    message: 'Feature coming soon',
-                    child: Icon(
-                      Icons.close_rounded,
-                      size: 12,
-                      color: Colors.red,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => _openSearch(context),
+              child: Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Row(
+                  children: [
+                    Icon(Icons.search, color: Colors.grey[400], size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Search transactions...',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 13),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -479,4 +491,266 @@ class _WebSidebarItem {
     required this.route,
     required this.connected,
   });
+}
+
+// ── Global Search Dialog ───────────────────────────────────────────────────────
+
+class _GlobalSearchDialog extends StatefulWidget {
+  final AuthService authService;
+  const _GlobalSearchDialog({required this.authService});
+
+  @override
+  State<_GlobalSearchDialog> createState() => _GlobalSearchDialogState();
+}
+
+class _GlobalSearchDialogState extends State<_GlobalSearchDialog> {
+  final _controller = TextEditingController();
+  List<Expense> _allExpenses = [];
+  List<Expense> _results = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExpenses();
+    _controller.addListener(_onQueryChanged);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadExpenses() async {
+    try {
+      final idToken = await widget.authService.getIdToken();
+      final expenses = await ExpenseService().getExpenses(
+        supabaseUrl: widget.authService.supabaseUrl,
+        idToken: idToken,
+        limit: 500,
+      );
+      if (mounted) {
+        setState(() {
+          _allExpenses = expenses;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to load transactions';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _onQueryChanged() {
+    final q = _controller.text.trim().toLowerCase();
+    if (q.isEmpty) {
+      setState(() => _results = []);
+      return;
+    }
+    setState(() {
+      _results = _allExpenses.where((e) {
+        return e.description.toLowerCase().contains(q) ||
+            e.category.toLowerCase().contains(q) ||
+            e.amount.toStringAsFixed(2).contains(q);
+      }).toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
+    });
+  }
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  IconData _categoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'food':
+      case 'food & dining':
+        return Icons.restaurant_outlined;
+      case 'shopping':
+        return Icons.shopping_bag_outlined;
+      case 'transport':
+        return Icons.directions_car_outlined;
+      case 'entertainment':
+        return Icons.movie_outlined;
+      case 'healthcare':
+        return Icons.local_hospital_outlined;
+      case 'utilities':
+        return Icons.bolt_outlined;
+      case 'rent':
+      case 'housing':
+        return Icons.home_outlined;
+      case 'education':
+        return Icons.school_outlined;
+      default:
+        return Icons.receipt_outlined;
+    }
+  }
+
+  String _capitalise(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 80, 24, 24),
+        child: Material(
+          borderRadius: BorderRadius.circular(16),
+          elevation: 24,
+          shadowColor: Colors.black38,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640, maxHeight: 520),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Search input ──────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.search, color: Color(0xFF94A3B8), size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _controller,
+                          autofocus: true,
+                          decoration: const InputDecoration(
+                            hintText: 'Search transactions...',
+                            hintStyle: TextStyle(
+                              color: Color(0xFF94A3B8),
+                              fontSize: 15,
+                            ),
+                            border: InputBorder.none,
+                            isDense: true,
+                          ),
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                      ),
+                      if (_isLoading)
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).pop(),
+                          child: const Icon(
+                            Icons.close_rounded,
+                            size: 18,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                // ── Results body ──────────────────────────────────────────
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.red, fontSize: 13),
+                    ),
+                  )
+                else if (_controller.text.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.search, size: 18, color: Colors.grey[400]),
+                        const SizedBox(width: 8),
+                        Text(
+                          _isLoading
+                              ? 'Loading transactions...'
+                              : 'Type to search across ${_allExpenses.length} transactions',
+                          style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (_results.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      'No results for "${_controller.text}"',
+                      style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      itemCount: _results.length,
+                      separatorBuilder: (_, __) =>
+                          const Divider(height: 1, indent: 56),
+                      itemBuilder: (context, i) {
+                        final e = _results[i];
+                        return ListTile(
+                          leading: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              _categoryIcon(e.category),
+                              size: 18,
+                              color: const Color(0xFF475569),
+                            ),
+                          ),
+                          title: Text(
+                            e.description,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            '${_capitalise(e.category)}  ·  ${_formatDate(e.date)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
+                          trailing: Text(
+                            '₹${e.amount.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            Navigator.of(context)
+                                .pushReplacementNamed('/expenses');
+                          },
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

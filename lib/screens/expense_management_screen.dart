@@ -1064,10 +1064,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     ];
     return abbrs[(month - 1).clamp(0, 11)];
   }
-
-
-
-
+}
 
 class AddEditExpenseScreen extends StatefulWidget {
   final Expense? expense;

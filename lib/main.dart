@@ -340,14 +340,20 @@ class MyParivaaarApp extends StatelessWidget {
       case '/voice-expense':
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => const VoiceExpenseScreen(),
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const VoiceExpenseScreen(),
+          ),
         );
 
       case '/profile':
         return PageRouteBuilder(
           settings: settings,
           pageBuilder: (context, animation, secondaryAnimation) {
-            return const ProfileScreen();
+            return NavigationShell(
+              currentRoute: routeName,
+              child: const ProfileScreen(),
+            );
           },
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             const begin = Offset(-1.0, 0.0);

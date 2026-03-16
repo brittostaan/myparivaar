@@ -286,23 +286,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       backgroundColor:
           isDark ? AppColors.backgroundDark : const Color(0xFFF5F7F8),
-      body: Row(
+      body: Column(
         children: [
-          _buildSidebar(context, isDark, theme),
+          _buildWebHeader(context, isDark, theme, authService),
           Expanded(
-            child: Column(
-              children: [
-                _buildWebHeader(context, isDark, theme, authService),
-                Expanded(
-                  child: _isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : _error != null
-                          ? _buildWebError(context)
-                          : _buildWebContent(
-                              context, isDark, theme, authService),
-                ),
-              ],
-            ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                    ? _buildWebError(context)
+                    : _buildWebContent(context, isDark, theme, authService),
           ),
         ],
       ),

@@ -84,8 +84,8 @@ class _NavigationShellState extends State<NavigationShell> {
       _WebSidebarItem(
         label: 'Investments',
         icon: Icons.query_stats,
-        route: '',
-        connected: false,
+        route: '/investments',
+        connected: true,
       ),
       _WebSidebarItem(
         label: 'Reports',

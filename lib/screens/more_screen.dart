@@ -47,6 +47,12 @@ class MoreScreen extends StatelessWidget {
                       onTap: () => Navigator.of(context).pushReplacementNamed('/savings'),
                     ),
                     _MoreTile(
+                      icon: Icons.query_stats,
+                      label: 'Investments',
+                      subtitle: 'Track portfolio and due dates',
+                      onTap: () => Navigator.of(context).pushReplacementNamed('/investments'),
+                    ),
+                    _MoreTile(
                       icon: AppIcons.smartToy,
                       label: 'AI Features',
                       subtitle: 'Smart insights and suggestions',

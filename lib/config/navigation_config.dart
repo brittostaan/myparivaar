@@ -54,6 +54,7 @@ class NavigationConfig {
     '/home': _mainNavigation,
     '/expenses': _mainNavigation,
     '/budget': _mainNavigation,
+    '/investments': _mainNavigation,
     '/ai': _mainNavigation,
     '/user-settings': _mainNavigation,
     '/more': _mainNavigation,

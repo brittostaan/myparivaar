@@ -312,6 +312,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             .pushNamed('/budget');
                                       },
                                     ),
+                                    QuickAction(
+                                      label: 'Investments',
+                                      icon: Icons.query_stats,
+                                      onTap: () {
+                                        Navigator.of(context)
+                                            .pushNamed('/investments');
+                                      },
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 32),
@@ -386,9 +394,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _DashNavItem(
           label: 'Investments',
           icon: Icons.query_stats,
-          route: '',
+          route: '/investments',
           active: false,
-          connected: false),
+          connected: true),
       _DashNavItem(
           label: 'Reports',
           icon: Icons.description_outlined,

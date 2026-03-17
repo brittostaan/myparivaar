@@ -1112,25 +1112,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
             ),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.grey800 : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'View All',
-                      style:
-                          TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(width: 6),
-                    Icon(Icons.close_rounded, size: 12, color: Colors.red),
-                  ],
+            InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => Navigator.of(context).pushReplacementNamed('/bills'),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.grey800 : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View All Bills',
+                        style:
+                            TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(width: 6),
+                      Icon(Icons.arrow_forward_rounded, size: 13),
+                    ],
+                  ),
                 ),
               ),
             ),

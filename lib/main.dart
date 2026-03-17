@@ -9,6 +9,7 @@ import 'screens/family_management_screen.dart';
 import 'screens/expense_management_screen.dart';
 import 'screens/budget_screen.dart';
 import 'screens/investments_screen.dart';
+import 'screens/upcoming_bills_screen.dart';
 import 'screens/ai_features_screen.dart';
 import 'screens/email_settings_screen.dart';
 import 'screens/user_settings_screen.dart';
@@ -284,6 +285,15 @@ class MyParivaaarApp extends StatelessWidget {
           builder: (_) => NavigationShell(
             currentRoute: routeName,
             child: const InvestmentsScreen(),
+          ),
+        );
+
+      case '/bills':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const UpcomingBillsScreen(),
           ),
         );
 

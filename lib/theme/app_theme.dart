@@ -5,6 +5,17 @@ import 'app_text_styles.dart';
 /// Centralized theme configuration for MyParivaar app.
 /// Provides light and dark ThemeData with consistent colors, typography, and styling.
 class AppTheme {
+  static const PageTransitionsTheme _pageTransitionsTheme = PageTransitionsTheme(
+    builders: {
+      TargetPlatform.android: _SmoothPageTransitionsBuilder(),
+      TargetPlatform.iOS: _SmoothPageTransitionsBuilder(),
+      TargetPlatform.macOS: _SmoothPageTransitionsBuilder(),
+      TargetPlatform.windows: _SmoothPageTransitionsBuilder(),
+      TargetPlatform.linux: _SmoothPageTransitionsBuilder(),
+      TargetPlatform.fuchsia: _SmoothPageTransitionsBuilder(),
+    },
+  );
+
   /// Light theme configuration
   static ThemeData lightTheme() {
     final colorScheme = ColorScheme.fromSeed(
@@ -22,6 +33,7 @@ class AppTheme {
       scaffoldBackgroundColor: Colors.white,
       textTheme: AppTextStyles.getTextTheme(colorScheme),
       fontFamily: AppTextStyles.fontFamily,
+      pageTransitionsTheme: _pageTransitionsTheme,
       
       // ── App Bar Theme ───────────────────────────────────────────────────────
       appBarTheme: AppBarTheme(
@@ -92,6 +104,7 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.backgroundDark,
       textTheme: AppTextStyles.getTextTheme(colorScheme),
       fontFamily: AppTextStyles.fontFamily,
+      pageTransitionsTheme: _pageTransitionsTheme,
       
       // ── App Bar Theme ───────────────────────────────────────────────────────
       appBarTheme: AppBarTheme(
@@ -141,6 +154,44 @@ class AppTheme {
           borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+    );
+  }
+}
+
+class _SmoothPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _SmoothPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final fade = CurvedAnimation(
+      parent: animation,
+      curve: Curves.linearToEaseOut,
+      reverseCurve: Curves.easeIn,
+    );
+
+    final slide = Tween<Offset>(
+      begin: const Offset(0.008, 0),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOut,
+        reverseCurve: Curves.easeIn,
+      ),
+    );
+
+    return FadeTransition(
+      opacity: fade,
+      child: SlideTransition(
+        position: slide,
+        child: child,
       ),
     );
   }

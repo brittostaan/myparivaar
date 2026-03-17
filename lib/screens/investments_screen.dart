@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
-import '../models/investment_record.dart';
-import '../services/investment_service.dart';
 import '../theme/app_colors.dart';
 
 class InvestmentsScreen extends StatefulWidget {
@@ -13,8 +11,60 @@ class InvestmentsScreen extends StatefulWidget {
 }
 
 class _InvestmentsScreenState extends State<InvestmentsScreen> {
-  final InvestmentService _investmentService = InvestmentService();
-  late List<InvestmentRecord> _investments;
+  final List<_InvestmentRecord> _investments = [
+    _InvestmentRecord(
+      id: 'inv-01',
+      name: 'HDFC Life Shield',
+      type: 'Insurance',
+      provider: 'HDFC Life',
+      amountInvested: 120000,
+      currentValue: 126500,
+      dueDate: DateTime.now().add(const Duration(days: 8)),
+      maturityDate: DateTime.now().add(const Duration(days: 365 * 14)),
+      frequency: 'Yearly',
+      riskLevel: 'Low',
+      notes: 'Annual premium plan for life cover',
+    ),
+    _InvestmentRecord(
+      id: 'inv-02',
+      name: 'SBI Bluechip SIP',
+      type: 'Mutual Fund',
+      provider: 'SBI Mutual Fund',
+      amountInvested: 285000,
+      currentValue: 332000,
+      dueDate: DateTime.now().add(const Duration(days: 4)),
+      maturityDate: null,
+      frequency: 'Monthly',
+      riskLevel: 'Medium',
+      notes: 'SIP on 5th of every month',
+    ),
+    _InvestmentRecord(
+      id: 'inv-03',
+      name: 'PPF Account',
+      type: 'Retirement',
+      provider: 'State Bank of India',
+      amountInvested: 450000,
+      currentValue: 498000,
+      dueDate: DateTime.now().add(const Duration(days: 26)),
+      maturityDate: DateTime.now().add(const Duration(days: 365 * 8)),
+      frequency: 'Yearly',
+      riskLevel: 'Low',
+      notes: 'Tax saving investment',
+    ),
+    _InvestmentRecord(
+      id: 'inv-04',
+      name: 'NIFTY 50 ETF Basket',
+      type: 'Equity',
+      provider: 'Zerodha',
+      amountInvested: 170000,
+      currentValue: 162800,
+      dueDate: null,
+      maturityDate: null,
+      frequency: 'One-time',
+      riskLevel: 'High',
+      notes: 'Long-term growth portfolio',
+    ),
+  ];
 
   final List<String> _types = const [
     'Insurance',
@@ -40,12 +90,6 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
     'Medium',
     'High',
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    _investments = List<InvestmentRecord>.of(_investmentService.getInvestments());
-  }
 
   double get _totalInvested =>
       _investments.fold(0.0, (sum, inv) => sum + inv.amountInvested);
@@ -108,7 +152,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
-  String _dueLabel(InvestmentRecord inv) {
+  String _dueLabel(_InvestmentRecord inv) {
     if (inv.dueDate == null) return 'No due date';
     final today = _atMidnight(DateTime.now());
     final due = _atMidnight(inv.dueDate!);
@@ -119,7 +163,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
     return 'Due in ${diff}d';
   }
 
-  Color _dueColor(InvestmentRecord inv) {
+  Color _dueColor(_InvestmentRecord inv) {
     if (inv.dueDate == null) return const Color(0xFF64748B);
     final today = _atMidnight(DateTime.now());
     final due = _atMidnight(inv.dueDate!);
@@ -181,7 +225,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
       }
     }
 
-    final created = await showDialog<InvestmentRecord>(
+    final created = await showDialog<_InvestmentRecord>(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
@@ -317,7 +361,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                     if (!formKey.currentState!.validate()) return;
                     final nowMs = DateTime.now().millisecondsSinceEpoch;
                     Navigator.of(ctx).pop(
-                      InvestmentRecord(
+                      _InvestmentRecord(
                         id: 'inv-$nowMs',
                         name: nameCtrl.text.trim(),
                         type: type,
@@ -342,12 +386,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
     );
 
     if (created != null) {
-      setState(() {
-        _investmentService.addInvestment(created);
-        _investments = List<InvestmentRecord>.of(
-          _investmentService.getInvestments(),
-        );
-      });
+      setState(() => _investments.insert(0, created));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Investment added successfully')),
@@ -671,7 +710,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
     );
   }
 
-  Widget _dueTrackerCard(List<InvestmentRecord> sorted) {
+  Widget _dueTrackerCard(List<_InvestmentRecord> sorted) {
     final dueItems = sorted.where((e) => e.dueDate != null).toList();
 
     return Container(
@@ -816,4 +855,32 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
       ),
     );
   }
+}
+
+class _InvestmentRecord {
+  final String id;
+  final String name;
+  final String type;
+  final String provider;
+  final double amountInvested;
+  final double currentValue;
+  final DateTime? dueDate;
+  final DateTime? maturityDate;
+  final String frequency;
+  final String riskLevel;
+  final String notes;
+
+  const _InvestmentRecord({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.provider,
+    required this.amountInvested,
+    required this.currentValue,
+    required this.dueDate,
+    required this.maturityDate,
+    required this.frequency,
+    required this.riskLevel,
+    required this.notes,
+  });
 }

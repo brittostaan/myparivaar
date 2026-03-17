@@ -4,13 +4,9 @@ import 'package:provider/provider.dart';
 import '../main.dart' show ViewModeProvider, ViewMode;
 import '../models/budget.dart';
 import '../models/expense.dart';
-import '../models/investment_record.dart';
 import '../services/auth_service.dart';
 import '../services/budget_service.dart';
 import '../services/expense_service.dart';
-import '../services/investment_service.dart';
-import '../models/bill.dart';
-import '../services/bill_service.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/quick_actions_grid.dart';
 import '../widgets/recent_activity_list.dart';
@@ -28,7 +24,6 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final ExpenseService _expenseService = ExpenseService();
   final BudgetService _budgetService = BudgetService();
-  final InvestmentService _investmentService = InvestmentService();
 
   List<Expense> _recentExpenses = [];
   List<Budget> _budgets = [];
@@ -204,29 +199,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   double get _forecastExpenses {
     if (_monthlySpend > 0) return _monthlySpend * 1.05;
     return 0;
-  }
-
-  List<InvestmentRecord> get _upcomingDueInvestments {
-    final now = _atMidnight(DateTime.now());
-    final horizon = now.add(const Duration(days: 14));
-    final dueItems = _investmentService.getInvestments().where((inv) {
-      if (inv.dueDate == null) return false;
-      final due = _atMidnight(inv.dueDate!);
-      return !due.isBefore(now) && !due.isAfter(horizon);
-    }).toList()
-      ..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
-    return dueItems;
-  }
-
-  DateTime _atMidnight(DateTime date) =>
-      DateTime(date.year, date.month, date.day);
-
-  String _investmentDueLabel(DateTime dueDate) {
-    final days =
-        _atMidnight(dueDate).difference(_atMidnight(DateTime.now())).inDays;
-    if (days <= 0) return 'Due today';
-    if (days == 1) return 'Due tomorrow';
-    return 'Due in ${days}d';
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -873,7 +845,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildForecastSection(bool isDark) {
-    final upcomingDue = _upcomingDueInvestments;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -944,19 +915,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 borderColor: const Color(0xFFA7F3D0),
                 accent: const Color(0xFF059669),
                 title: 'Forecasted Investments',
-                value: upcomingDue.isEmpty ? '—' : '${upcomingDue.length} due',
-                message: upcomingDue.isEmpty
-                    ? 'No investment due items in the next 14 days.'
-                    : 'Connected to upcoming due dates from your Investments page.',
+                value: '—',
+                message:
+                    'Investment account sync is not connected yet for personalized forecasts.',
                 icon: Icons.account_balance,
-                showComingSoon: upcomingDue.isEmpty,
-                details: upcomingDue
-                    .take(3)
-                    .map(
-                      (inv) =>
-                          '${inv.name} - ${_investmentDueLabel(inv.dueDate!)}',
-                    )
-                    .toList(),
+                showComingSoon: true,
+                details: const [
+                  'Insurance and policy balances',
+                  'Long-term instruments',
+                ],
               ),
             ),
           ],
@@ -1278,139 +1245,77 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildUpcomingBillsCard(bool isDark) {
-    final billService = BillService();
-    final upcoming = billService.getUpcoming(withinDays: 14);
-    final overdue = billService.getOverdue();
-    final preview = [...overdue, ...upcoming].take(3).toList();
-
-    String _fmtAmt(double v) {
-      final abs = v.abs().toStringAsFixed(0);
-      final chars = abs.split('');
-      final out = <String>[];
-      for (int i = 0; i < chars.length; i++) {
-        final ie = chars.length - i;
-        out.add(chars[i]);
-        if (ie > 1 && ie % 3 == 1) out.add(',');
-      }
-      return 'Rs ${out.join()}';
-    }
-
-    String _dueLabel(Bill b) {
-      final days = b.daysUntilDue;
-      if (days < 0) return 'Overdue';
-      if (days == 0) return 'Today';
-      if (days == 1) return 'Tomorrow';
-      return 'In ${days}d';
-    }
-
-    Color _dueLabelColor(Bill b) {
-      final days = b.daysUntilDue;
-      if (days < 0) return const Color(0xFFDC2626);
-      if (days <= 3) return const Color(0xFFD97706);
-      return const Color(0xFF2563EB);
-    }
-
-    return _buildHomeCard(
-      isDark: isDark,
-      child: SizedBox(
-        height: 280,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Upcoming Bills',
-                    style: TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
+  Widget _buildHomeCard({
+    required bool isDark,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0),
+        ),
+        boxShadow: isDark
+            ? null
+            : const [
+                BoxShadow(
+                  color: Color(0x0A0F172A),
+                  blurRadius: 16,
+                  offset: Offset(0, 6),
                 ),
-                if (overdue.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEE2E2),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      '${overdue.length} overdue',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFFDC2626),
-                      ),
-                    ),
-                  ),
               ],
-            ),
-            const SizedBox(height: 14),
-            Expanded(
-              child: preview.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No bills due in the next 14 days',
-                        style: TextStyle(
-                            fontSize: 13, color: Colors.grey[400]),
-                      ),
-                    )
-                  : Column(
-                      children: List.generate(preview.length, (i) {
-                        final b = preview[i];
-                        return _buildUpcomingBillRow(
-                          icon: Bill.categoryIcon(b.category),
-                          iconBg: Bill.categoryBgColor(b.category),
-                          iconColor: Bill.categoryIconColor(b.category),
-                          title: b.name,
-                          subtitle: b.provider.isNotEmpty
-                              ? b.provider
-                              : Bill.categoryLabel(b.category),
-                          amount: _fmtAmt(b.amount),
-                          badge: _dueLabel(b),
-                          badgeColor: _dueLabelColor(b),
-                          isLast: i == preview.length - 1,
-                        );
-                      }),
-                    ),
-            ),
-            GestureDetector(
-              onTap: () =>
-                  Navigator.of(context).pushReplacementNamed('/bills'),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.grey800
-                      : const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'View All Bills',
-                        style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(width: 6),
-                      Icon(Icons.arrow_forward_ios_rounded,
-                          size: 10,
-                          color: Color(0xFF2563EB)),
-                    ],
-                  ),
-                ),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildHealthMetricRow(
+    String label,
+    String value,
+    String status,
+    Color badgeBg,
+    Color badgeFg,
+  ) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+        Row(
+          children: [
+            Text(value,
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(
+                color: badgeBg,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                status.toUpperCase(),
+                style: TextStyle(
+                    fontSize: 9, fontWeight: FontWeight.bold, color: badgeFg),
               ),
             ),
           ],
         ),
-      ),
+      ],
     );
   }
+
+  Widget _buildForecastCard({
+    required List<Color> colors,
+    required Color borderColor,
+    required Color accent,
+    required String title,
+    required String value,
+    required String message,
+    required IconData icon,
+    required bool showComingSoon,
+    List<String> details = const [],
   }) {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -1488,11 +1393,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required String subtitle,
     required String amount,
     bool isLast = false,
-    String? badge,
-    Color? badgeColor,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: BoxDecoration(
         border: isLast
             ? null
@@ -1523,34 +1426,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(amount,
-                  style: const TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.bold)),
-              if (badge != null) ...[
-                const SizedBox(height: 2),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: (badgeColor ?? const Color(0xFF2563EB))
-                        .withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    badge,
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: badgeColor ?? const Color(0xFF2563EB),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
+          Text(amount,
+              style:
+                  const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+          const SizedBox(width: 6),
+          const Icon(Icons.close_rounded, size: 12, color: Colors.red),
         ],
       ),
     );

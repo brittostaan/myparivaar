@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/savings_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../widgets/app_header.dart';
 
 // ── Error classification ──────────────────────────────────────────────────────
 
@@ -303,51 +304,16 @@ class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
     final totalTarget = _goals.fold<double>(0, (s, g) => s + g.targetAmount);
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _addOrEditGoal(),
+        child: const Icon(AppIcons.add),
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Savings Goals',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Track your financial targets and progress',
-                          style: TextStyle(
-                              fontSize: 13, color: Colors.grey[600]),
-                        ),
-                      ],
-                    ),
-                  ),
-                  FilledButton.icon(
-                    onPressed: () => _addOrEditGoal(),
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Add Goal'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            const AppHeader(
+              title: 'Savings Goals',
+              avatarIcon: Icons.savings_outlined,
             ),
             if (!_isLoading && _errorInfo == null && _goals.isNotEmpty)
               Padding(
@@ -436,7 +402,7 @@ class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             SizedBox(height: 8),
-            Text('Tap \'Add Goal\' to create your first savings goal'),
+            Text('Tap + to create your first goal'),
           ],
         ),
       );

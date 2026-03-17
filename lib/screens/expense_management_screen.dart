@@ -427,6 +427,20 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: primary,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconButton(
+                    tooltip: 'Add expense',
+                    onPressed: _addExpense,
+                    icon: const Icon(Icons.add, color: Colors.white, size: 20),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -445,22 +459,6 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 16),
-                FilledButton.icon(
-                  onPressed: _addExpense,
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Add Expense'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(

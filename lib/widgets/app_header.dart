@@ -1,8 +1,7 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../main.dart' show ViewModeProvider, ViewMode;
 import '../theme/app_icons.dart';
 import '../theme/app_colors.dart';
+import 'global_header_actions.dart';
 
 /// A centralized app header that appears at the top of all screens.
 /// 
@@ -114,8 +113,11 @@ class AppHeader extends StatelessWidget {
             ),
           ),
           
-          // View Mode Selector
-          if (showViewModeSelector) const _ViewModeSelector(),
+          // Global actions (View Mode + Logout)
+          if (showViewModeSelector)
+            const GlobalHeaderActions(
+              showLogout: true,
+            ),
           
           // Settings Button
           IconButton(
@@ -143,58 +145,6 @@ class AppHeader extends StatelessWidget {
             ),
         ],
       ),
-    );
-  }
-}
-
-/// View mode selector widget for switching between mobile, tablet, and browser views
-class _ViewModeSelector extends StatelessWidget {
-  const _ViewModeSelector();
-
-  @override
-  Widget build(BuildContext context) {
-    final viewModeProvider = context.watch<ViewModeProvider>();
-    final currentMode = viewModeProvider.mode;
-
-    return PopupMenuButton<ViewMode>(
-      tooltip: 'View Mode',
-      icon: Icon(currentMode.icon),
-      onSelected: (mode) => viewModeProvider.setMode(mode),
-      itemBuilder: (context) => ViewMode.values.map((mode) {
-        return PopupMenuItem<ViewMode>(
-          value: mode,
-          child: Row(
-            children: [
-              Icon(
-                mode.icon,
-                color: mode == currentMode 
-                    ? Theme.of(context).primaryColor 
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                mode.label,
-                style: TextStyle(
-                  fontWeight: mode == currentMode 
-                      ? FontWeight.bold 
-                      : FontWeight.normal,
-                  color: mode == currentMode 
-                      ? Theme.of(context).primaryColor 
-                      : null,
-                ),
-              ),
-              if (mode == currentMode) ...[
-                const Spacer(),
-                Icon(
-                  AppIcons.check,
-                  color: Theme.of(context).primaryColor,
-                  size: 20,
-                ),
-              ],
-            ],
-          ),
-        );
-      }).toList(),
     );
   }
 }

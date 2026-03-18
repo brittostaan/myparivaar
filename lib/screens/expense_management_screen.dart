@@ -475,22 +475,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: primary,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: IconButton(
-                    tooltip: 'Add expense',
-                    onPressed: _addExpense,
-                    icon: const Icon(Icons.add, color: Colors.white, size: 20),
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -506,32 +492,32 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                         style: const TextStyle(
                             fontSize: 14, color: Color(0xFF64748B)),
                       ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _webTabChip(
+                            label: 'Current Month',
+                            icon: Icons.calendar_month,
+                            active: true,
+                          ),
+                          _webTabChip(
+                            label: 'Historical Performance',
+                            icon: Icons.history,
+                            active: false,
+                            comingSoon: true,
+                          ),
+                          _webTabChip(
+                            label: 'Spending Analytics',
+                            icon: Icons.insights,
+                            active: false,
+                            comingSoon: true,
+                          ),
+                        ],
+                      ),
                     ],
                   ),
-                ),
-                Row(
-                  children: [
-                    _webTabChip(
-                      label: 'Current Month',
-                      icon: Icons.calendar_month,
-                      active: true,
-                    ),
-                    const SizedBox(width: 8),
-                    _webTabChip(
-                      label: 'Historical Performance',
-                      icon: Icons.history,
-                      active: false,
-                      comingSoon: true,
-                    ),
-                    const SizedBox(width: 8),
-                    _webTabChip(
-                      label: 'Spending Analytics',
-                      icon: Icons.insights,
-                      active: false,
-                      comingSoon: true,
-                    ),
-                    const Spacer(),
-                  ],
                 ),
               ],
             ),

@@ -444,16 +444,6 @@ class _NavigationShellState extends State<NavigationShell> {
                     ),
                   ),
                 ],
-                if (isDesktop)
-                  IconButton(
-                    tooltip: showLabels ? 'Collapse navigation' : 'Expand navigation',
-                    onPressed: _toggleSidebarExpansion,
-                    icon: Icon(
-                      showLabels
-                          ? Icons.chevron_left_rounded
-                          : Icons.chevron_right_rounded,
-                    ),
-                  ),
               ],
             ),
           ),
@@ -611,7 +601,7 @@ class _NavigationShellState extends State<NavigationShell> {
               color: const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(12),
               child: IconButton(
-                tooltip: 'Show navigation',
+                tooltip: 'Expand navigation',
                 onPressed: _toggleSidebarExpansion,
                 icon: const Icon(Icons.menu_rounded),
               ),

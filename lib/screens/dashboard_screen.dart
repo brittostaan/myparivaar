@@ -4,9 +4,11 @@ import 'package:provider/provider.dart';
 import '../main.dart' show ViewModeProvider, ViewMode;
 import '../models/budget.dart';
 import '../models/expense.dart';
+import '../models/investment.dart';
 import '../services/auth_service.dart';
 import '../services/budget_service.dart';
 import '../services/expense_service.dart';
+import '../services/investment_service.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/quick_actions_grid.dart';
 import '../widgets/recent_activity_list.dart';
@@ -24,10 +26,12 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final ExpenseService _expenseService = ExpenseService();
   final BudgetService _budgetService = BudgetService();
+  final InvestmentService _investmentService = InvestmentService();
 
   List<Expense> _allExpenses = [];
   List<Expense> _recentExpenses = [];
   List<Budget> _budgets = [];
+  List<Investment> _investments = [];
   double _totalBalance = 0.0;
   double _percentageChange = 0.0;
   bool _isLoading = true;
@@ -79,6 +83,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         debugPrint('Budget endpoint not available for dashboard: $budgetError');
       }
 
+      List<Investment> investments = [];
+      try {
+        investments = await _investmentService.getInvestments(
+          supabaseUrl: supabaseUrl,
+          idToken: idToken,
+        );
+      } catch (investmentError) {
+        debugPrint('Investment endpoint not available for dashboard: $investmentError');
+      }
+
       try {
         final stats = await _expenseService.getExpenseStats(
           supabaseUrl: supabaseUrl,
@@ -106,6 +120,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _allExpenses = sortedExpenses;
         _recentExpenses = recentExpenses;
         _budgets = budgets;
+        _investments = investments;
         _totalBalance = totalBalance;
         _percentageChange = percentageChange;
         _isLoading = false;
@@ -197,6 +212,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int get _budgetRiskCount {
     return _budgets.where((budget) => budget.usagePercent >= 90).length;
   }
+
+  double get _totalInvestedValue =>
+      _investments.fold(0.0, (sum, inv) => sum + inv.currentValue);
 
   bool get _hasCoreExpenseData {
     return _allExpenses.any((e) {
@@ -983,15 +1001,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 borderColor: const Color(0xFFA7F3D0),
                 accent: const Color(0xFF059669),
                 title: 'Forecasted Investments',
-                value: '—',
-                message:
-                    'Investment account sync is not connected yet for personalized forecasts.',
+                value: _totalInvestedValue > 0
+                    ? _formatCurrency(_totalInvestedValue)
+                    : '—',
+                message: _totalInvestedValue > 0
+                    ? 'Total portfolio value based on your current investments.'
+                    : 'Investment account sync is not connected yet for personalized forecasts.',
                 icon: Icons.account_balance,
-                showComingSoon: true,
-                details: const [
-                  'Insurance and policy balances',
-                  'Long-term instruments',
-                ],
+                showComingSoon: _totalInvestedValue <= 0,
+                details: _totalInvestedValue > 0
+                    ? const [
+                        'Insurance and policy balances',
+                        'Long-term instruments',
+                      ]
+                    : const [],
               ),
             ),
           ],

@@ -151,12 +151,20 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const AppHeader(
-              title: 'Settings',
-              avatarIcon: AppIcons.settings,
-              showViewModeSelector: false,
-              showSettingsButton: false,
-              showNotifications: false,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              child: Row(
+                children: const [
+                  Text(
+                    'Settings',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
             ),
             Expanded(
               child: ListView(

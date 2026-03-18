@@ -616,12 +616,9 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                   )
                 : SingleChildScrollView(
                     padding: const EdgeInsets.all(30),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1180),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                             Row(
                               children: [
                                 Expanded(
@@ -730,9 +727,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                               const SizedBox(height: 14),
                               _dueTrackerCard(dueSorted),
                             ],
-                          ],
-                        ),
-                      ),
+                      ],
                     ),
                   ),
       ),

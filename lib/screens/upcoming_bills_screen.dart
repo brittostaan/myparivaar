@@ -273,6 +273,7 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Column(
@@ -291,6 +292,30 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
                           'Track due dates, avoid misses, and stay cashflow-ready.',
                           style: TextStyle(color: Colors.grey[600]),
                         ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: const [
+                            _BillsTopTabChip(
+                              label: 'Current Month',
+                              icon: Icons.calendar_month,
+                              active: true,
+                            ),
+                            _BillsTopTabChip(
+                              label: 'Historical Performance',
+                              icon: Icons.history,
+                              active: false,
+                              comingSoon: true,
+                            ),
+                            _BillsTopTabChip(
+                              label: 'Spending Analytics',
+                              icon: Icons.insights,
+                              active: false,
+                              comingSoon: true,
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -298,6 +323,17 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
                     onPressed: () => _showBillDialog(),
                     icon: const Icon(Icons.add_rounded),
                     label: const Text('Add Bill'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -310,32 +346,6 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
                   _StatCard(label: 'Overdue', value: _formatCurrency(overdueTotal)),
                   _StatCard(label: 'Upcoming', value: upcoming.length.toString()),
                   _StatCard(label: 'Paid', value: paid.length.toString()),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                children: [
-                  ChoiceChip(
-                    label: const Text('All'),
-                    selected: _activeFilter == _BillFilter.all,
-                    onSelected: (_) => setState(() => _activeFilter = _BillFilter.all),
-                  ),
-                  ChoiceChip(
-                    label: const Text('Upcoming'),
-                    selected: _activeFilter == _BillFilter.upcoming,
-                    onSelected: (_) => setState(() => _activeFilter = _BillFilter.upcoming),
-                  ),
-                  ChoiceChip(
-                    label: const Text('Overdue'),
-                    selected: _activeFilter == _BillFilter.overdue,
-                    onSelected: (_) => setState(() => _activeFilter = _BillFilter.overdue),
-                  ),
-                  ChoiceChip(
-                    label: const Text('Paid'),
-                    selected: _activeFilter == _BillFilter.paid,
-                    onSelected: (_) => setState(() => _activeFilter = _BillFilter.paid),
-                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -529,6 +539,53 @@ class _StatCard extends StatelessWidget {
             value,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BillsTopTabChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool active;
+  final bool comingSoon;
+
+  const _BillsTopTabChip({
+    required this.label,
+    required this.icon,
+    required this.active,
+    this.comingSoon = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        color: active ? Colors.white : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: active ? const Color(0xFF0D7FF2) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: active ? const Color(0xFF0D7FF2) : null),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: active ? const Color(0xFF0D7FF2) : null,
+            ),
+          ),
+          if (comingSoon) ...[
+            const SizedBox(width: 6),
+            const Icon(Icons.close_rounded, size: 11, color: Colors.red),
+          ],
         ],
       ),
     );

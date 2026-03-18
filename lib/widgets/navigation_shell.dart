@@ -450,8 +450,8 @@ class _NavigationShellState extends State<NavigationShell> {
                     onPressed: _toggleSidebarExpansion,
                     icon: Icon(
                       showLabels
-                          ? Icons.keyboard_double_arrow_left_rounded
-                          : Icons.keyboard_double_arrow_right_rounded,
+                          ? Icons.chevron_left_rounded
+                          : Icons.chevron_right_rounded,
                     ),
                   ),
               ],

@@ -312,19 +312,55 @@ class _BudgetScreenState extends State<BudgetScreen> {
     }
 
     return Scaffold(
-      floatingActionButton: _backendAvailable
-          ? FloatingActionButton(
-              onPressed: () => _addOrEditBudget(),
-              child: const Icon(AppIcons.add),
-            )
-          : null,
       body: SafeArea(
         child: Column(
           children: [
-            const AppHeader(
-              title: 'Budget',
-              avatarIcon: AppIcons.pieChart,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Budget',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Plan your monthly spending',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_backendAvailable)
+                    FilledButton.icon(
+                      onPressed: () => _addOrEditBudget(),
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Add'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
+            const SizedBox(height: 12),
             _buildMonthSelector(),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

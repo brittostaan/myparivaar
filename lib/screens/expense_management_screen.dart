@@ -30,7 +30,6 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   String? _error;
   String? _errorDiagnostics;
   String _searchQuery = '';
-  int _selectedPeriod = 2; // 0=Daily, 1=Weekly, 2=Monthly
   final BudgetService _budgetService = BudgetService();
   List<Budget> _budgets = [];
 
@@ -183,17 +182,54 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
   Widget _buildMobileLayout(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addExpense,
-        child: const Icon(AppIcons.add),
-      ),
       body: SafeArea(
         child: Column(
           children: [
-            const AppHeader(
-              title: 'Expenses',
-              avatarIcon: AppIcons.wallet,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Expenses',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Track and manage your spending',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  FilledButton.icon(
+                    onPressed: _addExpense,
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Add'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(height: 12),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _loadExpenses,
@@ -473,48 +509,29 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: ['Daily', 'Weekly', 'Monthly']
-                        .asMap()
-                        .entries
-                        .map((e) => GestureDetector(
-                              onTap: () =>
-                                  setState(() => _selectedPeriod = e.key),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _selectedPeriod == e.key
-                                      ? (isDark
-                                          ? AppColors.grey700
-                                          : Colors.white)
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  e.value,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: _selectedPeriod == e.key
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
-                                    color: _selectedPeriod == e.key
-                                        ? primary
-                                        : Colors.grey[500],
-                                  ),
-                                ),
-                              ),
-                            ))
-                        .toList(),
-                  ),
+                Row(
+                  children: [
+                    _webTabChip(
+                      label: 'Current Month',
+                      icon: Icons.calendar_month,
+                      active: true,
+                    ),
+                    const SizedBox(width: 8),
+                    _webTabChip(
+                      label: 'Historical Performance',
+                      icon: Icons.history,
+                      active: false,
+                      comingSoon: true,
+                    ),
+                    const SizedBox(width: 8),
+                    _webTabChip(
+                      label: 'Spending Analytics',
+                      icon: Icons.insights,
+                      active: false,
+                      comingSoon: true,
+                    ),
+                    const Spacer(),
+                  ],
                 ),
               ],
             ),
@@ -1190,16 +1207,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   List<Expense> get _filteredExpenses {
     final now = DateTime.now();
     return _expenses.where((e) {
-      final bool inPeriod;
-      if (_selectedPeriod == 0) {
-        inPeriod = e.date.year == now.year &&
-            e.date.month == now.month &&
-            e.date.day == now.day;
-      } else if (_selectedPeriod == 1) {
-        inPeriod = now.difference(e.date).inDays < 7;
-      } else {
-        inPeriod = e.date.year == now.year && e.date.month == now.month;
-      }
+      // Show only current month expenses
+      final inPeriod = e.date.year == now.year && e.date.month == now.month;
       if (!inPeriod) return false;
       if (_searchQuery.isNotEmpty) {
         final q = _searchQuery.toLowerCase();
@@ -1265,6 +1274,42 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       'Dec'
     ];
     return abbrs[(month - 1).clamp(0, 11)];
+  }
+
+  Widget _webTabChip({
+    required String label,
+    required IconData icon,
+    required bool active,
+    bool comingSoon = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        color: active ? Colors.white : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: active ? const Color(0xFF0D7FF2) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 15, color: active ? const Color(0xFF0D7FF2) : null),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: active ? const Color(0xFF0D7FF2) : null,
+            ),
+          ),
+          if (comingSoon) ...[
+            const SizedBox(width: 6),
+            const Icon(Icons.close_rounded, size: 11, color: Colors.red),
+          ],
+        ],
+      ),
+    );
   }
 }
 

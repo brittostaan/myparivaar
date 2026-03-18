@@ -306,6 +306,12 @@ class _NavigationShellState extends State<NavigationShell> {
         connected: true,
       ),
       _WebSidebarItem(
+        label: 'Family Planner',
+        icon: Icons.event_note_outlined,
+        route: '/family-planner',
+        connected: true,
+      ),
+      _WebSidebarItem(
         label: 'Settings',
         icon: Icons.settings_outlined,
         route: '/user-settings',

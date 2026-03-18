@@ -304,6 +304,12 @@ class _NavigationShellState extends State<NavigationShell> {
         route: '/reports',
         connected: true,
       ),
+      _WebSidebarItem(
+        label: 'Settings',
+        icon: Icons.settings_outlined,
+        route: '/user-settings',
+        connected: true,
+      ),
     ];
   }
 

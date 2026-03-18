@@ -836,16 +836,6 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                     height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'Insurance and policy balances',
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Long-term instruments',
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                ),
               ],
             ),
           ),

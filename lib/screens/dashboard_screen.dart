@@ -8,6 +8,10 @@ import '../models/investment.dart';
 import '../services/auth_service.dart';
 import '../services/budget_service.dart';
 import '../services/expense_service.dart';
+import '../models/bill.dart';
+import '../models/planner_item.dart';
+import '../services/bill_service.dart';
+import '../services/family_planner_service.dart';
 import '../services/investment_service.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/quick_actions_grid.dart';
@@ -27,11 +31,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final ExpenseService _expenseService = ExpenseService();
   final BudgetService _budgetService = BudgetService();
   final InvestmentService _investmentService = InvestmentService();
+  final BillService _billService = BillService();
+  final FamilyPlannerService _plannerService = FamilyPlannerService();
 
   List<Expense> _allExpenses = [];
   List<Expense> _recentExpenses = [];
   List<Budget> _budgets = [];
   List<Investment> _investments = [];
+  List<Bill> _upcomingBills = [];
+  List<PlannerItem> _upcomingEvents = [];
   double _totalBalance = 0.0;
   double _percentageChange = 0.0;
   bool _isLoading = true;
@@ -93,6 +101,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
         debugPrint('Investment endpoint not available for dashboard: $investmentError');
       }
 
+      List<Bill> bills = [];
+      try {
+        final allBills = await _billService.getBills(
+          supabaseUrl: supabaseUrl,
+          idToken: idToken,
+        );
+        bills = allBills.where((b) => b.isUpcoming).toList()
+          ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+      } catch (billError) {
+        debugPrint('Bill endpoint not available for dashboard: $billError');
+      }
+
+      List<PlannerItem> events = [];
+      try {
+        final allItems = await _plannerService.getItems(
+          supabaseUrl: supabaseUrl,
+          idToken: idToken,
+        );
+        events = allItems.where((e) => e.isUpcoming).toList()
+          ..sort((a, b) => a.daysUntil.compareTo(b.daysUntil));
+      } catch (plannerError) {
+        debugPrint('Family planner endpoint not available for dashboard: $plannerError');
+      }
+
       try {
         final stats = await _expenseService.getExpenseStats(
           supabaseUrl: supabaseUrl,
@@ -121,6 +153,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _recentExpenses = recentExpenses;
         _budgets = budgets;
         _investments = investments;
+        _upcomingBills = bills;
+        _upcomingEvents = events;
         _totalBalance = totalBalance;
         _percentageChange = percentageChange;
         _isLoading = false;
@@ -705,7 +739,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   'Financial Health',
                   style: TextStyle(fontSize: 14, color: Colors.grey[500]),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 8),
                 _buildHealthMetricRow(
                   'Savings Rate',
                   '${_savingsRate.toStringAsFixed(0)}%',
@@ -717,7 +751,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ? const Color(0xFF16A34A)
                       : const Color(0xFFEA580C),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 6),
                 _buildHealthMetricRow(
                   'Emergency Fund',
                   '${_emergencyFundMonths.toStringAsFixed(1)}m',
@@ -729,9 +763,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ? const Color(0xFF16A34A)
                       : const Color(0xFFEA580C),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 6),
                 Container(
-                  padding: const EdgeInsets.only(top: 12),
+                  padding: const EdgeInsets.only(top: 6),
                   decoration: BoxDecoration(
                     border: Border(
                       top: BorderSide(
@@ -744,9 +778,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Budget Risk',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Budget Risk',
+                            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                          ),
+                          Text(
+                            _budgets.isEmpty
+                                ? 'Budget sync pending'
+                                : '$_budgetRiskCount categories over',
+                            style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+                          ),
+                        ],
                       ),
                       Text(
                         _budgetRiskCount > 0 ? 'High' : 'Low',
@@ -761,14 +806,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _budgets.isEmpty
-                      ? 'Budget sync not available yet'
-                      : '$_budgetRiskCount categories likely to exceed',
-                  style: TextStyle(fontSize: 10, color: Colors.grey[400]),
-                ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Icon(
@@ -1009,12 +1047,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     : 'Investment account sync is not connected yet for personalized forecasts.',
                 icon: Icons.account_balance,
                 showComingSoon: _totalInvestedValue <= 0,
-                details: _totalInvestedValue > 0
-                    ? const [
-                        'Insurance and policy balances',
-                        'Long-term instruments',
-                      ]
-                    : const [],
               ),
             ),
           ],
@@ -1072,16 +1104,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        SizedBox(
-                          width: 140,
-                          height: 140,
-                          child: CircularProgressIndicator(
-                            value: dominantShare,
-                            strokeWidth: 12,
-                            backgroundColor: isDark
+                        CustomPaint(
+                          size: const Size(160, 160),
+                          painter: _DonutPainter(
+                            segments: top.asMap().entries.map((e) {
+                              final share = grandTotal > 0
+                                  ? e.value.value / grandTotal
+                                  : 0.0;
+                              return _DonutSegment(
+                                share: share,
+                                color: colors[e.key % colors.length],
+                              );
+                            }).toList(),
+                            trackColor: isDark
                                 ? AppColors.grey800
                                 : const Color(0xFFF1F5F9),
-                            valueColor: AlwaysStoppedAnimation<Color>(primary),
+                            strokeWidth: 18,
                           ),
                         ),
                         Column(
@@ -1173,35 +1211,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 14),
             Expanded(
-              child: Column(
-                children: [
-                  _buildUpcomingBillRow(
-                    icon: Icons.credit_card,
-                    iconBg: const Color(0xFFFEE2E2),
-                    iconColor: const Color(0xFFDC2626),
-                    title: 'Credit Card Sync',
-                    subtitle: 'Auto-detected statement due dates',
-                    amount: 'Coming soon',
-                  ),
-                  _buildUpcomingBillRow(
-                    icon: Icons.bolt,
-                    iconBg: const Color(0xFFDBEAFE),
-                    iconColor: const Color(0xFF2563EB),
-                    title: 'Utility Tracking',
-                    subtitle: 'Electricity and recurring bills',
-                    amount: 'Coming soon',
-                  ),
-                  _buildUpcomingBillRow(
-                    icon: Icons.wifi,
-                    iconBg: const Color(0xFFDCFCE7),
-                    iconColor: const Color(0xFF16A34A),
-                    title: 'Internet & Subscriptions',
-                    subtitle: 'Recurring household expenses',
-                    amount: 'Coming soon',
-                    isLast: true,
-                  ),
-                ],
-              ),
+              child: _upcomingBills.isEmpty
+                  ? Column(
+                      children: [
+                        _buildUpcomingBillRow(
+                          icon: Icons.credit_card,
+                          iconBg: const Color(0xFFFEE2E2),
+                          iconColor: const Color(0xFFDC2626),
+                          title: 'Credit Card Sync',
+                          subtitle: 'Auto-detected statement due dates',
+                          amount: 'Coming soon',
+                        ),
+                        _buildUpcomingBillRow(
+                          icon: Icons.bolt,
+                          iconBg: const Color(0xFFDBEAFE),
+                          iconColor: const Color(0xFF2563EB),
+                          title: 'Utility Tracking',
+                          subtitle: 'Electricity and recurring bills',
+                          amount: 'Coming soon',
+                        ),
+                        _buildUpcomingBillRow(
+                          icon: Icons.wifi,
+                          iconBg: const Color(0xFFDCFCE7),
+                          iconColor: const Color(0xFF16A34A),
+                          title: 'Internet & Subscriptions',
+                          subtitle: 'Recurring household expenses',
+                          amount: 'Coming soon',
+                          isLast: true,
+                        ),
+                      ],
+                    )
+                  : Column(
+                      children: List.generate(
+                        _upcomingBills.take(3).length,
+                        (i) {
+                          final bill = _upcomingBills[i];
+                          final colors = _billCategoryColors(bill.category);
+                          final days = bill.daysUntilDue;
+                          final subtitle = bill.provider != null
+                              ? '${bill.provider} • ${days == 0 ? 'due today' : 'due in ${days}d'}'
+                              : (days == 0 ? 'Due today' : 'Due in ${days}d');
+                          return _buildUpcomingBillRow(
+                            icon: Bill.iconForCategory(bill.category),
+                            iconBg: colors.$1,
+                            iconColor: colors.$2,
+                            title: bill.name,
+                            subtitle: subtitle,
+                            amount: _formatCurrency(bill.amount),
+                            isLast: i == _upcomingBills.take(3).length - 1,
+                            showComingSoon: false,
+                          );
+                        },
+                      ),
+                    ),
             ),
             InkWell(
               borderRadius: BorderRadius.circular(10),
@@ -1235,36 +1297,67 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  (Color, Color) _plannerTypeColors(PlannerItemType type) {
+    switch (type) {
+      case PlannerItemType.birthday:
+        return (const Color(0xFFFCE7F3), const Color(0xFFDB2777));
+      case PlannerItemType.anniversary:
+        return (const Color(0xFFF3E8FF), const Color(0xFF9333EA));
+      case PlannerItemType.vacation:
+        return (const Color(0xFFDBEAFE), const Color(0xFF2563EB));
+      case PlannerItemType.event:
+        return (const Color(0xFFFEE2E2), const Color(0xFFDC2626));
+      case PlannerItemType.reminder:
+        return (const Color(0xFFFFEDD5), const Color(0xFFEA580C));
+      case PlannerItemType.task:
+        return (const Color(0xFFDCFCE7), const Color(0xFF16A34A));
+    }
+  }
+
+  IconData _plannerTypeIcon(PlannerItemType type) {
+    switch (type) {
+      case PlannerItemType.birthday:
+        return Icons.cake_outlined;
+      case PlannerItemType.anniversary:
+        return Icons.favorite;
+      case PlannerItemType.vacation:
+        return Icons.flight_takeoff_outlined;
+      case PlannerItemType.event:
+        return Icons.event_outlined;
+      case PlannerItemType.reminder:
+        return Icons.notifications_outlined;
+      case PlannerItemType.task:
+        return Icons.task_alt_outlined;
+    }
+  }
+
+  String _plannerTypeLabel(PlannerItemType type) {
+    switch (type) {
+      case PlannerItemType.birthday:
+        return 'Birthday';
+      case PlannerItemType.anniversary:
+        return 'Anniversary';
+      case PlannerItemType.vacation:
+        return 'Vacation';
+      case PlannerItemType.event:
+        return 'Event';
+      case PlannerItemType.reminder:
+        return 'Reminder';
+      case PlannerItemType.task:
+        return 'Task';
+    }
+  }
+
   Widget _buildImportantDatesCard(bool isDark) {
-    final cards = [
-      (
-        Icons.cake_outlined,
-        const Color(0xFFFCE7F3),
-        const Color(0xFFDB2777),
-        'Family Birthdays',
-        'Reminders coming soon'
-      ),
-      (
-        Icons.favorite,
-        const Color(0xFFF3E8FF),
-        const Color(0xFF9333EA),
-        'Anniversaries',
-        'Reminders coming soon'
-      ),
-      (
-        Icons.volunteer_activism,
-        const Color(0xFFFEE2E2),
-        const Color(0xFFDC2626),
-        'Celebrations',
-        'Reminders coming soon'
-      ),
-      (
-        Icons.celebration,
-        const Color(0xFFFFEDD5),
-        const Color(0xFFEA580C),
-        'Festivals',
-        'Reminders coming soon'
-      ),
+    final hasData = _upcomingEvents.isNotEmpty;
+    final displayItems = _upcomingEvents.take(4).toList();
+
+    // Placeholder tiles shown when no data is loaded yet
+    final placeholders = [
+      (Icons.cake_outlined, const Color(0xFFFCE7F3), const Color(0xFFDB2777), 'Birthdays'),
+      (Icons.favorite, const Color(0xFFF3E8FF), const Color(0xFF9333EA), 'Anniversaries'),
+      (Icons.volunteer_activism, const Color(0xFFFEE2E2), const Color(0xFFDC2626), 'Celebrations'),
+      (Icons.celebration, const Color(0xFFFFEDD5), const Color(0xFFEA580C), 'Festivals'),
     ];
 
     return _buildHomeCard(
@@ -1272,72 +1365,159 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Important Dates',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              const Text(
+                'Upcoming Events',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => Navigator.of(context).pushNamed('/family-planner'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Row(
+                    children: [
+                      Text('View all', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                      const SizedBox(width: 4),
+                      Icon(Icons.arrow_forward_rounded, size: 13, color: Colors.grey[500]),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
           Wrap(
             spacing: 16,
             runSpacing: 16,
-            children: cards.map((card) {
-              return InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () => Navigator.of(context).pushNamed('/family-planner'),
-                child: Container(
-                  width: 230,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.grey800 : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
+            children: hasData
+                ? displayItems.map((item) {
+                    final colors = _plannerTypeColors(item.type);
+                    final days = item.daysUntil;
+                    final daysLabel = days == 0
+                        ? 'Today'
+                        : days == 1
+                            ? 'Tomorrow'
+                            : 'In ${days}d';
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => Navigator.of(context).pushNamed('/family-planner'),
+                      child: Container(
+                        width: 230,
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: card.$2,
-                          borderRadius: BorderRadius.circular(12),
+                          color: isDark ? AppColors.grey800 : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Icon(card.$1, color: card.$3, size: 20),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            Text(
-                              card.$4,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[500],
-                                fontWeight: FontWeight.bold,
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: colors.$1,
+                                borderRadius: BorderRadius.circular(12),
                               ),
+                              child: Icon(_plannerTypeIcon(item.type), color: colors.$2, size: 20),
                             ),
-                            const SizedBox(height: 3),
-                            Row(
-                              children: [
-                                Text(
-                                  card.$5,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _plannerTypeLabel(item.type),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey[500],
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 6),
-                                const Icon(Icons.close_rounded,
-                                    size: 12, color: Colors.red),
-                              ],
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    item.title,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    daysLabel,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: days == 0
+                                          ? AppColors.error
+                                          : days <= 7
+                                              ? const Color(0xFFEA580C)
+                                              : Colors.grey[500],
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
+                    );
+                  }).toList()
+                : placeholders.map((p) {
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => Navigator.of(context).pushNamed('/family-planner'),
+                      child: Container(
+                        width: 230,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.grey800 : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: p.$2,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(p.$1, color: p.$3, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    p.$4,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey[500],
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'No upcoming events',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey[400],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
           ),
         ],
       ),
@@ -1484,6 +1664,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  (Color, Color) _billCategoryColors(BillCategory category) {
+    switch (category) {
+      case BillCategory.rent:
+        return (const Color(0xFFDBEAFE), const Color(0xFF2563EB));
+      case BillCategory.utilities:
+        return (const Color(0xFFFFF7ED), const Color(0xFFEA580C));
+      case BillCategory.internet:
+        return (const Color(0xFFDCFCE7), const Color(0xFF16A34A));
+      case BillCategory.insurance:
+        return (const Color(0xFFDCFCE7), const Color(0xFF059669));
+      case BillCategory.creditCard:
+        return (const Color(0xFFFEE2E2), const Color(0xFFDC2626));
+      case BillCategory.subscription:
+        return (const Color(0xFFEDE9FE), const Color(0xFF7C3AED));
+      case BillCategory.loan:
+        return (const Color(0xFFDBEAFE), const Color(0xFF1D4ED8));
+      case BillCategory.school:
+        return (const Color(0xFFFEF9C3), const Color(0xFFCA8A04));
+      case BillCategory.other:
+        return (const Color(0xFFF1F5F9), const Color(0xFF64748B));
+    }
+  }
+
   Widget _buildUpcomingBillRow({
     required IconData icon,
     required Color iconBg,
@@ -1492,6 +1695,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required String subtitle,
     required String amount,
     bool isLast = false,
+    bool showComingSoon = true,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1528,8 +1732,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Text(amount,
               style:
                   const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-          const SizedBox(width: 6),
-          const Icon(Icons.close_rounded, size: 12, color: Colors.red),
+          if (showComingSoon) ...[
+            const SizedBox(width: 6),
+            const Icon(Icons.close_rounded, size: 12, color: Colors.red),
+          ],
         ],
       ),
     );
@@ -1842,4 +2048,77 @@ class _DashNavItem {
     required this.active,
     required this.connected,
   });
+}
+
+// ── Multi-color donut chart painter ───────────────────────────────────────
+
+class _DonutSegment {
+  final double share; // 0.0 - 1.0
+  final Color color;
+
+  const _DonutSegment({required this.share, required this.color});
+}
+
+class _DonutPainter extends CustomPainter {
+  final List<_DonutSegment> segments;
+  final Color trackColor;
+  final double strokeWidth;
+
+  const _DonutPainter({
+    required this.segments,
+    required this.trackColor,
+    required this.strokeWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width / 2) - strokeWidth / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    const gapDeg = 2.5;
+    const startOffsetDeg = -90.0;
+
+    final trackPaint = Paint()
+      ..color = trackColor
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.butt;
+    canvas.drawCircle(center, radius, trackPaint);
+
+    if (segments.isEmpty) return;
+
+    final totalShare = segments.fold(0.0, (sum, seg) => sum + seg.share);
+    if (totalShare <= 0) return;
+
+    double currentAngle = startOffsetDeg;
+    final paint = Paint()
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.butt;
+
+    for (final seg in segments) {
+      if (seg.share <= 0) continue;
+      final sweepDeg = (seg.share / totalShare) * 360.0 - gapDeg;
+      if (sweepDeg <= 0) continue;
+
+      paint.color = seg.color;
+      canvas.drawArc(
+        rect,
+        _toRad(currentAngle),
+        _toRad(sweepDeg),
+        false,
+        paint,
+      );
+      currentAngle += sweepDeg + gapDeg;
+    }
+  }
+
+  double _toRad(double deg) => deg * 3.141592653589793 / 180.0;
+
+  @override
+  bool shouldRepaint(_DonutPainter oldDelegate) {
+    return oldDelegate.segments != segments ||
+        oldDelegate.trackColor != trackColor ||
+        oldDelegate.strokeWidth != strokeWidth;
+  }
 }

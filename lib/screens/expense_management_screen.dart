@@ -493,21 +493,21 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                             fontSize: 14, color: Color(0xFF64748B)),
                       ),
                       const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                      Row(
                         children: [
                           _webTabChip(
                             label: 'Current Month',
                             icon: Icons.calendar_month,
                             active: true,
                           ),
+                          const SizedBox(width: 8),
                           _webTabChip(
                             label: 'Historical Performance',
                             icon: Icons.history,
                             active: false,
                             comingSoon: true,
                           ),
+                          const SizedBox(width: 8),
                           _webTabChip(
                             label: 'Spending Analytics',
                             icon: Icons.insights,
@@ -1278,6 +1278,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         ),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 15, color: active ? const Color(0xFF0D7FF2) : null),
           const SizedBox(width: 6),

@@ -34,6 +34,9 @@ class AppHeader extends StatelessWidget {
   /// Whether to show the notifications button (defaults to true)
   final bool showNotifications;
 
+  /// Whether to show the settings button (defaults to true)
+  final bool showSettingsButton;
+
   const AppHeader({
     super.key,
     required this.title,
@@ -41,6 +44,7 @@ class AppHeader extends StatelessWidget {
     this.avatarIcon,
     this.showViewModeSelector = true,
     this.showNotifications = true,
+    this.showSettingsButton = true,
   });
 
   @override
@@ -120,16 +124,17 @@ class AppHeader extends StatelessWidget {
             ),
           
           // Settings Button
-          IconButton(
-            onPressed: () {
-              Navigator.of(context).pushNamed('/user-settings');
-            },
-            icon: Icon(
-              AppIcons.settingsOutlined,
-              color: isDark ? AppColors.grey300 : AppColors.grey600,
+          if (showSettingsButton)
+            IconButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed('/user-settings');
+              },
+              icon: Icon(
+                AppIcons.settingsOutlined,
+                color: isDark ? AppColors.grey300 : AppColors.grey600,
+              ),
+              tooltip: 'Settings',
             ),
-            tooltip: 'Settings',
-          ),
           
           // Notifications Button
           if (showNotifications)

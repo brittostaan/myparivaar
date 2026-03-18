@@ -154,6 +154,9 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
             const AppHeader(
               title: 'Settings',
               avatarIcon: AppIcons.settings,
+              showViewModeSelector: false,
+              showSettingsButton: false,
+              showNotifications: false,
             ),
             Expanded(
               child: ListView(

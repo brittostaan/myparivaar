@@ -699,6 +699,8 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                               ],
                             ),
                             const SizedBox(height: 18),
+                            _buildForecastedInvestmentsCard(),
+                            const SizedBox(height: 18),
                             if (_investments.isEmpty)
                               Container(
                                 width: double.infinity,
@@ -788,6 +790,79 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
               style: TextStyle(fontSize: 12, color: Colors.grey[500]),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildForecastedInvestmentsCard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFFFFF), Color(0xFFECFDF5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFA7F3D0)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Forecasted Investments',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _formatCurrency(_currentValue),
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF059669),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Total portfolio value based on your current investments and market trends.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[600],
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Insurance and policy balances',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Long-term instruments',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: const BoxDecoration(
+              color: Color(0xFF059669),
+              borderRadius: BorderRadius.all(Radius.circular(14)),
+            ),
+            child: const Icon(
+              Icons.account_balance_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
         ],
       ),
     );

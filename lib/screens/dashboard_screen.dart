@@ -25,6 +25,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final ExpenseService _expenseService = ExpenseService();
   final BudgetService _budgetService = BudgetService();
 
+  List<Expense> _allExpenses = [];
   List<Expense> _recentExpenses = [];
   List<Budget> _budgets = [];
   double _totalBalance = 0.0;
@@ -52,12 +53,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final supabaseUrl = authService.supabaseUrl;
       final idToken = await authService.getIdToken();
 
-      // Fetch recent expenses (last 10)
+      // Fetch all expenses once and derive slices for each card.
       final expenses = await _expenseService.getExpenses(
         supabaseUrl: supabaseUrl,
         idToken: idToken,
-        limit: 10,
       );
+      final sortedExpenses = [...expenses]
+        ..sort((a, b) => b.date.compareTo(a.date));
+      final recentExpenses = sortedExpenses.take(10).toList();
 
       // Try to fetch expense stats, but fallback to calculation if endpoint doesn't exist
       double totalBalance = 0.0;
@@ -100,7 +103,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       setState(() {
-        _recentExpenses = expenses;
+        _allExpenses = sortedExpenses;
+        _recentExpenses = recentExpenses;
         _budgets = budgets;
         _totalBalance = totalBalance;
         _percentageChange = percentageChange;
@@ -139,7 +143,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   double get _monthlySpend {
     final now = DateTime.now();
-    return _recentExpenses
+    return _allExpenses
         .where((e) =>
             e.date.year == now.year &&
             e.date.month == now.month &&
@@ -149,9 +153,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Map<String, double> get _categoryTotals {
+    final now = DateTime.now();
     final totals = <String, double>{};
-    for (final e in _recentExpenses) {
-      if (e.category.toLowerCase() != 'income' &&
+    for (final e in _allExpenses) {
+      if (e.date.year == now.year &&
+          e.date.month == now.month &&
+          e.category.toLowerCase() != 'income' &&
           e.category.toLowerCase() != 'salary') {
         totals[e.category] = (totals[e.category] ?? 0) + e.amount;
       }
@@ -161,7 +168,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   double get _monthlyIncome {
     final now = DateTime.now();
-    return _recentExpenses
+    return _allExpenses
         .where((e) =>
             e.date.year == now.year &&
             e.date.month == now.month &&
@@ -183,11 +190,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   double get _emergencyFundMonths {
     if (_monthlySpend <= 0) return 0;
-    return _totalBalance / _monthlySpend;
+    final months = _totalBalance / _monthlySpend;
+    return months < 0 ? 0 : months;
   }
 
   int get _budgetRiskCount {
     return _budgets.where((budget) => budget.usagePercent >= 90).length;
+  }
+
+  bool get _hasCoreExpenseData {
+    return _allExpenses.any((e) {
+      final category = e.category.toLowerCase();
+      return category != 'income' && category != 'salary';
+    });
   }
 
   double get _forecastBudget {
@@ -738,15 +753,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 18),
                 Row(
                   children: [
-                    Icon(Icons.check_circle,
-                        color: AppColors.success, size: 14),
+                    Icon(
+                      _hasCoreExpenseData
+                          ? Icons.check_circle
+                          : Icons.info_outline_rounded,
+                      color: _hasCoreExpenseData
+                          ? AppColors.success
+                          : const Color(0xFF64748B),
+                      size: 14,
+                    ),
                     const SizedBox(width: 6),
                     Text(
-                      'Core expenses visible',
+                      _hasCoreExpenseData
+                          ? 'Core expenses visible'
+                          : 'Core expenses data pending',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.success,
+                        color: _hasCoreExpenseData
+                            ? AppColors.success
+                            : const Color(0xFF64748B),
                         letterSpacing: 0.2,
                       ),
                     ),
@@ -1232,88 +1258,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
             spacing: 16,
             runSpacing: 16,
             children: cards.map((card) {
-              return Container(
-                width: 230,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.grey800 : const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: card.$2,
-                        borderRadius: BorderRadius.circular(12),
+              return InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => Navigator.of(context).pushNamed('/family-planner'),
+                child: Container(
+                  width: 230,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.grey800 : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: card.$2,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(card.$1, color: card.$3, size: 20),
                       ),
-                      child: Icon(card.$1, color: card.$3, size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            card.$4,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[500],
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Row(
-                            children: [
-                              Text(
-                                card.$5,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              card.$4,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[500],
+                                fontWeight: FontWeight.bold,
                               ),
-                              const SizedBox(width: 6),
-                              const Icon(Icons.close_rounded,
-                                  size: 12, color: Colors.red),
-                            ],
-                          ),
-                        ],
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Text(
+                                  card.$5,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(Icons.close_rounded,
+                                    size: 12, color: Colors.red),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             }).toList(),
-          ),
-          const SizedBox(height: 16),
-          InkWell(
-            borderRadius: BorderRadius.circular(10),
-            onTap: () => Navigator.of(context).pushNamed('/kids-dashboard'),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.grey800 : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.child_care_outlined, size: 14),
-                    SizedBox(width: 6),
-                    Text(
-                      'Open Kids Dashboard',
-                      style:
-                          TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(width: 6),
-                    Icon(Icons.arrow_forward_rounded, size: 13),
-                  ],
-                ),
-              ),
-            ),
           ),
         ],
       ),

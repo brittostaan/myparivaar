@@ -24,6 +24,7 @@ import 'services/auth_service.dart';
 import 'services/family_service.dart';
 import 'services/import_service.dart';
 import 'widgets/navigation_shell.dart';
+import 'widgets/global_header_actions.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_icons.dart';
 
@@ -43,6 +44,45 @@ const _kAppEnv = String.fromEnvironment('APP_ENV', defaultValue: '');
 
 bool get _isDevEnvironment =>
     kDebugMode || _kAppEnv.toLowerCase().trim() == 'dev';
+
+const Set<String> _authenticatedRoutes = {
+  '/home',
+  '/expenses',
+  '/budget',
+  '/investments',
+  '/bills',
+  '/reports',
+  '/ai',
+  '/email-settings',
+  '/user-settings',
+  '/admin-settings',
+  '/more',
+  '/notifications',
+  '/savings',
+  '/voice-expense',
+  '/profile',
+  '/family',
+  '/csv-import',
+};
+
+String _routeFromEndpoint() {
+  final uri = Uri.base;
+  final path = uri.path.isEmpty ? '/' : uri.path;
+  String candidate = path;
+
+  if ((candidate == '/' || candidate.isEmpty) && uri.fragment.startsWith('/')) {
+    candidate = '/${uri.fragment.substring(1).split('?').first}';
+  }
+
+  if (candidate.length > 1 && candidate.endsWith('/')) {
+    candidate = candidate.substring(0, candidate.length - 1);
+  }
+
+  if (_authenticatedRoutes.contains(candidate)) {
+    return candidate;
+  }
+  return '/home';
+}
 
 // ── View Mode (Responsive Design) ────────────────────────────────────────────
 
@@ -204,7 +244,13 @@ class MyParivaaarApp extends StatelessWidget {
           return MaterialPageRoute(
             settings: settings,
             builder: (_) => Scaffold(
-              appBar: AppBar(title: const Text('Import')),
+              appBar: AppBar(
+                title: const Text('Import'),
+                actions: const [
+                  GlobalHeaderActions(showLogout: true),
+                  SizedBox(width: 8),
+                ],
+              ),
               body: const Center(
                 child: Padding(
                   padding: EdgeInsets.all(24),
@@ -443,7 +489,7 @@ class _AppRouterState extends State<_AppRouter> {
 
     switch (status) {
       case AuthStatus.ready:
-        Navigator.of(context).pushReplacementNamed('/home');
+        Navigator.of(context).pushReplacementNamed(_routeFromEndpoint());
       case AuthStatus.needsHousehold:
         Navigator.of(context).pushReplacementNamed('/household-setup');
       case null:
@@ -565,7 +611,8 @@ class _LoginScreenState extends State<_LoginScreen> {
   }
 
   void _navigateByStatus(AuthStatus status) {
-    final route = status == AuthStatus.ready ? '/home' : '/household-setup';
+    final route =
+        status == AuthStatus.ready ? _routeFromEndpoint() : '/household-setup';
     Navigator.of(context).pushReplacementNamed(route);
   }
 
@@ -999,35 +1046,9 @@ class _LoginScreenState extends State<_LoginScreen> {
             top: 16,
             right: 16,
             child: SafeArea(
-              child: Consumer<ViewModeProvider>(
-                builder: (context, viewModeProvider, _) {
-                  final currentMode = viewModeProvider.mode;
-                  return PopupMenuButton<ViewMode>(
-                    tooltip: 'View Mode',
-                    icon: Icon(currentMode.icon, color: Colors.grey[500]),
-                    onSelected: viewModeProvider.setMode,
-                    itemBuilder: (context) => ViewMode.values.map((mode) {
-                      return PopupMenuItem<ViewMode>(
-                        value: mode,
-                        child: Row(
-                          children: [
-                            Icon(mode.icon,
-                                color: mode == currentMode ? primary : null),
-                            const SizedBox(width: 12),
-                            Text(
-                              mode.label,
-                              style: TextStyle(
-                                fontWeight: mode == currentMode
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  );
-                },
+              child: GlobalHeaderActions(
+                showLogout: false,
+                iconColor: Colors.grey[500],
               ),
             ),
           ),
@@ -1110,6 +1131,10 @@ class _NeedsHouseholdScreenState extends State<_NeedsHouseholdScreen> {
       appBar: AppBar(
         title: const Text('Join Household'),
         automaticallyImplyLeading: false, // Remove back button
+        actions: const [
+          GlobalHeaderActions(showLogout: true),
+          SizedBox(width: 8),
+        ],
       ),
       resizeToAvoidBottomInset: true,
       body: SingleChildScrollView(
@@ -1173,18 +1198,6 @@ class _NeedsHouseholdScreenState extends State<_NeedsHouseholdScreen> {
               child: _isBusy
                   ? const _SmallSpinner()
                   : const Text('Join household'),
-            ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: _isBusy
-                  ? null
-                  : () async {
-                      await context.read<AuthService>().signOut();
-                      if (context.mounted) {
-                        Navigator.of(context).pushReplacementNamed('/login');
-                      }
-                    },
-              child: const Text('Sign out'),
             ),
           ],
         ),

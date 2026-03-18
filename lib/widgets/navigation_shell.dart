@@ -6,6 +6,7 @@ import '../models/expense.dart';
 import '../services/auth_service.dart';
 import '../services/expense_service.dart';
 import 'app_bottom_navigation_bar.dart';
+import 'global_header_actions.dart';
 
 /// A shell widget that wraps screens with bottom navigation.
 ///
@@ -610,6 +611,10 @@ class _NavigationShellState extends State<NavigationShell> {
                 ),
               ),
             ],
+          ),
+          GlobalHeaderActions(
+            showLogout: true,
+            iconColor: Colors.grey[700],
           ),
           Container(
             width: 1,

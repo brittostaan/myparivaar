@@ -301,8 +301,8 @@ class _NavigationShellState extends State<NavigationShell> {
       _WebSidebarItem(
         label: 'Reports',
         icon: Icons.description_outlined,
-        route: '',
-        connected: false,
+        route: '/reports',
+        connected: true,
       ),
     ];
   }

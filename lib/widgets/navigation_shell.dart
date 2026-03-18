@@ -276,6 +276,12 @@ class _NavigationShellState extends State<NavigationShell> {
         connected: true,
       ),
       _WebSidebarItem(
+        label: 'Kids Dashboard',
+        icon: Icons.child_care_outlined,
+        route: '/kids-dashboard',
+        connected: true,
+      ),
+      _WebSidebarItem(
         label: 'Expense',
         icon: Icons.receipt_long_outlined,
         route: '/expenses',

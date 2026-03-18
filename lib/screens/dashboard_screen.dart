@@ -320,6 +320,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             .pushNamed('/investments');
                                       },
                                     ),
+                                    QuickAction(
+                                      label: 'Kids',
+                                      icon: Icons.child_care_outlined,
+                                      onTap: () {
+                                        Navigator.of(context)
+                                            .pushNamed('/kids-dashboard');
+                                      },
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 32),
@@ -403,6 +411,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           route: '',
           active: false,
           connected: false),
+        _DashNavItem(
+          label: 'Kids Dashboard',
+          icon: Icons.child_care_outlined,
+          route: '/kids-dashboard',
+          active: false,
+          connected: true),
     ];
 
     return Container(
@@ -1243,6 +1257,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               );
             }).toList(),
+          ),
+          const SizedBox(height: 16),
+          InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () => Navigator.of(context).pushNamed('/kids-dashboard'),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.grey800 : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.child_care_outlined, size: 14),
+                    SizedBox(width: 6),
+                    Text(
+                      'Open Kids Dashboard',
+                      style:
+                          TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(width: 6),
+                    Icon(Icons.arrow_forward_rounded, size: 13),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
       ),

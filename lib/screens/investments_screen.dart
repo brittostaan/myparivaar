@@ -1,6 +1,12 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../models/investment.dart';
+import '../models/member.dart';
+import '../services/auth_service.dart';
+import '../services/family_service.dart';
+import '../services/investment_service.dart';
 import '../theme/app_colors.dart';
 
 class InvestmentsScreen extends StatefulWidget {
@@ -11,60 +17,7 @@ class InvestmentsScreen extends StatefulWidget {
 }
 
 class _InvestmentsScreenState extends State<InvestmentsScreen> {
-  final List<_InvestmentRecord> _investments = [
-    _InvestmentRecord(
-      id: 'inv-01',
-      name: 'HDFC Life Shield',
-      type: 'Insurance',
-      provider: 'HDFC Life',
-      amountInvested: 120000,
-      currentValue: 126500,
-      dueDate: DateTime.now().add(const Duration(days: 8)),
-      maturityDate: DateTime.now().add(const Duration(days: 365 * 14)),
-      frequency: 'Yearly',
-      riskLevel: 'Low',
-      notes: 'Annual premium plan for life cover',
-    ),
-    _InvestmentRecord(
-      id: 'inv-02',
-      name: 'SBI Bluechip SIP',
-      type: 'Mutual Fund',
-      provider: 'SBI Mutual Fund',
-      amountInvested: 285000,
-      currentValue: 332000,
-      dueDate: DateTime.now().add(const Duration(days: 4)),
-      maturityDate: null,
-      frequency: 'Monthly',
-      riskLevel: 'Medium',
-      notes: 'SIP on 5th of every month',
-    ),
-    _InvestmentRecord(
-      id: 'inv-03',
-      name: 'PPF Account',
-      type: 'Retirement',
-      provider: 'State Bank of India',
-      amountInvested: 450000,
-      currentValue: 498000,
-      dueDate: DateTime.now().add(const Duration(days: 26)),
-      maturityDate: DateTime.now().add(const Duration(days: 365 * 8)),
-      frequency: 'Yearly',
-      riskLevel: 'Low',
-      notes: 'Tax saving investment',
-    ),
-    _InvestmentRecord(
-      id: 'inv-04',
-      name: 'NIFTY 50 ETF Basket',
-      type: 'Equity',
-      provider: 'Zerodha',
-      amountInvested: 170000,
-      currentValue: 162800,
-      dueDate: null,
-      maturityDate: null,
-      frequency: 'One-time',
-      riskLevel: 'High',
-      notes: 'Long-term growth portfolio',
-    ),
-  ];
+  final InvestmentService _investmentService = InvestmentService();
 
   final List<String> _types = const [
     'Insurance',
@@ -85,11 +38,97 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
     'One-time',
   ];
 
-  final List<String> _riskLevels = const [
-    'Low',
-    'Medium',
-    'High',
-  ];
+  List<Investment> _investments = [];
+  List<String> _childOptions = [];
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadScreenData();
+  }
+
+  Future<void> _loadScreenData() async {
+    await _loadInvestments();
+    if (!mounted) return;
+    await _loadChildOptions();
+  }
+
+  Future<T> _callInvestments<T>(
+    Future<T> Function(String supabaseUrl, String token) fn,
+  ) async {
+    final auth = context.read<AuthService>();
+    final url = auth.supabaseUrl;
+
+    try {
+      final token = await auth.getIdToken();
+      return await fn(url, token);
+    } on InvestmentException catch (e) {
+      if (e.type != InvestmentErrorType.authExpired) rethrow;
+      final freshToken = await auth.getIdToken(true);
+      return await fn(url, freshToken);
+    }
+  }
+
+  Future<void> _loadInvestments() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final items = await _callInvestments(
+        (url, token) => _investmentService.getInvestments(
+          supabaseUrl: url,
+          idToken: token,
+        ),
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _investments = items;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadChildOptions() async {
+    final auth = context.read<AuthService>();
+    final familyService = FamilyService(
+      supabaseUrl: auth.supabaseUrl,
+      authService: auth,
+    );
+
+    List<Member> members = const [];
+    try {
+      members = await familyService.fetchMembers();
+    } catch (_) {
+      members = const [];
+    }
+
+    if (!mounted) return;
+
+    final names = <String>{
+      for (final member in members)
+        if ((member.displayName ?? '').trim().isNotEmpty)
+          member.displayName!.trim(),
+      for (final investment in _investments)
+        if ((investment.childName ?? '').trim().isNotEmpty)
+          investment.childName!.trim(),
+    }.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+    setState(() {
+      _childOptions = names;
+    });
+  }
 
   double get _totalInvested =>
       _investments.fold(0.0, (sum, inv) => sum + inv.amountInvested);
@@ -105,7 +144,8 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
     return _investments.where((inv) {
       if (inv.dueDate == null) return false;
       final due = _atMidnight(inv.dueDate!);
-      return !due.isBefore(_atMidnight(now)) && !due.isAfter(_atMidnight(horizon));
+      return !due.isBefore(_atMidnight(now)) &&
+          !due.isAfter(_atMidnight(horizon));
     }).length;
   }
 
@@ -127,9 +167,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
     for (int i = 0; i < chars.length; i++) {
       final idxFromEnd = chars.length - i;
       out.add(chars[i]);
-      if (idxFromEnd > 1 && idxFromEnd % 3 == 1) {
-        out.add(',');
-      }
+      if (idxFromEnd > 1 && idxFromEnd % 3 == 1) out.add(',');
     }
     return '${sign}Rs ${out.join()}';
   }
@@ -152,7 +190,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
-  String _dueLabel(_InvestmentRecord inv) {
+  String _dueLabel(Investment inv) {
     if (inv.dueDate == null) return 'No due date';
     final today = _atMidnight(DateTime.now());
     final due = _atMidnight(inv.dueDate!);
@@ -163,7 +201,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
     return 'Due in ${diff}d';
   }
 
-  Color _dueColor(_InvestmentRecord inv) {
+  Color _dueColor(Investment inv) {
     if (inv.dueDate == null) return const Color(0xFF64748B);
     final today = _atMidnight(DateTime.now());
     final due = _atMidnight(inv.dueDate!);
@@ -192,19 +230,32 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
     }
   }
 
-  Future<void> _addInvestment() async {
+  Future<void> _saveInvestment({Investment? existing}) async {
     final formKey = GlobalKey<FormState>();
-    final nameCtrl = TextEditingController();
-    final providerCtrl = TextEditingController();
-    final investedCtrl = TextEditingController();
-    final currentCtrl = TextEditingController();
-    final notesCtrl = TextEditingController();
+    final nameCtrl = TextEditingController(text: existing?.name ?? '');
+    final providerCtrl = TextEditingController(text: existing?.provider ?? '');
+    final investedCtrl = TextEditingController(
+      text: existing?.amountInvested.toStringAsFixed(2) ?? '',
+    );
+    final currentCtrl = TextEditingController(
+      text: existing?.currentValue.toStringAsFixed(2) ?? '',
+    );
+    final notesCtrl = TextEditingController(text: existing?.notes ?? '');
 
-    String type = _types.first;
-    String frequency = _frequencies.first;
-    String risk = _riskLevels[1];
-    DateTime? dueDate;
-    DateTime? maturityDate;
+    String type = existing?.type ?? _types.first;
+    String frequency = existing?.frequency ?? _frequencies.first;
+    InvestmentRiskLevel risk = existing?.riskLevel ?? InvestmentRiskLevel.medium;
+    DateTime? dueDate = existing?.dueDate;
+    DateTime? maturityDate = existing?.maturityDate;
+    String? selectedChildName = existing?.childName?.trim().isNotEmpty == true
+        ? existing!.childName!.trim()
+        : null;
+
+    final dialogChildOptions = <String>{
+      ..._childOptions,
+      if (selectedChildName != null) selectedChildName,
+    }.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
     Future<void> pickDate({required bool isDue, required StateSetter setDialog}) async {
       final initial = (isDue ? dueDate : maturityDate) ?? DateTime.now();
@@ -225,15 +276,15 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
       }
     }
 
-    final created = await showDialog<_InvestmentRecord>(
+    final shouldSave = await showDialog<bool>(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setDialog) {
             return AlertDialog(
-              title: const Text('Add Investment'),
+              title: Text(existing == null ? 'Add Investment' : 'Edit Investment'),
               content: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
+                constraints: const BoxConstraints(maxWidth: 540),
                 child: Form(
                   key: formKey,
                   child: SingleChildScrollView(
@@ -244,6 +295,31 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                           controller: nameCtrl,
                           decoration: const InputDecoration(labelText: 'Investment Name'),
                           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<String?>(
+                          initialValue: selectedChildName,
+                          decoration: InputDecoration(
+                            labelText: 'Linked Child / Family Member (optional)',
+                            helperText: dialogChildOptions.isEmpty
+                                ? 'Add member names first to link investments cleanly.'
+                                : 'Used by Kids Dashboard for exact matching.',
+                          ),
+                          items: [
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('No linked child'),
+                            ),
+                            ...dialogChildOptions.map(
+                              (name) => DropdownMenuItem<String?>(
+                                value: name,
+                                child: Text(name),
+                              ),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setDialog(() => selectedChildName = value);
+                          },
                         ),
                         const SizedBox(height: 10),
                         TextFormField(
@@ -265,13 +341,18 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                             ),
                             const SizedBox(width: 10),
                             Expanded(
-                              child: DropdownButtonFormField<String>(
+                              child: DropdownButtonFormField<InvestmentRiskLevel>(
                                 initialValue: risk,
-                                items: _riskLevels
-                                    .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                                items: InvestmentRiskLevel.values
+                                    .map((r) => DropdownMenuItem(
+                                          value: r,
+                                          child: Text(Investment.riskLevelLabel(r)),
+                                        ))
                                     .toList(),
                                 decoration: const InputDecoration(labelText: 'Risk'),
-                                onChanged: (v) => setDialog(() => risk = v ?? _riskLevels[1]),
+                                onChanged: (v) {
+                                  if (v != null) setDialog(() => risk = v);
+                                },
                               ),
                             ),
                           ],
@@ -282,11 +363,12 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                             Expanded(
                               child: TextFormField(
                                 controller: investedCtrl,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(decimal: true),
                                 decoration: const InputDecoration(labelText: 'Invested Amount'),
                                 validator: (v) {
                                   final d = double.tryParse((v ?? '').trim());
-                                  if (d == null || d <= 0) return 'Enter valid amount';
+                                  if (d == null || d < 0) return 'Enter valid amount';
                                   return null;
                                 },
                               ),
@@ -295,7 +377,8 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                             Expanded(
                               child: TextFormField(
                                 controller: currentCtrl,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(decimal: true),
                                 decoration: const InputDecoration(labelText: 'Current Value'),
                                 validator: (v) {
                                   final d = double.tryParse((v ?? '').trim());
@@ -319,22 +402,48 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                         Row(
                           children: [
                             Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => pickDate(isDue: true, setDialog: setDialog),
-                                icon: const Icon(Icons.event_available_outlined, size: 18),
-                                label: Text(dueDate == null
-                                    ? 'Set Due Date'
-                                    : 'Due: ${_formatDate(dueDate!)}'),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  OutlinedButton.icon(
+                                    onPressed: () => pickDate(isDue: true, setDialog: setDialog),
+                                    icon: const Icon(Icons.event_available_outlined, size: 18),
+                                    label: Text(dueDate == null
+                                        ? 'Set Due Date'
+                                        : 'Due: ${_formatDate(dueDate!)}'),
+                                  ),
+                                  if (dueDate != null)
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: TextButton(
+                                        onPressed: () => setDialog(() => dueDate = null),
+                                        child: const Text('Clear due date'),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => pickDate(isDue: false, setDialog: setDialog),
-                                icon: const Icon(Icons.timelapse_outlined, size: 18),
-                                label: Text(maturityDate == null
-                                    ? 'Set Maturity'
-                                    : 'Maturity: ${_formatDate(maturityDate!)}'),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  OutlinedButton.icon(
+                                    onPressed: () => pickDate(isDue: false, setDialog: setDialog),
+                                    icon: const Icon(Icons.timelapse_outlined, size: 18),
+                                    label: Text(maturityDate == null
+                                        ? 'Set Maturity'
+                                        : 'Maturity: ${_formatDate(maturityDate!)}'),
+                                  ),
+                                  if (maturityDate != null)
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: TextButton(
+                                        onPressed: () => setDialog(() => maturityDate = null),
+                                        child: const Text('Clear maturity'),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                           ],
@@ -353,30 +462,15 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
+                  onPressed: () => Navigator.of(ctx).pop(false),
                   child: const Text('Cancel'),
                 ),
                 FilledButton(
                   onPressed: () {
                     if (!formKey.currentState!.validate()) return;
-                    final nowMs = DateTime.now().millisecondsSinceEpoch;
-                    Navigator.of(ctx).pop(
-                      _InvestmentRecord(
-                        id: 'inv-$nowMs',
-                        name: nameCtrl.text.trim(),
-                        type: type,
-                        provider: providerCtrl.text.trim(),
-                        amountInvested: double.parse(investedCtrl.text.trim()),
-                        currentValue: double.parse(currentCtrl.text.trim()),
-                        dueDate: dueDate,
-                        maturityDate: maturityDate,
-                        frequency: frequency,
-                        riskLevel: risk,
-                        notes: notesCtrl.text.trim(),
-                      ),
-                    );
+                    Navigator.of(ctx).pop(true);
                   },
-                  child: const Text('Save Investment'),
+                  child: Text(existing == null ? 'Save Investment' : 'Update Investment'),
                 ),
               ],
             );
@@ -385,13 +479,101 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
       },
     );
 
-    if (created != null) {
-      setState(() => _investments.insert(0, created));
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Investment added successfully')),
-        );
-      }
+    if (shouldSave != true) return;
+
+    try {
+      await _callInvestments(
+        (url, token) => _investmentService.upsertInvestment(
+          supabaseUrl: url,
+          idToken: token,
+          id: existing?.id,
+          name: nameCtrl.text.trim(),
+          type: type,
+          provider: providerCtrl.text.trim(),
+          amountInvested: double.parse(investedCtrl.text.trim()),
+          currentValue: double.parse(currentCtrl.text.trim()),
+          dueDate: dueDate,
+          maturityDate: maturityDate,
+          frequency: frequency,
+          riskLevel: risk,
+          notes: notesCtrl.text.trim(),
+          childName: selectedChildName,
+        ),
+      );
+
+      if (!mounted) return;
+      await _loadScreenData();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            existing == null
+                ? 'Investment added successfully'
+                : 'Investment updated successfully',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            existing == null
+                ? 'Failed to add investment: $e'
+                : 'Failed to update investment: $e',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _addInvestment() => _saveInvestment();
+
+  Future<void> _editInvestment(Investment investment) =>
+      _saveInvestment(existing: investment);
+
+  Future<void> _deleteInvestment(Investment investment) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete Investment'),
+        content: Text('Delete "${investment.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true) return;
+
+    try {
+      await _callInvestments(
+        (url, token) => _investmentService.deleteInvestment(
+          supabaseUrl: url,
+          idToken: token,
+          investmentId: investment.id,
+        ),
+      );
+
+      if (!mounted) return;
+      await _loadScreenData();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Investment deleted')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete investment: $e')),
+      );
     }
   }
 
@@ -409,112 +591,150 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1180),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.error_outline_rounded,
+                              size: 34, color: Color(0xFFDC2626)),
+                          const SizedBox(height: 10),
+                          Text(_error!, textAlign: TextAlign.center),
+                          const SizedBox(height: 10),
+                          FilledButton.icon(
+                            onPressed: _loadInvestments,
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1180),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Investments',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF0F172A),
-                              ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Investments',
+                                        style: TextStyle(
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Track portfolio, due dates, and child-linked investments.',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                FilledButton.icon(
+                                  onPressed: _addInvestment,
+                                  icon: const Icon(Icons.add_rounded),
+                                  label: const Text('Add Investment'),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Track portfolio, contribution due dates, and long-term wealth growth.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[600],
-                              ),
+                            const SizedBox(height: 18),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                _metricCard(
+                                  label: 'Total Invested',
+                                  value: _formatCurrency(_totalInvested),
+                                  icon: Icons.account_balance_wallet_outlined,
+                                  tint: const Color(0xFF0EA5E9),
+                                ),
+                                _metricCard(
+                                  label: 'Current Value',
+                                  value: _formatCurrency(_currentValue),
+                                  icon: Icons.pie_chart_outline,
+                                  tint: const Color(0xFF10B981),
+                                ),
+                                _metricCard(
+                                  label: 'Net Returns',
+                                  value: _formatCurrency(_totalReturns),
+                                  icon: _totalReturns >= 0
+                                      ? Icons.trending_up_rounded
+                                      : Icons.trending_down_rounded,
+                                  tint: _totalReturns >= 0
+                                      ? const Color(0xFF16A34A)
+                                      : const Color(0xFFDC2626),
+                                ),
+                                _metricCard(
+                                  label: 'Upcoming Due (14d)',
+                                  value: '$_dueSoonCount',
+                                  icon: Icons.event_note_outlined,
+                                  tint: const Color(0xFFD97706),
+                                  secondary: _overdueCount > 0
+                                      ? 'Overdue: $_overdueCount'
+                                      : 'No overdue',
+                                ),
+                              ],
                             ),
+                            const SizedBox(height: 18),
+                            if (_investments.isEmpty)
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                ),
+                                child: const Text(
+                                  'No investments yet. Add your first investment to start tracking.',
+                                  style: TextStyle(color: Color(0xFF64748B)),
+                                ),
+                              )
+                            else if (isWebDesktop)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(flex: 2, child: _portfolioCard()),
+                                  const SizedBox(width: 14),
+                                  Expanded(child: _dueTrackerCard(dueSorted)),
+                                ],
+                              )
+                            else ...[
+                              _portfolioCard(),
+                              const SizedBox(height: 14),
+                              _dueTrackerCard(dueSorted),
+                            ],
                           ],
                         ),
                       ),
-                      FilledButton.icon(
-                        onPressed: _addInvestment,
-                        icon: const Icon(Icons.add_rounded),
-                        label: const Text('Add Investment'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 18),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      _metricCard(
-                        label: 'Total Invested',
-                        value: _formatCurrency(_totalInvested),
-                        icon: Icons.account_balance_wallet_outlined,
-                        tint: const Color(0xFF0EA5E9),
-                      ),
-                      _metricCard(
-                        label: 'Current Value',
-                        value: _formatCurrency(_currentValue),
-                        icon: Icons.pie_chart_outline,
-                        tint: const Color(0xFF10B981),
-                      ),
-                      _metricCard(
-                        label: 'Net Returns',
-                        value: _formatCurrency(_totalReturns),
-                        icon: _totalReturns >= 0
-                            ? Icons.trending_up_rounded
-                            : Icons.trending_down_rounded,
-                        tint: _totalReturns >= 0
-                            ? const Color(0xFF16A34A)
-                            : const Color(0xFFDC2626),
-                      ),
-                      _metricCard(
-                        label: 'Upcoming Due (14d)',
-                        value: '$_dueSoonCount',
-                        icon: Icons.event_note_outlined,
-                        tint: const Color(0xFFD97706),
-                        secondary: _overdueCount > 0
-                            ? 'Overdue: $_overdueCount'
-                            : 'No overdue',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  if (isWebDesktop)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(flex: 2, child: _portfolioCard()),
-                        const SizedBox(width: 14),
-                        Expanded(child: _dueTrackerCard(dueSorted)),
-                      ],
-                    )
-                  else ...[
-                    _portfolioCard(),
-                    const SizedBox(height: 14),
-                    _dueTrackerCard(dueSorted),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -599,12 +819,12 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Existing holdings with due-date commitments and maturity horizon',
+            'Live household investments from backend',
             style: TextStyle(fontSize: 12, color: Colors.grey[500]),
           ),
           const SizedBox(height: 12),
           ..._investments.map((inv) {
-            final diff = inv.currentValue - inv.amountInvested;
+            final diff = inv.netReturns;
             final positive = diff >= 0;
             final due = _dueLabel(inv);
             final dueColor = _dueColor(inv);
@@ -648,14 +868,47 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                               ),
                             ),
                             Text(
-                              '${inv.type} · ${inv.provider.isEmpty ? 'Provider not set' : inv.provider}',
+                              '${inv.type} - ${inv.provider?.isNotEmpty == true ? inv.provider : 'Provider not set'}',
                               style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                             ),
                           ],
                         ),
                       ),
+                      PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'edit') _editInvestment(inv);
+                          if (value == 'delete') _deleteInvestment(inv);
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(value: 'edit', child: Text('Edit')),
+                          PopupMenuItem(value: 'delete', child: Text('Delete')),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _kv('Invested', _formatCurrency(inv.amountInvested)),
+                      _kv('Value', _formatCurrency(inv.currentValue)),
+                      _kv(
+                        'Returns',
+                        '${positive ? '+' : '-'}${_formatCurrency(diff.abs())}',
+                        color: positive
+                            ? const Color(0xFF16A34A)
+                            : const Color(0xFFDC2626),
+                      ),
+                      _kv('Frequency', inv.frequency),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: dueColor.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(99),
@@ -669,36 +922,27 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      _kv('Invested', _formatCurrency(inv.amountInvested)),
-                      _kv('Value', _formatCurrency(inv.currentValue)),
-                      _kv(
-                        'Returns',
-                        '${positive ? '+' : '-'}${_formatCurrency(diff.abs())}',
-                        color: positive ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+                      _metaChip(
+                        Icons.shield_outlined,
+                        'Risk: ${Investment.riskLevelLabel(inv.riskLevel)}',
                       ),
-                      _kv('Frequency', inv.frequency),
+                      if (inv.childName != null && inv.childName!.isNotEmpty)
+                        _metaChip(Icons.child_care_outlined, 'Child: ${inv.childName}'),
+                      if (inv.maturityDate != null)
+                        _metaChip(
+                          Icons.event_repeat_outlined,
+                          'Maturity: ${_formatDate(inv.maturityDate!)}',
+                        ),
                     ],
                   ),
-                  if (inv.maturityDate != null || inv.notes.isNotEmpty) ...[
+                  if (inv.notes != null && inv.notes!.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        if (inv.maturityDate != null)
-                          _metaChip(
-                            Icons.event_repeat_outlined,
-                            'Maturity: ${_formatDate(inv.maturityDate!)}',
-                          ),
-                        _metaChip(Icons.shield_outlined, 'Risk: ${inv.riskLevel}'),
-                        if (inv.notes.isNotEmpty)
-                          _metaChip(Icons.notes_outlined, inv.notes),
-                      ],
+                    Text(
+                      inv.notes!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                   ],
                 ],
@@ -710,7 +954,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
     );
   }
 
-  Widget _dueTrackerCard(List<_InvestmentRecord> sorted) {
+  Widget _dueTrackerCard(List<Investment> sorted) {
     final dueItems = sorted.where((e) => e.dueDate != null).toList();
 
     return Container(
@@ -776,8 +1020,9 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${inv.type} · ${inv.frequency}',
-                            style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+                            '${inv.type} - ${inv.frequency}',
+                            style:
+                                TextStyle(fontSize: 11, color: Colors.grey[700]),
                           ),
                         ],
                       ),
@@ -855,32 +1100,4 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
       ),
     );
   }
-}
-
-class _InvestmentRecord {
-  final String id;
-  final String name;
-  final String type;
-  final String provider;
-  final double amountInvested;
-  final double currentValue;
-  final DateTime? dueDate;
-  final DateTime? maturityDate;
-  final String frequency;
-  final String riskLevel;
-  final String notes;
-
-  const _InvestmentRecord({
-    required this.id,
-    required this.name,
-    required this.type,
-    required this.provider,
-    required this.amountInvested,
-    required this.currentValue,
-    required this.dueDate,
-    required this.maturityDate,
-    required this.frequency,
-    required this.riskLevel,
-    required this.notes,
-  });
 }

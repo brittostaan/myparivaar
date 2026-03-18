@@ -108,13 +108,39 @@ enum ViewMode {
   final double? width;
 }
 
+ViewMode viewModeFromWidth(double width) {
+  if (width >= 1024) {
+    return ViewMode.desktop;
+  }
+  if (width >= 700) {
+    return ViewMode.tablet;
+  }
+  return ViewMode.mobile;
+}
+
 class ViewModeProvider extends ChangeNotifier {
   ViewMode _mode = ViewMode.mobile;
+  bool _isManualOverride = false;
 
   ViewMode get mode => _mode;
+  bool get isManualOverride => _isManualOverride;
 
   void setMode(ViewMode mode) {
+    _isManualOverride = true;
+    if (_mode == mode) return;
     _mode = mode;
+    notifyListeners();
+  }
+
+  void syncAutoMode(ViewMode mode) {
+    if (_isManualOverride || _mode == mode) return;
+    _mode = mode;
+    notifyListeners();
+  }
+
+  void clearManualOverride() {
+    if (!_isManualOverride) return;
+    _isManualOverride = false;
     notifyListeners();
   }
 }
@@ -1267,8 +1293,16 @@ class _ResponsiveWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final detectedMode = viewModeFromWidth(MediaQuery.of(context).size.width);
+    final modeProvider = context.read<ViewModeProvider>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      context.read<ViewModeProvider>().syncAutoMode(detectedMode);
+    });
+    final activeMode = modeProvider.isManualOverride ? viewMode : detectedMode;
+
     // Desktop mode - full width
-    if (viewMode == ViewMode.desktop) {
+    if (activeMode == ViewMode.desktop) {
       return child;
     }
 
@@ -1278,7 +1312,7 @@ class _ResponsiveWrapper extends StatelessWidget {
       color: bgColor,
       child: Center(
         child: Container(
-          width: viewMode.width,
+          width: activeMode.width,
           decoration: BoxDecoration(
             color: bgColor,
             boxShadow: [

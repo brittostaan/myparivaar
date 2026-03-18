@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:async';
 import 'package:provider/provider.dart';
 import '../config/navigation_config.dart';
+import '../main.dart' show ViewMode, ViewModeProvider;
 import '../models/expense.dart';
 import '../services/auth_service.dart';
 import '../services/expense_service.dart';
@@ -34,7 +36,7 @@ class NavigationShell extends StatefulWidget {
     this.showWebTopBar = true,
   });
 
-  static bool webSidebarVisible = true;
+  static bool webSidebarExpanded = true;
 
   @override
   State<NavigationShell> createState() => _NavigationShellState();
@@ -48,6 +50,8 @@ class _NavigationShellState extends State<NavigationShell> {
   bool _isSearchLoading = false;
   bool _isSearchLoaded = false;
   String? _searchError;
+  Timer? _desktopAutoCollapseTimer;
+  ViewMode? _lastHandledViewMode;
 
   @override
   void initState() {
@@ -57,15 +61,68 @@ class _NavigationShellState extends State<NavigationShell> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!kIsWeb) return;
+    final currentMode = context.watch<ViewModeProvider>().mode;
+    _applySidebarRulesForMode(currentMode);
+  }
+
+  @override
   void dispose() {
+    _desktopAutoCollapseTimer?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
   }
 
-  void _toggleSidebar() {
+  void _toggleSidebarExpansion() {
+    final mode = context.read<ViewModeProvider>().mode;
+    if (mode != ViewMode.desktop) {
+      return;
+    }
+
     setState(() {
-      NavigationShell.webSidebarVisible = !NavigationShell.webSidebarVisible;
+      NavigationShell.webSidebarExpanded = !NavigationShell.webSidebarExpanded;
+    });
+
+    if (NavigationShell.webSidebarExpanded) {
+      _scheduleDesktopAutoCollapse();
+    } else {
+      _desktopAutoCollapseTimer?.cancel();
+    }
+  }
+
+  void _applySidebarRulesForMode(ViewMode mode) {
+    if (_lastHandledViewMode == mode) return;
+    _lastHandledViewMode = mode;
+
+    _desktopAutoCollapseTimer?.cancel();
+
+    if (mode == ViewMode.desktop) {
+      if (NavigationShell.webSidebarExpanded) {
+        _scheduleDesktopAutoCollapse();
+      }
+      return;
+    }
+
+    if (NavigationShell.webSidebarExpanded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          NavigationShell.webSidebarExpanded = false;
+        });
+      });
+    }
+  }
+
+  void _scheduleDesktopAutoCollapse() {
+    _desktopAutoCollapseTimer?.cancel();
+    _desktopAutoCollapseTimer = Timer(const Duration(seconds: 5), () {
+      if (!mounted) return;
+      setState(() {
+        NavigationShell.webSidebarExpanded = false;
+      });
     });
   }
 
@@ -332,7 +389,7 @@ class _NavigationShellState extends State<NavigationShell> {
     ];
   }
 
-  Widget _buildWebSidebar(BuildContext context) {
+  Widget _buildWebSidebar(BuildContext context, bool showLabels, bool isDesktop) {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
 
@@ -346,6 +403,8 @@ class _NavigationShellState extends State<NavigationShell> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 12, 12),
             child: Row(
+              mainAxisAlignment:
+                  showLabels ? MainAxisAlignment.start : MainAxisAlignment.center,
               children: [
                 Container(
                   width: 36,
@@ -360,34 +419,41 @@ class _NavigationShellState extends State<NavigationShell> {
                     size: 18,
                   ),
                 ),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'myparivaar',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                if (showLabels) ...[
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'myparivaar',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Finance',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF94A3B8),
+                        SizedBox(height: 2),
+                        Text(
+                          'Finance',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF94A3B8),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                IconButton(
-                  tooltip: 'Hide navigation',
-                  onPressed: _toggleSidebar,
-                  icon: const Icon(Icons.keyboard_double_arrow_left_rounded),
-                ),
+                ],
+                if (isDesktop)
+                  IconButton(
+                    tooltip: showLabels ? 'Collapse navigation' : 'Expand navigation',
+                    onPressed: _toggleSidebarExpansion,
+                    icon: Icon(
+                      showLabels
+                          ? Icons.keyboard_double_arrow_left_rounded
+                          : Icons.keyboard_double_arrow_right_rounded,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -409,8 +475,10 @@ class _NavigationShellState extends State<NavigationShell> {
                           }
                         : null,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: showLabels ? 12 : 0,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: isActive
                             ? primary.withOpacity(0.12)
@@ -418,25 +486,33 @@ class _NavigationShellState extends State<NavigationShell> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
+                        mainAxisAlignment: showLabels
+                            ? MainAxisAlignment.start
+                            : MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            item.icon,
-                            size: 20,
-                            color: isActive ? primary : const Color(0xFF6B7280),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              item.label,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: isActive
-                                    ? primary
-                                    : const Color(0xFF6B7280),
-                              ),
+                          Tooltip(
+                            message: item.label,
+                            child: Icon(
+                              item.icon,
+                              size: 20,
+                              color: isActive ? primary : const Color(0xFF6B7280),
                             ),
                           ),
+                          if (showLabels) ...[
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                item.label,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: isActive
+                                      ? primary
+                                      : const Color(0xFF6B7280),
+                                ),
+                              ),
+                            ),
+                          ],
                           if (!item.connected)
                             const Tooltip(
                               message: 'Feature coming soon',
@@ -454,54 +530,59 @@ class _NavigationShellState extends State<NavigationShell> {
               }).toList(),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Container(
-              width: double.infinity,
+          if (showLabels)
+            Padding(
               padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: primary.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: primary.withOpacity(0.15)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Pro Plan',
-                        style: TextStyle(
-                          color: primary,
-                          fontWeight: FontWeight.w700,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: primary.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: primary.withOpacity(0.15)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Pro Plan',
+                          style: TextStyle(
+                            color: primary,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(
-                        Icons.close_rounded,
-                        size: 12,
-                        color: Colors.red,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Upgrade for more features',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF6B7280),
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.close_rounded,
+                          size: 12,
+                          color: Colors.red,
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Upgrade for more features',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildWebTopBar(BuildContext context, bool showSidebar) {
+  Widget _buildWebTopBar(
+    BuildContext context,
+    bool showLabels,
+    bool isDesktop,
+  ) {
     final theme = Theme.of(context);
     final authService = context.watch<AuthService>();
     final primary = theme.colorScheme.primary;
@@ -525,13 +606,13 @@ class _NavigationShellState extends State<NavigationShell> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!showSidebar) ...[
+          if (!showLabels && isDesktop) ...[
             Material(
               color: const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(12),
               child: IconButton(
                 tooltip: 'Show navigation',
-                onPressed: _toggleSidebar,
+                onPressed: _toggleSidebarExpansion,
                 icon: const Icon(Icons.menu_rounded),
               ),
             ),
@@ -691,7 +772,9 @@ class _NavigationShellState extends State<NavigationShell> {
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) {
-      final showSidebar = NavigationShell.webSidebarVisible;
+      final viewMode = context.watch<ViewModeProvider>().mode;
+      final isDesktop = viewMode == ViewMode.desktop;
+      final showLabels = isDesktop && NavigationShell.webSidebarExpanded;
       return Scaffold(
         body: SafeArea(
           child: Row(
@@ -699,14 +782,14 @@ class _NavigationShellState extends State<NavigationShell> {
               AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOut,
-                width: showSidebar ? 256 : 0,
-                child: showSidebar ? _buildWebSidebar(context) : null,
+                width: showLabels ? 256 : 80,
+                child: _buildWebSidebar(context, showLabels, isDesktop),
               ),
               Expanded(
                 child: Column(
                   children: [
                     if (widget.showWebTopBar)
-                      _buildWebTopBar(context, showSidebar),
+                      _buildWebTopBar(context, showLabels, isDesktop),
                     Expanded(child: widget.child),
                   ],
                 ),

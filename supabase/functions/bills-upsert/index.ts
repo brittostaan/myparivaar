@@ -15,6 +15,34 @@ interface BillsUpsertRequest {
   due_date: string
   is_recurring: boolean
   notes?: string
+  tags?: string[]
+}
+
+function sanitizeTags(tags?: string[]): string[] {
+  if (!Array.isArray(tags)) return []
+
+  const seen = new Set<string>()
+  const output: string[] = []
+
+  for (const rawTag of tags) {
+    if (typeof rawTag !== 'string') continue
+    const normalized = rawTag.trim().replace(/\s+/g, ' ')
+    if (!normalized) continue
+    if (normalized.length > 40) {
+      throw new Error('Each tag must be 40 characters or less')
+    }
+    const key = normalized.toLowerCase()
+    if (!seen.has(key)) {
+      seen.add(key)
+      output.push(normalized)
+    }
+  }
+
+  if (output.length > 15) {
+    throw new Error('You can add up to 15 tags')
+  }
+
+  return output
 }
 
 const validCategories = new Set([
@@ -64,6 +92,16 @@ Deno.serve(async (req: Request) => {
 
     const body: BillsUpsertRequest = await req.json()
     const name = (body.name ?? '').trim()
+
+    let sanitizedTags: string[]
+    try {
+      sanitizedTags = sanitizeTags(body.tags)
+    } catch (error) {
+      return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Invalid tags' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     if (!name || name.length > 100) {
       return new Response(JSON.stringify({ error: 'Name is required and must be 1-100 characters' }), {
@@ -126,6 +164,7 @@ Deno.serve(async (req: Request) => {
       due_date: body.due_date,
       is_recurring: body.is_recurring,
       notes: body.notes?.trim() || null,
+      tags: sanitizedTags,
     }
 
     if (body.id) {

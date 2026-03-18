@@ -4,7 +4,11 @@ import 'package:provider/provider.dart';
 import '../models/bill.dart';
 import '../services/auth_service.dart';
 import '../services/bill_service.dart';
+import '../services/family_service.dart';
 import '../theme/app_colors.dart';
+import '../utils/tag_utils.dart';
+import '../widgets/tag_input_section.dart';
+import '../widgets/tag_wrap.dart';
 
 class UpcomingBillsScreen extends StatefulWidget {
   const UpcomingBillsScreen({super.key});
@@ -19,6 +23,7 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
   final BillService _billService = BillService();
 
   List<Bill> _bills = [];
+  List<String> _tagSuggestions = [];
   bool _isLoading = false;
   String? _error;
 
@@ -26,6 +31,29 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
   void initState() {
     super.initState();
     _loadBills();
+    _loadTagSuggestions();
+  }
+
+  Future<void> _loadTagSuggestions() async {
+    try {
+      final auth = Provider.of<AuthService>(context, listen: false);
+      final familyService = FamilyService(
+        supabaseUrl: auth.supabaseUrl,
+        authService: auth,
+      );
+      final members = await familyService.fetchMembers();
+      if (!mounted) return;
+      setState(() {
+        _tagSuggestions = members
+            .map((member) => member.displayLabel.trim())
+            .where((label) => label.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      });
+    } catch (_) {
+      // Tag suggestions are optional.
+    }
   }
 
   _BillFilter _activeFilter = _BillFilter.all;
@@ -89,7 +117,10 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
   Future<void> _showBillDialog({Bill? existing}) async {
     final result = await showDialog<_BillFormResult>(
       context: context,
-      builder: (context) => _BillFormDialog(existing: existing),
+      builder: (context) => _BillFormDialog(
+        existing: existing,
+        tagSuggestions: _tagSuggestions,
+      ),
     );
 
     if (result == null || !mounted) return;
@@ -108,6 +139,7 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
           dueDate: result.dueDate,
           isRecurring: result.isRecurring,
           notes: result.notes,
+          tags: result.tags,
         ),
       );
       if (!mounted) return;
@@ -357,42 +389,51 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
                                       ),
                                       subtitle: Padding(
                                         padding: const EdgeInsets.only(top: 4),
-                                        child: Wrap(
-                                          spacing: 8,
-                                          runSpacing: 6,
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text(
-                                              bill.provider?.trim().isNotEmpty == true
-                                                  ? bill.provider!
-                                                  : Bill.categoryLabel(bill.category),
-                                              style: const TextStyle(fontSize: 12),
-                                            ),
-                                            Text(
-                                              _formatDate(bill.dueDate),
-                                              style: const TextStyle(fontSize: 12),
-                                            ),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 2,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: statusColor.withOpacity(0.12),
-                                                borderRadius: BorderRadius.circular(99),
-                                              ),
-                                              child: Text(
-                                                bill.isPaid
-                                                    ? 'Paid'
-                                                    : bill.isOverdue
-                                                        ? 'Overdue'
-                                                        : '${bill.daysUntilDue}d left',
-                                                style: TextStyle(
-                                                  color: statusColor,
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w700,
+                                            Wrap(
+                                              spacing: 8,
+                                              runSpacing: 6,
+                                              children: [
+                                                Text(
+                                                  bill.provider?.trim().isNotEmpty == true
+                                                      ? bill.provider!
+                                                      : Bill.categoryLabel(bill.category),
+                                                  style: const TextStyle(fontSize: 12),
                                                 ),
-                                              ),
+                                                Text(
+                                                  _formatDate(bill.dueDate),
+                                                  style: const TextStyle(fontSize: 12),
+                                                ),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 2,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: statusColor.withOpacity(0.12),
+                                                    borderRadius: BorderRadius.circular(99),
+                                                  ),
+                                                  child: Text(
+                                                    bill.isPaid
+                                                        ? 'Paid'
+                                                        : bill.isOverdue
+                                                            ? 'Overdue'
+                                                            : '${bill.daysUntilDue}d left',
+                                                    style: TextStyle(
+                                                      color: statusColor,
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
+                                            if (bill.tags.isNotEmpty) ...[
+                                              const SizedBox(height: 6),
+                                              TagWrap(tags: bill.tags),
+                                            ],
                                           ],
                                         ),
                                       ),
@@ -563,6 +604,7 @@ class _BillFormResult {
   final DateTime dueDate;
   final bool isRecurring;
   final String? notes;
+  final List<String> tags;
 
   const _BillFormResult({
     required this.name,
@@ -573,13 +615,15 @@ class _BillFormResult {
     required this.dueDate,
     required this.isRecurring,
     required this.notes,
+    required this.tags,
   });
 }
 
 class _BillFormDialog extends StatefulWidget {
   final Bill? existing;
+  final List<String> tagSuggestions;
 
-  const _BillFormDialog({this.existing});
+  const _BillFormDialog({this.existing, this.tagSuggestions = const []});
 
   @override
   State<_BillFormDialog> createState() => _BillFormDialogState();
@@ -592,6 +636,7 @@ class _BillFormDialogState extends State<_BillFormDialog> {
   late final TextEditingController _providerCtrl;
   late final TextEditingController _amountCtrl;
   late final TextEditingController _notesCtrl;
+  late final TextEditingController _tagsCtrl;
 
   late BillCategory _category;
   late BillFrequency _frequency;
@@ -608,6 +653,7 @@ class _BillFormDialogState extends State<_BillFormDialog> {
       text: existing != null ? existing.amount.toStringAsFixed(2) : '',
     );
     _notesCtrl = TextEditingController(text: existing?.notes ?? '');
+    _tagsCtrl = TextEditingController(text: joinTags(existing?.tags));
 
     _category = existing?.category ?? BillCategory.utilities;
     _frequency = existing?.frequency ?? BillFrequency.monthly;
@@ -621,6 +667,7 @@ class _BillFormDialogState extends State<_BillFormDialog> {
     _providerCtrl.dispose();
     _amountCtrl.dispose();
     _notesCtrl.dispose();
+    _tagsCtrl.dispose();
     super.dispose();
   }
 
@@ -651,6 +698,7 @@ class _BillFormDialogState extends State<_BillFormDialog> {
         dueDate: _dueDate,
         isRecurring: _isRecurring,
         notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+        tags: parseTags(_tagsCtrl.text),
       ),
     );
   }
@@ -760,6 +808,13 @@ class _BillFormDialogState extends State<_BillFormDialog> {
                   controller: _notesCtrl,
                   maxLines: 3,
                   decoration: const InputDecoration(labelText: 'Notes (optional)'),
+                ),
+                const SizedBox(height: 10),
+                TagInputSection(
+                  controller: _tagsCtrl,
+                  suggestions: widget.tagSuggestions,
+                  helperText:
+                      'Use family names or keywords like dad, insurance, school, trip.',
                 ),
               ],
             ),

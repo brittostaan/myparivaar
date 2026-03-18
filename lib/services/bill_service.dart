@@ -65,6 +65,7 @@ class BillService {
     required DateTime dueDate,
     required bool isRecurring,
     String? notes,
+    List<String>? tags,
   }) async {
     final body = <String, dynamic>{
       'name': name,
@@ -82,6 +83,9 @@ class BillService {
     }
     if (notes != null && notes.trim().isNotEmpty) {
       body['notes'] = notes.trim();
+    }
+    if (tags != null) {
+      body['tags'] = tags;
     }
 
     final response = await _post(

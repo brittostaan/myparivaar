@@ -4,29 +4,32 @@ import 'package:provider/provider.dart';
 import '../models/budget.dart';
 import '../models/expense.dart';
 import '../models/investment.dart';
+import '../models/member.dart';
 import '../models/planner_item.dart';
 import '../services/auth_service.dart';
 import '../services/budget_service.dart';
 import '../services/expense_service.dart';
 import '../services/family_planner_service.dart';
+import '../services/family_service.dart';
 import '../services/investment_service.dart';
 
-class KidsDashboardScreen extends StatefulWidget {
-  const KidsDashboardScreen({super.key});
+class ParentsDashboardScreen extends StatefulWidget {
+  const ParentsDashboardScreen({super.key});
 
   @override
-  State<KidsDashboardScreen> createState() => _KidsDashboardScreenState();
+  State<ParentsDashboardScreen> createState() => _ParentsDashboardScreenState();
 }
 
-class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
+class _ParentsDashboardScreenState extends State<ParentsDashboardScreen> {
   final ExpenseService _expenseService = ExpenseService();
   final BudgetService _budgetService = BudgetService();
   final FamilyPlannerService _plannerService = FamilyPlannerService();
   final InvestmentService _investmentService = InvestmentService();
 
-  final TextEditingController _kidNameCtrl = TextEditingController();
+  final TextEditingController _parentAliasCtrl = TextEditingController();
 
-  final List<String> _kidNames = [];
+  List<Member> _members = [];
+  List<String> _parentNames = [];
   List<Expense> _expenses = [];
   List<Budget> _budgets = [];
   List<PlannerItem> _plannerItems = [];
@@ -35,44 +38,65 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
   bool _isLoading = true;
   String? _error;
 
-  static const List<String> _educationKeywords = [
-    'school',
-    'fees',
-    'fee',
-    'tuition',
-    'books',
-    'book',
-    'stationary',
-    'stationery',
-    'school van',
-    'transport',
-    'uniform',
-    'exam',
-    'class',
-    'coaching',
+  static const List<String> _parentKeywords = [
+    'mom',
+    'mother',
+    'dad',
+    'father',
+    'amma',
+    'appa',
+    'mummy',
+    'papa',
+    'parent',
+    'parents',
   ];
 
-  static const List<String> _moneySentKeywords = [
-    'sent',
-    'send',
-    'transfer',
-    'upi',
-    'allowance',
-    'pocket money',
-    'recharge',
-    'to kid',
+  static const List<String> _healthKeywords = [
+    'health',
+    'checkup',
+    'doctor',
+    'hospital',
+    'clinic',
+    'medical',
+    'medicine',
+    'medicines',
+    'lab',
+    'test',
+    'scan',
+    'xray',
+    'dental',
+    'vision',
+    'eye',
+    'physio',
+    'surgery',
   ];
 
-  static const List<String> _schoolEventKeywords = [
-    'parent teacher',
-    'ptm',
-    'sports day',
-    'graduation',
-    'annual day',
-    'school meeting',
-    'school event',
-    'open house',
-    'orientation',
+  static const List<String> _insuranceKeywords = [
+    'insurance',
+    'medical insurance',
+    'health insurance',
+    'mediclaim',
+    'policy',
+    'premium',
+    'renew',
+    'renewal',
+    'cover',
+    'coverage',
+    'retirement',
+    'pension',
+  ];
+
+  static const List<String> _supportBudgetKeywords = [
+    'medical',
+    'health',
+    'doctor',
+    'hospital',
+    'insurance',
+    'care',
+    'support',
+    'pharmacy',
+    'medicine',
+    'wellness',
   ];
 
   @override
@@ -83,7 +107,7 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
 
   @override
   void dispose() {
-    _kidNameCtrl.dispose();
+    _parentAliasCtrl.dispose();
     super.dispose();
   }
 
@@ -169,12 +193,25 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
         // Investments backend may not be available in all environments yet.
       }
 
+      List<Member> members = [];
+      try {
+        final auth = context.read<AuthService>();
+        final familyService = FamilyService(
+          supabaseUrl: auth.supabaseUrl,
+          authService: auth,
+        );
+        members = await familyService.fetchMembers();
+      } catch (_) {
+        members = const [];
+      }
+
       if (!mounted) return;
       setState(() {
         _expenses = expenses;
         _budgets = allBudgets;
         _plannerItems = plannerItems;
         _investments = investments;
+        _members = members;
         _isLoading = false;
       });
     } catch (e) {
@@ -193,146 +230,7 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
     return '$y-$m-$day';
   }
 
-  String _fmtCurrency(double amount) {
-    final value = amount.toStringAsFixed(2);
-    return 'Rs $value';
-  }
-
-  String _normalize(String input) => input.toLowerCase().trim();
-
-  bool _containsAny(String source, List<String> keywords) {
-    final text = _normalize(source);
-    for (final keyword in keywords) {
-      if (text.contains(keyword)) return true;
-    }
-    return false;
-  }
-
-  bool _containsKidName(String source) {
-    if (_kidNames.isEmpty) return false;
-    final text = _normalize(source);
-    for (final name in _kidNames) {
-      if (text.contains(_normalize(name))) return true;
-    }
-    return false;
-  }
-
-  String _expenseBlob(Expense e) {
-    return '${e.category} ${e.description} ${e.notes ?? ''} ${e.tags.join(' ')}'
-        .toLowerCase();
-  }
-
-  bool _isKidEducationExpense(Expense e) {
-    final text = _expenseBlob(e);
-    final hasKidSignal = _containsKidName(text) || _kidNames.isEmpty;
-    return hasKidSignal && _containsAny(text, _educationKeywords);
-  }
-
-  bool _isMoneySentExpense(Expense e) {
-    final text = _expenseBlob(e);
-    final hasKidSignal = _containsKidName(text) || _kidNames.isEmpty;
-    return hasKidSignal && _containsAny(text, _moneySentKeywords);
-  }
-
-  bool _isKidBudget(Budget b) {
-    final text = '${b.category} ${b.tags.join(' ')}'.toLowerCase();
-    final hasKidSignal = _containsKidName(text) || _kidNames.isEmpty;
-    return hasKidSignal && _containsAny(text, _educationKeywords);
-  }
-
-  bool _kidNameMatches(String? childName) {
-    if (childName == null || childName.trim().isEmpty) return false;
-    if (_kidNames.isEmpty) return true;
-    final normalized = _normalize(childName);
-    for (final name in _kidNames) {
-      if (normalized.contains(_normalize(name)) ||
-          _normalize(name).contains(normalized)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  bool _isKidPlannerEvent(PlannerItem item) {
-    final text = '${item.title} ${item.description ?? ''} ${item.location ?? ''}'
-        .toLowerCase();
-    final hasKidSignal = _containsKidName(text) ||
-        item.type == PlannerItemType.birthday ||
-        item.type == PlannerItemType.event ||
-        item.type == PlannerItemType.reminder;
-    return hasKidSignal &&
-        (_containsAny(text, _schoolEventKeywords) ||
-            item.type == PlannerItemType.birthday ||
-            item.type == PlannerItemType.event ||
-            item.type == PlannerItemType.vacation);
-  }
-
-  List<Expense> get _kidTaggedExpenses {
-    return _expenses
-        .where((e) => _isKidEducationExpense(e) || _containsKidName(_expenseBlob(e)))
-        .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-  }
-
-  List<Expense> get _moneySentExpenses {
-    return _expenses.where(_isMoneySentExpense).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-  }
-
-  List<Investment> get _kidInvestments {
-    return _investments.where((inv) => _kidNameMatches(inv.childName)).toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-  }
-
-  List<Budget> get _kidBudgets {
-    return _budgets.where(_isKidBudget).toList();
-  }
-
-  List<PlannerItem> get _kidPlannerEvents {
-    final now = DateTime.now();
-    return _plannerItems
-        .where(_isKidPlannerEvent)
-        .where((item) => !item.startDate.isBefore(now.subtract(const Duration(days: 1))))
-        .toList()
-      ..sort((a, b) => a.startDate.compareTo(b.startDate));
-  }
-
-  double get _moneySentTotal =>
-      _moneySentExpenses.fold<double>(0, (sum, e) => sum + e.amount);
-
-  double get _kidExpenseTotal =>
-      _kidTaggedExpenses.fold<double>(0, (sum, e) => sum + e.amount);
-
-  double get _kidBudgetTotal =>
-      _kidBudgets.fold<double>(0, (sum, b) => sum + b.amount);
-
-  double get _kidBudgetSpent =>
-      _kidBudgets.fold<double>(0, (sum, b) => sum + b.spent);
-
-  double get _kidInvestmentsTotal =>
-      _kidInvestments.fold<double>(0, (sum, inv) => sum + inv.currentValue);
-
-  void _addKidName() {
-    final name = _kidNameCtrl.text.trim();
-    if (name.isEmpty) return;
-
-    final exists = _kidNames.any((n) => _normalize(n) == _normalize(name));
-    if (exists) {
-      _kidNameCtrl.clear();
-      return;
-    }
-
-    setState(() {
-      _kidNames.add(name);
-      _kidNameCtrl.clear();
-    });
-  }
-
-  void _removeKidName(String name) {
-    setState(() {
-      _kidNames.remove(name);
-    });
-  }
+  String _fmtCurrency(double amount) => 'Rs ${amount.toStringAsFixed(2)}';
 
   String _formatDate(DateTime date) {
     const months = [
@@ -352,8 +250,165 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
+  String _normalize(String input) => input.toLowerCase().trim();
+
+  bool _containsAny(String source, List<String> keywords) {
+    final text = _normalize(source);
+    for (final keyword in keywords) {
+      if (text.contains(keyword)) return true;
+    }
+    return false;
+  }
+
+  bool _containsParentSignal(String source) {
+    final text = _normalize(source);
+    if (_containsAny(text, _parentKeywords)) return true;
+    if (_parentNames.isEmpty) return false;
+    for (final name in _parentNames) {
+      if (text.contains(_normalize(name))) return true;
+    }
+    return false;
+  }
+
+  String _plannerBlob(PlannerItem item) {
+    return '${item.title} ${item.description ?? ''} ${item.location ?? ''}'
+        .toLowerCase();
+  }
+
+  String _expenseBlob(Expense expense) {
+    return '${expense.category} ${expense.description} ${expense.notes ?? ''} ${expense.tags.join(' ')}'
+        .toLowerCase();
+  }
+
+  String _investmentBlob(Investment investment) {
+    return '${investment.name} ${investment.type} ${investment.provider ?? ''} ${investment.notes ?? ''}'
+        .toLowerCase();
+  }
+
+  bool _isParentCarePlannerItem(PlannerItem item) {
+    final text = _plannerBlob(item);
+    return _containsParentSignal(text) &&
+        (_containsAny(text, _healthKeywords) ||
+            _containsAny(text, _insuranceKeywords) ||
+            item.type == PlannerItemType.reminder ||
+            item.type == PlannerItemType.task);
+  }
+
+  bool _isParentMilestonePlannerItem(PlannerItem item) {
+    final text = _plannerBlob(item);
+    return _containsParentSignal(text) &&
+        (item.type == PlannerItemType.birthday ||
+            item.type == PlannerItemType.anniversary ||
+            item.type == PlannerItemType.event);
+  }
+
+  bool _isParentExpense(Expense expense) {
+    final text = _expenseBlob(expense);
+    return _containsParentSignal(text) &&
+        (_containsAny(text, _healthKeywords) ||
+            _containsAny(text, _insuranceKeywords) ||
+            _containsAny(text, _supportBudgetKeywords));
+  }
+
+  bool _isParentBudget(Budget budget) {
+    final text = '${budget.category} ${budget.tags.join(' ')}'.toLowerCase();
+    return _containsParentSignal(text) ||
+        _containsAny(text, _supportBudgetKeywords) ||
+        _containsAny(text, _insuranceKeywords);
+  }
+
+  bool _isParentInvestment(Investment investment) {
+    final text = _investmentBlob(investment);
+    return (_containsParentSignal(text) ||
+            investment.type.toLowerCase().contains('insurance')) &&
+        (_containsAny(text, _insuranceKeywords) ||
+            _containsAny(text, _healthKeywords) ||
+            investment.type.toLowerCase().contains('insurance') ||
+            investment.type.toLowerCase().contains('retirement'));
+  }
+
+  List<String> get _householdNameSuggestions {
+    final names = <String>{
+      for (final member in _members)
+        if ((member.displayName ?? '').trim().isNotEmpty)
+          member.displayName!.trim(),
+    }.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return names.where((name) {
+      return !_parentNames.any((existing) => _normalize(existing) == _normalize(name));
+    }).toList();
+  }
+
+  List<PlannerItem> get _careReminders {
+    final now = DateTime.now();
+    return _plannerItems
+        .where(_isParentCarePlannerItem)
+        .where((item) => !item.startDate.isBefore(now.subtract(const Duration(days: 1))))
+        .toList()
+      ..sort((a, b) => a.startDate.compareTo(b.startDate));
+  }
+
+  List<PlannerItem> get _familyMilestones {
+    final now = DateTime.now();
+    return _plannerItems
+        .where(_isParentMilestonePlannerItem)
+        .where((item) => !item.startDate.isBefore(now.subtract(const Duration(days: 1))))
+        .toList()
+      ..sort((a, b) => a.startDate.compareTo(b.startDate));
+  }
+
+  List<Expense> get _parentExpenses {
+    return _expenses.where(_isParentExpense).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  List<Budget> get _parentBudgets => _budgets.where(_isParentBudget).toList();
+
+  List<Investment> get _parentInvestments {
+    return _investments.where(_isParentInvestment).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  double get _parentExpenseTotal =>
+      _parentExpenses.fold<double>(0, (sum, expense) => sum + expense.amount);
+
+  double get _parentBudgetTotal =>
+      _parentBudgets.fold<double>(0, (sum, budget) => sum + budget.amount);
+
+  double get _parentBudgetSpent =>
+      _parentBudgets.fold<double>(0, (sum, budget) => sum + budget.spent);
+
+  double get _parentInvestmentValue => _parentInvestments.fold<double>(
+      0, (sum, investment) => sum + investment.currentValue);
+
+  void _addParentName([String? value]) {
+    final name = (value ?? _parentAliasCtrl.text).trim();
+    if (name.isEmpty) return;
+
+    final exists = _parentNames.any((existing) => _normalize(existing) == _normalize(name));
+    if (exists) {
+      _parentAliasCtrl.clear();
+      return;
+    }
+
+    setState(() {
+      _parentNames.add(name);
+      _parentAliasCtrl.clear();
+    });
+  }
+
+  void _removeParentName(String name) {
+    setState(() {
+      _parentNames.remove(name);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final budgetUsage = _parentBudgetTotal > 0
+        ? (_parentBudgetSpent / _parentBudgetTotal).clamp(0.0, 1.0)
+        : 0.0;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
@@ -368,9 +423,9 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
                       children: [
                         _buildHeader(),
                         const SizedBox(height: 12),
-                        _buildKidNameBar(),
+                        _buildParentLensBar(),
                         const SizedBox(height: 12),
-                        _buildStats(),
+                        _buildStats(budgetUsage),
                         const SizedBox(height: 12),
                         Expanded(
                           child: Row(
@@ -378,17 +433,15 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
                             children: [
                               Expanded(
                                 child: _InsightListCard(
-                                  title: 'Money Sent to Kids',
+                                  title: 'Care & Health Reminders',
                                   subtitle:
-                                      'Transfers, allowance, pocket money, and similar sends',
+                                      'Checkups, renewals, medicines, and support tasks for parents',
                                   emptyText:
-                                      'No kid-related money sends found for current data.',
-                                  children: _moneySentExpenses.take(8).map((e) {
-                                    return _ExpenseInsightTile(
-                                      title: e.description,
-                                      subtitle:
-                                          '${e.category} · ${_formatDate(e.date)}',
-                                      amount: _fmtCurrency(e.amount),
+                                      'No parent care reminders found in planner data.',
+                                  children: _careReminders.take(8).map((item) {
+                                    return _PlannerInsightTile(
+                                      item: item,
+                                      dateLabel: _formatDate(item.startDate),
                                     );
                                   }).toList(),
                                 ),
@@ -396,15 +449,17 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: _InsightListCard(
-                                  title: 'School & Kids Planner',
+                                  title: 'Insurance & Parent Investments',
                                   subtitle:
-                                      'PTMs, sports day, graduation, birthdays, and upcoming events',
+                                      'Medical insurance, retirement, and parent-linked investment coverage',
                                   emptyText:
-                                      'No upcoming kid-related planner events found.',
-                                  children: _kidPlannerEvents.take(8).map((item) {
-                                    return _PlannerInsightTile(
-                                      item: item,
-                                      dateLabel: _formatDate(item.startDate),
+                                      'No parent-related investment coverage found yet.',
+                                  children: _parentInvestments.take(8).map((investment) {
+                                    return _InvestmentInsightTile(
+                                      title: investment.name,
+                                      subtitle:
+                                          '${investment.type} · ${investment.provider?.isNotEmpty == true ? investment.provider : 'Provider not set'}',
+                                      amount: _fmtCurrency(investment.currentValue),
                                     );
                                   }).toList(),
                                 ),
@@ -419,16 +474,16 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
                             children: [
                               Expanded(
                                 child: _InsightListCard(
-                                  title: 'Kid Tagged Expenses',
+                                  title: 'Parent Support Expenses',
                                   subtitle:
-                                      'Education and kid-related expense signals (books, fees, van, etc.)',
-                                  emptyText: 'No kid-tagged expenses found.',
-                                  children: _kidTaggedExpenses.take(8).map((e) {
+                                      'Medical, insurance, pharmacy, and care spending visible to children',
+                                  emptyText: 'No parent-related expenses found.',
+                                  children: _parentExpenses.take(8).map((expense) {
                                     return _ExpenseInsightTile(
-                                      title: e.description,
+                                      title: expense.description,
                                       subtitle:
-                                          '${e.category} · ${_formatDate(e.date)}',
-                                      amount: _fmtCurrency(e.amount),
+                                          '${expense.category} · ${_formatDate(expense.date)}',
+                                      amount: _fmtCurrency(expense.amount),
                                     );
                                   }).toList(),
                                 ),
@@ -436,26 +491,24 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: _InsightListCard(
-                                  title: 'Kids Budget & Investments',
+                                  title: 'Parent Budgets & Family Moments',
                                   subtitle:
-                                      'Budget buckets tagged to kids and real investments linked by child name',
+                                      'Budget coverage for care plus birthdays, anniversaries, and parent milestones',
                                   emptyText:
-                                      'No kid budgets or child-linked investments available yet.',
+                                      'No parent budgets or milestones found yet.',
                                   children: [
-                                    ..._kidBudgets.take(5).map((b) {
+                                    ..._parentBudgets.take(4).map((budget) {
                                       return _BudgetInsightTile(
-                                        category: b.category,
-                                        month: b.month,
-                                        budgetAmount: _fmtCurrency(b.amount),
-                                        spentAmount: _fmtCurrency(b.spent),
+                                        category: budget.category,
+                                        month: budget.month,
+                                        budgetAmount: _fmtCurrency(budget.amount),
+                                        spentAmount: _fmtCurrency(budget.spent),
                                       );
                                     }),
-                                    ..._kidInvestments.take(5).map((inv) {
-                                      return _InvestmentInsightTile(
-                                        title: inv.name,
-                                        subtitle:
-                                            '${inv.type} · ${inv.childName ?? 'Unassigned'}',
-                                        amount: _fmtCurrency(inv.currentValue),
+                                    ..._familyMilestones.take(4).map((item) {
+                                      return _PlannerInsightTile(
+                                        item: item,
+                                        dateLabel: _formatDate(item.startDate),
                                       );
                                     }),
                                   ],
@@ -479,7 +532,7 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Kids Dashboard',
+                'Parents Dashboard',
                 style: TextStyle(
                   fontSize: 30,
                   fontWeight: FontWeight.w800,
@@ -488,7 +541,7 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Capture kids activity, money sent, school events, budgets, and investments in one place.',
+                'See parent care reminders, health coverage, support spending, and milestone planning from a son or daughter perspective.',
                 style: TextStyle(color: Colors.grey[600]),
               ),
             ],
@@ -503,7 +556,7 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
     );
   }
 
-  Widget _buildKidNameBar() {
+  Widget _buildParentLensBar() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -516,12 +569,12 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Kid Name Lens',
+            'Parent Lens',
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
           Text(
-            'Add kid names to tighten matching for expenses, planner events, and child-linked investments.',
+            'Add parent names or aliases like Mom and Dad to sharpen matching for planner reminders, expenses, and investments.',
             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
           ),
           const SizedBox(height: 10),
@@ -529,10 +582,10 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
             children: [
               Expanded(
                 child: TextField(
-                  controller: _kidNameCtrl,
-                  onSubmitted: (_) => _addKidName(),
+                  controller: _parentAliasCtrl,
+                  onSubmitted: (_) => _addParentName(),
                   decoration: const InputDecoration(
-                    hintText: 'Enter kid name (e.g., Aarav)',
+                    hintText: 'Enter parent name or alias (e.g., Mom, Dad, Kavitha)',
                     isDense: true,
                     border: OutlineInputBorder(),
                   ),
@@ -540,20 +593,38 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
               ),
               const SizedBox(width: 8),
               FilledButton(
-                onPressed: _addKidName,
+                onPressed: _addParentName,
                 child: const Text('Add'),
               ),
             ],
           ),
-          if (_kidNames.isNotEmpty) ...[
+          if (_householdNameSuggestions.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Household suggestions',
+              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _householdNameSuggestions.take(6).map((name) {
+                return ActionChip(
+                  label: Text(name),
+                  onPressed: () => _addParentName(name),
+                );
+              }).toList(),
+            ),
+          ],
+          if (_parentNames.isNotEmpty) ...[
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _kidNames.map((name) {
+              children: _parentNames.map((name) {
                 return Chip(
                   label: Text(name),
-                  onDeleted: () => _removeKidName(name),
+                  onDeleted: () => _removeParentName(name),
                 );
               }).toList(),
             ),
@@ -563,53 +634,49 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
     );
   }
 
-  Widget _buildStats() {
-    final budgetUsage = _kidBudgetTotal > 0
-        ? (_kidBudgetSpent / _kidBudgetTotal).clamp(0.0, 1.0)
-        : 0.0;
-
+  Widget _buildStats(double budgetUsage) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-        _StatCard(
-          title: 'Money Sent',
-          value: _fmtCurrency(_moneySentTotal),
-          subtitle: '${_moneySentExpenses.length} entries',
-          color: const Color(0xFF0EA5E9),
-        ),
-        const SizedBox(width: 10),
-        _StatCard(
-          title: 'Kid Expenses',
-          value: _fmtCurrency(_kidExpenseTotal),
-          subtitle: '${_kidTaggedExpenses.length} entries',
-          color: const Color(0xFF2563EB),
-        ),
-        const SizedBox(width: 10),
-        _StatCard(
-          title: 'School Events',
-          value: '${_kidPlannerEvents.length}',
-          subtitle: 'Upcoming + active',
-          color: const Color(0xFF9333EA),
-        ),
-        const SizedBox(width: 10),
-        _StatCard(
-          title: 'Budget Usage',
-          value: _kidBudgetTotal > 0
-              ? '${(budgetUsage * 100).toStringAsFixed(0)}%'
-              : '—',
-          subtitle: _kidBudgetTotal > 0
-              ? '${_fmtCurrency(_kidBudgetSpent)} / ${_fmtCurrency(_kidBudgetTotal)}'
-              : 'No kid budget found',
-          color: const Color(0xFFF59E0B),
-        ),
-        const SizedBox(width: 10),
-        _StatCard(
-          title: 'Investments',
-          value: _fmtCurrency(_kidInvestmentsTotal),
-          subtitle: '${_kidInvestments.length} linked records',
-          color: const Color(0xFF16A34A),
-        ),
+          _StatCard(
+            title: 'Care Reminders',
+            value: '${_careReminders.length}',
+            subtitle: 'Upcoming tasks and renewals',
+            color: const Color(0xFF2563EB),
+          ),
+          const SizedBox(width: 10),
+          _StatCard(
+            title: 'Health Spend',
+            value: _fmtCurrency(_parentExpenseTotal),
+            subtitle: '${_parentExpenses.length} tracked expenses',
+            color: const Color(0xFFDC2626),
+          ),
+          const SizedBox(width: 10),
+          _StatCard(
+            title: 'Coverage Value',
+            value: _fmtCurrency(_parentInvestmentValue),
+            subtitle: '${_parentInvestments.length} insurance or retirement records',
+            color: const Color(0xFF16A34A),
+          ),
+          const SizedBox(width: 10),
+          _StatCard(
+            title: 'Budget Coverage',
+            value: _parentBudgetTotal > 0
+                ? '${(budgetUsage * 100).toStringAsFixed(0)}%'
+                : '—',
+            subtitle: _parentBudgetTotal > 0
+                ? '${_fmtCurrency(_parentBudgetSpent)} / ${_fmtCurrency(_parentBudgetTotal)}'
+                : 'No parent budget found',
+            color: const Color(0xFFF59E0B),
+          ),
+          const SizedBox(width: 10),
+          _StatCard(
+            title: 'Family Moments',
+            value: '${_familyMilestones.length}',
+            subtitle: 'Birthdays, anniversaries, and parent events',
+            color: const Color(0xFF9333EA),
+          ),
         ],
       ),
     );
@@ -632,7 +699,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 190,
+      width: 210,
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -852,7 +919,7 @@ class _InvestmentInsightTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.query_stats_rounded, size: 16),
+          const Icon(Icons.health_and_safety_outlined, size: 16),
           const SizedBox(width: 8),
           Expanded(
             child: Column(

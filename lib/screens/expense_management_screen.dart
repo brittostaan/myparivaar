@@ -3,13 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../main.dart' show ViewModeProvider, ViewMode;
 import '../services/auth_service.dart';
-import '../services/expense_service.dart';
 import '../services/budget_service.dart';
+import '../services/expense_service.dart';
+import '../services/family_service.dart';
 import '../models/expense.dart';
 import '../models/budget.dart';
 import '../widgets/app_header.dart';
+import '../widgets/tag_input_section.dart';
+import '../widgets/tag_wrap.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../utils/tag_utils.dart';
 
 class ExpenseManagementScreen extends StatefulWidget {
   const ExpenseManagementScreen({super.key});
@@ -320,7 +324,17 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         child: Icon(_getCategoryIcon(expense.category), size: 20),
       ),
       title: Text(expense.description),
-      subtitle: Text('${expense.category} • ${_formatDate(expense.date)}'),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('${expense.category} • ${_formatDate(expense.date)}'),
+          if (expense.tags.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            TagWrap(tags: expense.tags),
+          ],
+        ],
+      ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -1190,7 +1204,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       if (_searchQuery.isNotEmpty) {
         final q = _searchQuery.toLowerCase();
         return e.description.toLowerCase().contains(q) ||
-            e.category.toLowerCase().contains(q);
+            e.category.toLowerCase().contains(q) ||
+            e.tags.any((tag) => tag.toLowerCase().contains(q));
       }
       return true;
     }).toList();
@@ -1265,7 +1280,9 @@ class AddEditExpenseScreen extends StatefulWidget {
 class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
+  final _tagsController = TextEditingController();
 
+  List<String> _tagSuggestions = [];
   String _selectedCategory = 'food';
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
@@ -1276,16 +1293,41 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
     if (widget.expense != null) {
       _amountController.text = widget.expense!.amount.toStringAsFixed(2);
       _notesController.text = widget.expense!.notes ?? '';
+      _tagsController.text = joinTags(widget.expense!.tags);
       _selectedCategory = widget.expense!.category;
       _selectedDate = widget.expense!.date;
     }
+    _loadTagSuggestions();
   }
 
   @override
   void dispose() {
     _amountController.dispose();
     _notesController.dispose();
+    _tagsController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadTagSuggestions() async {
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final familyService = FamilyService(
+        supabaseUrl: authService.supabaseUrl,
+        authService: authService,
+      );
+      final members = await familyService.fetchMembers();
+      if (!mounted) return;
+      setState(() {
+        _tagSuggestions = members
+            .map((member) => member.displayLabel.trim())
+            .where((label) => label.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      });
+    } catch (_) {
+      // Tag suggestions are optional.
+    }
   }
 
   Future<void> _selectDate() async {
@@ -1394,7 +1436,16 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 60),
+                    const SizedBox(height: 32),
+
+                    TagInputSection(
+                      controller: _tagsController,
+                      suggestions: _tagSuggestions,
+                      helperText:
+                          'Use family members or keywords like mom, school, medical, trip.',
+                    ),
+
+                    const SizedBox(height: 28),
 
                     // Category Selection
                     Align(
@@ -1657,6 +1708,7 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
 
       final description = _notesController.text.trim();
       final notes = _notesController.text.trim();
+      final tags = parseTags(_tagsController.text);
 
       if (widget.expense == null) {
         // Create new expense
@@ -1666,6 +1718,7 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
           description: description.isEmpty ? _selectedCategory : description,
           date: _selectedDate,
           notes: notes.isEmpty ? null : notes,
+          tags: tags,
           supabaseUrl: authService.supabaseUrl,
           idToken: await authService.getIdToken(),
         );
@@ -1678,6 +1731,7 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
           description: description.isEmpty ? _selectedCategory : description,
           date: _selectedDate,
           notes: notes.isEmpty ? null : notes,
+          tags: tags,
           supabaseUrl: authService.supabaseUrl,
           idToken: await authService.getIdToken(),
         );

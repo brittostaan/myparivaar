@@ -321,11 +321,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       },
                                     ),
                                     QuickAction(
+                                      label: 'Planner',
+                                      icon: Icons.event_note_outlined,
+                                      onTap: () {
+                                        Navigator.of(context)
+                                            .pushNamed('/family-planner');
+                                      },
+                                    ),
+                                    QuickAction(
                                       label: 'Kids',
                                       icon: Icons.child_care_outlined,
                                       onTap: () {
                                         Navigator.of(context)
                                             .pushNamed('/kids-dashboard');
+                                      },
+                                    ),
+                                    QuickAction(
+                                      label: 'Parents',
+                                      icon: Icons.family_restroom_outlined,
+                                      onTap: () {
+                                        Navigator.of(context)
+                                            .pushNamed('/parents-dashboard');
                                       },
                                     ),
                                   ],
@@ -382,6 +398,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
           active: true,
           connected: true),
       _DashNavItem(
+        label: 'Family Planner',
+        icon: Icons.event_note_outlined,
+        route: '/family-planner',
+        active: false,
+        connected: true),
+      _DashNavItem(
+        label: 'Kids Dashboard',
+        icon: Icons.child_care_outlined,
+        route: '/kids-dashboard',
+        active: false,
+        connected: true),
+      _DashNavItem(
+        label: 'Parents Dashboard',
+        icon: Icons.family_restroom_outlined,
+        route: '/parents-dashboard',
+        active: false,
+        connected: true),
+      _DashNavItem(
           label: 'Transactions',
           icon: Icons.receipt_long_outlined,
           route: '/expenses',
@@ -411,12 +445,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           route: '',
           active: false,
           connected: false),
-        _DashNavItem(
-          label: 'Kids Dashboard',
-          icon: Icons.child_care_outlined,
-          route: '/kids-dashboard',
-          active: false,
-          connected: true),
     ];
 
     return Container(

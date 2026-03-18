@@ -31,6 +31,7 @@ class Bill {
   final bool isPaid;
   final DateTime? paidOn;
   final String? notes;
+  final List<String> tags;
   final DateTime createdAt;
 
   const Bill({
@@ -45,6 +46,7 @@ class Bill {
     required this.isPaid,
     this.paidOn,
     this.notes,
+    this.tags = const [],
     required this.createdAt,
   });
 
@@ -61,6 +63,7 @@ class Bill {
   Bill copyWith({
     bool? isPaid,
     DateTime? paidOn,
+    List<String>? tags,
   }) {
     return Bill(
       id: id,
@@ -74,6 +77,7 @@ class Bill {
       isPaid: isPaid ?? this.isPaid,
       paidOn: paidOn ?? this.paidOn,
       notes: notes,
+      tags: tags ?? this.tags,
       createdAt: createdAt,
     );
   }
@@ -95,6 +99,10 @@ class Bill {
           ? DateTime.tryParse(json['paid_on'] as String)
           : null,
       notes: json['notes'] as String?,
+      tags: (json['tags'] as List<dynamic>? ?? const [])
+          .map((tag) => tag.toString())
+          .where((tag) => tag.trim().isNotEmpty)
+          .toList(),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String) ?? DateTime.now()
           : DateTime.now(),

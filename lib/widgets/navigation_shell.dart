@@ -276,9 +276,21 @@ class _NavigationShellState extends State<NavigationShell> {
         connected: true,
       ),
       _WebSidebarItem(
+        label: 'Family Planner',
+        icon: Icons.event_note_outlined,
+        route: '/family-planner',
+        connected: true,
+      ),
+      _WebSidebarItem(
         label: 'Kids Dashboard',
         icon: Icons.child_care_outlined,
         route: '/kids-dashboard',
+        connected: true,
+      ),
+      _WebSidebarItem(
+        label: 'Parents Dashboard',
+        icon: Icons.family_restroom_outlined,
+        route: '/parents-dashboard',
         connected: true,
       ),
       _WebSidebarItem(
@@ -309,12 +321,6 @@ class _NavigationShellState extends State<NavigationShell> {
         label: 'Reports',
         icon: Icons.description_outlined,
         route: '/reports',
-        connected: true,
-      ),
-      _WebSidebarItem(
-        label: 'Family Planner',
-        icon: Icons.event_note_outlined,
-        route: '/family-planner',
         connected: true,
       ),
       _WebSidebarItem(

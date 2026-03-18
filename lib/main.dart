@@ -13,6 +13,7 @@ import 'screens/upcoming_bills_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/family_planner_screen.dart';
 import 'screens/kids_dashboard_screen.dart';
+import 'screens/parents_dashboard_screen.dart';
 import 'screens/ai_features_screen.dart';
 import 'screens/email_settings_screen.dart';
 import 'screens/user_settings_screen.dart';
@@ -56,6 +57,7 @@ const Set<String> _authenticatedRoutes = {
   '/reports',
   '/family-planner',
   '/kids-dashboard',
+  '/parents-dashboard',
   '/ai',
   '/email-settings',
   '/user-settings',
@@ -372,6 +374,15 @@ class MyParivaaarApp extends StatelessWidget {
           builder: (_) => NavigationShell(
             currentRoute: routeName,
             child: const KidsDashboardScreen(),
+          ),
+        );
+
+      case '/parents-dashboard':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const ParentsDashboardScreen(),
           ),
         );
 

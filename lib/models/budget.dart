@@ -4,6 +4,7 @@ class Budget {
   final double amount;
   final String month;
   final double spent;
+  final List<String> tags;
 
   const Budget({
     required this.id,
@@ -11,6 +12,7 @@ class Budget {
     required this.amount,
     required this.month,
     this.spent = 0,
+    this.tags = const [],
   });
 
   double get remaining => amount - spent;
@@ -24,6 +26,10 @@ class Budget {
       amount: (json['amount'] as num?)?.toDouble() ?? 0,
       month: json['month'] as String? ?? '',
       spent: (json['spent'] as num?)?.toDouble() ?? 0,
+      tags: (json['tags'] as List<dynamic>? ?? const [])
+          .map((tag) => tag.toString())
+          .where((tag) => tag.trim().isNotEmpty)
+          .toList(),
     );
   }
 
@@ -34,6 +40,7 @@ class Budget {
       'amount': amount,
       'month': month,
       'spent': spent,
+      'tags': tags,
     };
   }
 
@@ -43,6 +50,7 @@ class Budget {
     double? amount,
     String? month,
     double? spent,
+    List<String>? tags,
   }) {
     return Budget(
       id: id ?? this.id,
@@ -50,6 +58,7 @@ class Budget {
       amount: amount ?? this.amount,
       month: month ?? this.month,
       spent: spent ?? this.spent,
+      tags: tags ?? this.tags,
     );
   }
 }

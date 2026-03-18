@@ -59,6 +59,7 @@ class NavigationConfig {
     '/reports': _mainNavigation,
     '/family-planner': _mainNavigation,
     '/kids-dashboard': _mainNavigation,
+    '/parents-dashboard': _mainNavigation,
     '/ai': _mainNavigation,
     '/user-settings': _mainNavigation,
     '/more': _mainNavigation,

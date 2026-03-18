@@ -11,6 +11,34 @@ interface BudgetUpsertRequest {
   category: string
   amount: number
   month: string // YYYY-MM
+  tags?: string[]
+}
+
+function sanitizeTags(tags?: string[]): string[] {
+  if (!Array.isArray(tags)) return []
+
+  const seen = new Set<string>()
+  const output: string[] = []
+
+  for (const rawTag of tags) {
+    if (typeof rawTag !== 'string') continue
+    const normalized = rawTag.trim().replace(/\s+/g, ' ')
+    if (!normalized) continue
+    if (normalized.length > 40) {
+      throw new Error('Each tag must be 40 characters or less')
+    }
+    const key = normalized.toLowerCase()
+    if (!seen.has(key)) {
+      seen.add(key)
+      output.push(normalized)
+    }
+  }
+
+  if (output.length > 15) {
+    throw new Error('You can add up to 15 tags')
+  }
+
+  return output
 }
 
 /**
@@ -49,7 +77,7 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    const { category, amount, month }: BudgetUpsertRequest = await req.json()
+    const { category, amount, month, tags }: BudgetUpsertRequest = await req.json()
 
     // Validate inputs
     const normalizedCategory = (category ?? '').toLowerCase().trim()
@@ -69,6 +97,16 @@ Deno.serve(async (req: Request) => {
 
     if (!month || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
       return new Response(JSON.stringify({ error: 'Invalid month format. Use YYYY-MM' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    let sanitizedTags: string[]
+    try {
+      sanitizedTags = sanitizeTags(tags)
+    } catch (error) {
+      return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Invalid tags' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -104,6 +142,7 @@ Deno.serve(async (req: Request) => {
           category: normalizedCategory,
           amount: amount,
           month: month,
+          tags: sanitizedTags,
           deleted_at: null,
         },
         { onConflict: 'household_id,category,month' }

@@ -98,6 +98,7 @@ class ExpenseService {
     required String description,
     required DateTime date,
     String? notes,
+    List<String>? tags,
     required String supabaseUrl,
     required String idToken,
   }) async {
@@ -114,6 +115,7 @@ class ExpenseService {
           'description': description,
           'date': date.toIso8601String().split('T')[0], // Date only
           'notes': notes,
+          'tags': tags,
         }),
       );
 
@@ -138,6 +140,7 @@ class ExpenseService {
     required String description,
     required DateTime date,
     String? notes,
+    List<String>? tags,
     required String supabaseUrl,
     required String idToken,
   }) async {
@@ -155,6 +158,7 @@ class ExpenseService {
           'description': description,
           'date': date.toIso8601String().split('T')[0], // Date only
           'notes': notes,
+          'tags': tags,
         }),
       );
 

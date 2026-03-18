@@ -5,9 +5,13 @@ import 'package:provider/provider.dart';
 import '../models/budget.dart';
 import '../services/auth_service.dart';
 import '../services/budget_service.dart';
+import '../services/family_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../utils/tag_utils.dart';
 import '../widgets/app_header.dart';
+import '../widgets/tag_input_section.dart';
+import '../widgets/tag_wrap.dart';
 
 class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
@@ -29,6 +33,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
   ];
 
   List<Budget> _budgets = [];
+  List<String> _tagSuggestions = [];
   bool _isLoading = false;
   String? _error;
   // Technical detail (HTTP status + raw body) shown under the error for debugging.
@@ -43,6 +48,29 @@ class _BudgetScreenState extends State<BudgetScreen> {
   void initState() {
     super.initState();
     if (_backendAvailable) _loadBudgets();
+    _loadTagSuggestions();
+  }
+
+  Future<void> _loadTagSuggestions() async {
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final familyService = FamilyService(
+        supabaseUrl: authService.supabaseUrl,
+        authService: authService,
+      );
+      final members = await familyService.fetchMembers();
+      if (!mounted) return;
+      setState(() {
+        _tagSuggestions = members
+            .map((member) => member.displayLabel.trim())
+            .where((label) => label.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      });
+    } catch (_) {
+      // Tag suggestions are optional.
+    }
   }
 
   String get _monthKey =>
@@ -99,11 +127,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
   Future<void> _addOrEditBudget({Budget? existing}) async {
     // Capture authService before any await to avoid BuildContext across async gaps.
     final authService = Provider.of<AuthService>(context, listen: false);
-    final category = await showDialog<String>(
+    final result = await showDialog<_BudgetFormResult>(
       context: context,
       builder: (context) {
         final amountController = TextEditingController(
           text: existing == null ? '' : existing.amount.toStringAsFixed(2),
+        );
+        final tagsController = TextEditingController(
+          text: joinTags(existing?.tags),
         );
         String selectedCategory = existing?.category ?? _categories.first;
 
@@ -144,6 +175,13 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       prefixText: 'Rs ',
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  TagInputSection(
+                    controller: tagsController,
+                    suggestions: _tagSuggestions,
+                    helperText:
+                        'Tag this budget with family members or intent like mom, school, travel.',
+                  ),
                 ],
               ),
               actions: [
@@ -153,8 +191,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    final amount =
-                        double.tryParse(amountController.text.trim());
+                    final amount = double.tryParse(amountController.text.trim());
                     if (amount == null || amount <= 0) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -163,7 +200,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       );
                       return;
                     }
-                    Navigator.pop(context, '$selectedCategory|$amount');
+                    Navigator.pop(
+                      context,
+                      _BudgetFormResult(
+                        category: selectedCategory,
+                        amount: amount,
+                        tags: parseTags(tagsController.text),
+                      ),
+                    );
                   },
                   child: const Text('Save'),
                 ),
@@ -174,14 +218,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
       },
     );
 
-    if (category == null || !mounted) return;
+    if (result == null || !mounted) return;
 
-    final parts = category.split('|');
-    if (parts.length != 2) return;
-
-    final selectedCategory = parts[0];
-    final selectedAmount = double.tryParse(parts[1]);
-    if (selectedAmount == null) return;
+    final selectedCategory = result.category;
+    final selectedAmount = result.amount;
 
     try {
       await _budgetService.upsertBudget(
@@ -190,6 +230,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
         category: selectedCategory,
         amount: selectedAmount,
         month: _monthKey,
+        tags: result.tags,
       );
       if (!mounted) return;
       await _loadBudgets();
@@ -835,6 +876,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       '₹${budget.amount.toStringAsFixed(0)} budgeted',
                       style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                     ),
+                    if (budget.tags.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      TagWrap(tags: budget.tags),
+                    ],
                   ],
                 ),
               ),
@@ -1109,6 +1154,18 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 }
 
+class _BudgetFormResult {
+  final String category;
+  final double amount;
+  final List<String> tags;
+
+  const _BudgetFormResult({
+    required this.category,
+    required this.amount,
+    required this.tags,
+  });
+}
+
 class _SummaryCard extends StatelessWidget {
   final BudgetSummary summary;
 
@@ -1233,6 +1290,10 @@ class _BudgetCard extends StatelessWidget {
             ),
             Text('Budget: Rs ${budget.amount.toStringAsFixed(2)}'),
             Text('Spent: Rs ${budget.spent.toStringAsFixed(2)}'),
+            if (budget.tags.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              TagWrap(tags: budget.tags),
+            ],
             const SizedBox(height: 10),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),

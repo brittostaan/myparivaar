@@ -806,40 +806,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(
-                      _hasCoreExpenseData
-                          ? Icons.check_circle
-                          : Icons.info_outline_rounded,
-                      color: _hasCoreExpenseData
-                          ? AppColors.success
-                          : const Color(0xFF64748B),
-                      size: 14,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _hasCoreExpenseData
-                          ? 'Core expenses visible'
-                          : 'Core expenses data pending',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: _hasCoreExpenseData
-                            ? AppColors.success
-                            : const Color(0xFF64748B),
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Tooltip(
-                      message: 'Bill sync coming soon',
-                      child: Icon(Icons.close_rounded,
-                          size: 12, color: Colors.red),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),

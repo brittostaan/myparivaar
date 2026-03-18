@@ -327,11 +327,6 @@ class _FamilyPlannerScreenState extends State<FamilyPlannerScreen> {
             ],
           ),
         ),
-        FilledButton.icon(
-          onPressed: _loadItems,
-          icon: const Icon(Icons.refresh_rounded),
-          label: const Text('Refresh'),
-        ),
       ],
     );
   }
@@ -345,12 +340,9 @@ class _FamilyPlannerScreenState extends State<FamilyPlannerScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1D4ED8), Color(0xFF7C3AED)],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -359,7 +351,7 @@ class _FamilyPlannerScreenState extends State<FamilyPlannerScreen> {
           const Text(
             'Your Family Pulse',
             style: TextStyle(
-              color: Colors.white,
+              color: Color(0xFF0F172A),
               fontSize: 16,
               fontWeight: FontWeight.w700,
             ),
@@ -386,8 +378,9 @@ class _FamilyPlannerScreenState extends State<FamilyPlannerScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.18),
+          color: const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,7 +388,7 @@ class _FamilyPlannerScreenState extends State<FamilyPlannerScreen> {
             Text(
               value,
               style: const TextStyle(
-                color: Colors.white,
+                color: Color(0xFF0F172A),
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
@@ -404,7 +397,7 @@ class _FamilyPlannerScreenState extends State<FamilyPlannerScreen> {
             Text(
               label,
               style: const TextStyle(
-                color: Color(0xFFE0E7FF),
+                color: Color(0xFF64748B),
                 fontSize: 11,
               ),
             ),

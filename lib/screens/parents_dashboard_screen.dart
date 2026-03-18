@@ -547,11 +547,6 @@ class _ParentsDashboardScreenState extends State<ParentsDashboardScreen> {
             ],
           ),
         ),
-        FilledButton.icon(
-          onPressed: _loadAllData,
-          icon: const Icon(Icons.refresh_rounded),
-          label: const Text('Refresh'),
-        ),
       ],
     );
   }

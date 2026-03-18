@@ -661,43 +661,91 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                               ],
                             ),
                             const SizedBox(height: 18),
-                            Wrap(
-                              spacing: 12,
-                              runSpacing: 12,
-                              children: [
-                                _metricCard(
-                                  label: 'Total Invested',
-                                  value: _formatCurrency(_totalInvested),
-                                  icon: Icons.account_balance_wallet_outlined,
-                                  tint: const Color(0xFF0EA5E9),
-                                ),
-                                _metricCard(
-                                  label: 'Current Value',
-                                  value: _formatCurrency(_currentValue),
-                                  icon: Icons.pie_chart_outline,
-                                  tint: const Color(0xFF10B981),
-                                ),
-                                _metricCard(
-                                  label: 'Net Returns',
-                                  value: _formatCurrency(_totalReturns),
-                                  icon: _totalReturns >= 0
-                                      ? Icons.trending_up_rounded
-                                      : Icons.trending_down_rounded,
-                                  tint: _totalReturns >= 0
-                                      ? const Color(0xFF16A34A)
-                                      : const Color(0xFFDC2626),
-                                ),
-                                _metricCard(
-                                  label: 'Upcoming Due (14d)',
-                                  value: '$_dueSoonCount',
-                                  icon: Icons.event_note_outlined,
-                                  tint: const Color(0xFFD97706),
-                                  secondary: _overdueCount > 0
-                                      ? 'Overdue: $_overdueCount'
-                                      : 'No overdue',
-                                ),
-                              ],
-                            ),
+                            if (isWebDesktop)
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _metricCard(
+                                      label: 'Total Invested',
+                                      value: _formatCurrency(_totalInvested),
+                                      icon: Icons.account_balance_wallet_outlined,
+                                      tint: const Color(0xFF0EA5E9),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _metricCard(
+                                      label: 'Current Value',
+                                      value: _formatCurrency(_currentValue),
+                                      icon: Icons.pie_chart_outline,
+                                      tint: const Color(0xFF10B981),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _metricCard(
+                                      label: 'Net Returns',
+                                      value: _formatCurrency(_totalReturns),
+                                      icon: _totalReturns >= 0
+                                          ? Icons.trending_up_rounded
+                                          : Icons.trending_down_rounded,
+                                      tint: _totalReturns >= 0
+                                          ? const Color(0xFF16A34A)
+                                          : const Color(0xFFDC2626),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _metricCard(
+                                      label: 'Upcoming Due (14d)',
+                                      value: '$_dueSoonCount',
+                                      icon: Icons.event_note_outlined,
+                                      tint: const Color(0xFFD97706),
+                                      secondary: _overdueCount > 0
+                                          ? 'Overdue: $_overdueCount'
+                                          : 'No overdue',
+                                    ),
+                                  ),
+                                ],
+                              )
+                            else
+                              Wrap(
+                                spacing: 12,
+                                runSpacing: 12,
+                                children: [
+                                  _metricCard(
+                                    label: 'Total Invested',
+                                    value: _formatCurrency(_totalInvested),
+                                    icon: Icons.account_balance_wallet_outlined,
+                                    tint: const Color(0xFF0EA5E9),
+                                  ),
+                                  _metricCard(
+                                    label: 'Current Value',
+                                    value: _formatCurrency(_currentValue),
+                                    icon: Icons.pie_chart_outline,
+                                    tint: const Color(0xFF10B981),
+                                  ),
+                                  _metricCard(
+                                    label: 'Net Returns',
+                                    value: _formatCurrency(_totalReturns),
+                                    icon: _totalReturns >= 0
+                                        ? Icons.trending_up_rounded
+                                        : Icons.trending_down_rounded,
+                                    tint: _totalReturns >= 0
+                                        ? const Color(0xFF16A34A)
+                                        : const Color(0xFFDC2626),
+                                  ),
+                                  _metricCard(
+                                    label: 'Upcoming Due (14d)',
+                                    value: '$_dueSoonCount',
+                                    icon: Icons.event_note_outlined,
+                                    tint: const Color(0xFFD97706),
+                                    secondary: _overdueCount > 0
+                                        ? 'Overdue: $_overdueCount'
+                                        : 'No overdue',
+                                  ),
+                                ],
+                              ),
                             const SizedBox(height: 18),
                             _buildForecastedInvestmentsCard(),
                             const SizedBox(height: 18),
@@ -744,7 +792,8 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
     String? secondary,
   }) {
     return Container(
-      width: 272,
+      width: 240,
+      height: 138,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,

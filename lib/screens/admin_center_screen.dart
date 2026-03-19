@@ -389,7 +389,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: adminService.auditLogs.length,
-                separatorBuilder: (_, __) => const Divider(height: 1, margin: EdgeInsets.zero),
+                separatorBuilder: (_, __) => const Divider(height: 1),
                 itemBuilder: (_, index) {
                   final log = adminService.auditLogs[index];
                   return Padding(
@@ -477,7 +477,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
             child: Column(
               children: [
                 Icon(
-                  AppIcons.construction,
+                  AppIcons.info,
                   size: 64,
                   color: AppColors.grey400,
                 ),

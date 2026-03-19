@@ -47,7 +47,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   void _initializeFamilyService() {
     final authService = context.read<AuthService>();
     _familyService = FamilyService(
-      supabaseUrl: 'https://ksceakczqabcfzewpwwx.supabase.co',
+      supabaseUrl: authService.supabaseUrl,
       authService: authService,
     );
   }

@@ -18,11 +18,13 @@ import 'screens/ai_features_screen.dart';
 import 'screens/email_settings_screen.dart';
 import 'screens/user_settings_screen.dart';
 import 'screens/admin_settings_screen.dart';
+import 'screens/admin_center_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/more_screen.dart';
 import 'screens/voice_expense_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/profile_screen.dart';
+import 'services/admin_service.dart';
 import 'services/auth_service.dart';
 import 'services/family_service.dart';
 import 'services/import_service.dart';
@@ -62,6 +64,7 @@ const Set<String> _authenticatedRoutes = {
   '/email-settings',
   '/user-settings',
   '/admin-settings',
+  '/admin-center',
   '/more',
   '/notifications',
   '/savings',
@@ -187,6 +190,12 @@ void main() async {
       providers: [
         ChangeNotifierProvider(
             create: (_) => AuthService(supabaseUrl: _kSupabaseUrl)),
+        ChangeNotifierProvider(
+          create: (context) => AdminService(
+            supabaseUrl: _kSupabaseUrl,
+            authService: context.read<AuthService>(),
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => ViewModeProvider()),
       ],
       child: const MyParivaaarApp(),
@@ -446,6 +455,12 @@ class MyParivaaarApp extends StatelessWidget {
             currentRoute: routeName,
             child: const AdminSettingsScreen(),
           ),
+        );
+
+      case '/admin-center':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => const AdminCenterScreen(),
         );
 
       case '/more':

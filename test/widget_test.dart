@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:myparivaar/main.dart';
+import 'package:myparivaar/services/admin_service.dart';
 import 'package:myparivaar/services/auth_service.dart';
 
 void main() {
@@ -30,6 +31,12 @@ void main() {
       MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => AuthService(supabaseUrl: 'test')),
+          ChangeNotifierProvider(
+            create: (context) => AdminService(
+              supabaseUrl: 'test',
+              authService: context.read<AuthService>(),
+            ),
+          ),
           ChangeNotifierProvider(create: (_) => ViewModeProvider()),
         ],
         child: const MyParivaaarApp(),

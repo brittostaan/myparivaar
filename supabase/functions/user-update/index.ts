@@ -25,7 +25,7 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const USER_COLS =
-  "id, firebase_uid, email, phone, role, household_id, display_name, first_name, last_name, date_of_birth, photo_url, notifications_enabled, voice_enabled, created_at";
+  "id, firebase_uid, email, phone, role, household_id, staff_role, staff_scope, admin_permissions, display_name, first_name, last_name, date_of_birth, photo_url, notifications_enabled, voice_enabled, created_at";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {

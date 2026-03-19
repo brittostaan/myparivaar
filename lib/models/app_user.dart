@@ -9,12 +9,15 @@ class AppUser {
     required this.voiceEnabled,
     required this.createdAt,
     this.householdId,
+    this.staffRole,
+    this.staffScope,
     this.displayName,
     this.firstName,
     this.lastName,
     this.phoneNumber,
     this.dateOfBirth,
     this.photoUrl,
+    this.adminPermissions,
   });
 
   final String id;
@@ -25,12 +28,15 @@ class AppUser {
   final String role;
 
   final String? householdId;
+  final String? staffRole;
+  final String? staffScope;
   final String? displayName;
   final String? firstName;
   final String? lastName;
   final String? phoneNumber;
   final DateTime? dateOfBirth;
   final String? photoUrl;
+  final Map<String, dynamic>? adminPermissions;
   final bool notificationsEnabled;
   final bool voiceEnabled;
   final DateTime createdAt;
@@ -38,6 +44,8 @@ class AppUser {
   bool get isAdmin      => role == 'admin';
   bool get isMember     => role == 'member';
   bool get isSuperAdmin => role == 'super_admin';
+  bool get isSupportStaff => staffRole == 'support_staff' || role == 'support_staff';
+  bool get isPlatformAdmin => isSuperAdmin || isSupportStaff;
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
     final createdAtRaw = json['created_at']?.toString();
@@ -48,12 +56,15 @@ class AppUser {
       email:                json['email']?.toString() ?? '',
       role:                 json['role']?.toString() ?? 'member',
       householdId:          json['household_id']          as String?,
+      staffRole:            json['staff_role']            as String?,
+      staffScope:           json['staff_scope']           as String?,
       displayName:          json['display_name']          as String?,
       firstName:            json['first_name']            as String?,
       lastName:             json['last_name']             as String?,
       phoneNumber:          (json['phone_number'] ?? json['phone']) as String?,
       dateOfBirth:          dobRaw != null ? DateTime.parse(dobRaw) : null,
       photoUrl:             json['photo_url']             as String?,
+      adminPermissions:     json['admin_permissions']     as Map<String, dynamic>?,
       notificationsEnabled: json['notifications_enabled'] as bool? ?? true,
       voiceEnabled:         json['voice_enabled']         as bool? ?? true,
       createdAt:            createdAtRaw != null ? DateTime.parse(createdAtRaw) : DateTime.now(),
@@ -63,12 +74,15 @@ class AppUser {
   AppUser copyWith({
     String? role,
     String? householdId,
+    String? staffRole,
+    String? staffScope,
     String? displayName,
     String? firstName,
     String? lastName,
     String? phoneNumber,
     DateTime? dateOfBirth,
     String? photoUrl,
+    Map<String, dynamic>? adminPermissions,
     bool?   notificationsEnabled,
     bool?   voiceEnabled,
   }) {
@@ -78,12 +92,15 @@ class AppUser {
       email:                email,
       role:                 role                 ?? this.role,
       householdId:          householdId          ?? this.householdId,
+      staffRole:            staffRole            ?? this.staffRole,
+      staffScope:           staffScope           ?? this.staffScope,
       displayName:          displayName          ?? this.displayName,
       firstName:            firstName            ?? this.firstName,
       lastName:             lastName             ?? this.lastName,
       phoneNumber:          phoneNumber          ?? this.phoneNumber,
       dateOfBirth:          dateOfBirth          ?? this.dateOfBirth,
       photoUrl:             photoUrl             ?? this.photoUrl,
+      adminPermissions:     adminPermissions     ?? this.adminPermissions,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       voiceEnabled:         voiceEnabled         ?? this.voiceEnabled,
       createdAt:            createdAt,

@@ -52,7 +52,7 @@ const supabaseClient = createClient(
 
 // ─── Selected columns returned to the client ───────────────────────────────
 const USER_COLS =
-  "id, firebase_uid, email, phone, role, household_id, display_name, first_name, last_name, date_of_birth, photo_url, notifications_enabled, voice_enabled, created_at";
+  "id, firebase_uid, email, phone, role, household_id, staff_role, staff_scope, admin_permissions, display_name, first_name, last_name, date_of_birth, photo_url, notifications_enabled, voice_enabled, created_at";
 const HOUSEHOLD_COLS = "id, name, admin_firebase_uid, owner_user_id, created_at";
 
 // ───────────────────────────────────────────────────────────────────────────

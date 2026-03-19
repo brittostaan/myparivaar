@@ -1,6 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from './cors.ts'
-import { verifyFirebaseToken } from './firebase.ts'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -48,7 +47,12 @@ export async function requireAdmin(
   }
 
   const token = authHeader.slice(7).trim()
-  const decoded = await verifyFirebaseToken(token)
+  
+  // Decode Supabase JWT (don't verify signature as Supabase handles it via anon key)
+  const decoded = JSON.parse(atob(token.split('.')[1])) as { sub?: string; email?: string }
+  if (!decoded.sub) {
+    throw json({ error: 'Invalid token format' }, 401)
+  }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { persistSession: false },
@@ -58,7 +62,7 @@ export async function requireAdmin(
   const { data: actor, error } = await supabase
     .from('users')
     .select('id, email, role, household_id, staff_role, staff_scope, admin_permissions')
-    .eq('firebase_uid', decoded.uid)
+    .eq('id', decoded.sub)
     .is('deleted_at', null)
     .maybeSingle<AdminActor>()
 

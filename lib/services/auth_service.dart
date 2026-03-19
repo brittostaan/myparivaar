@@ -117,6 +117,10 @@ class AuthService extends ChangeNotifier {
       }
 
       await _bootstrap();
+      // Admin users don't require a household to proceed
+      if (_currentUser?.isPlatformAdmin == true) {
+        return AuthStatus.ready;
+      }
       return hasHousehold ? AuthStatus.ready : AuthStatus.needsHousehold;
     } on AppAuthException {
       rethrow;
@@ -165,6 +169,10 @@ class AuthService extends ChangeNotifier {
 
       // Bootstrap with optional family name
       await _bootstrap(familyName: familyName);
+      // Admin users don't require a household to proceed
+      if (_currentUser?.isPlatformAdmin == true) {
+        return AuthStatus.ready;
+      }
       return hasHousehold ? AuthStatus.ready : AuthStatus.needsHousehold;
     } on AppAuthException {
       rethrow;
@@ -200,6 +208,10 @@ class AuthService extends ChangeNotifier {
         actionLabel: 'refresh session',
       );
       await _bootstrap();
+      // Admin users don't require a household to proceed
+      if (_currentUser?.isPlatformAdmin == true) {
+        return AuthStatus.ready;
+      }
       return hasHousehold ? AuthStatus.ready : AuthStatus.needsHousehold;
     } on AppAuthException catch (e) {
       debugPrint('refreshSession app auth error: ${e.message}');

@@ -184,14 +184,16 @@ class AdminStats {
   final DateTime? lastAuditAction;
 
   factory AdminStats.fromJson(Map<String, dynamic> json) {
+    int toInt(dynamic value) => value == null ? 0 : (value as num).toInt();
+
     return AdminStats(
-      totalHouseholds: json['total_households'] as int? ?? 0,
-      activeSubscriptions: json['active_subscriptions'] as int? ?? 0,
-      totalUsers: json['total_users'] as int? ?? 0,
-      aiUsageThisMonth: json['ai_usage_this_month'] as int? ?? 0,
-      lastAuditAction: json['last_audit_action'] != null 
-        ? DateTime.tryParse(json['last_audit_action'] as String)
-        : null,
+      totalHouseholds: toInt(json['total_households']),
+      activeSubscriptions: toInt(json['active_subscriptions']),
+      totalUsers: toInt(json['total_users']),
+      aiUsageThisMonth: toInt(json['ai_usage_this_month']),
+      lastAuditAction: json['last_audit_action'] != null
+          ? DateTime.tryParse(json['last_audit_action'].toString())
+          : null,
     );
   }
 }

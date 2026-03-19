@@ -252,6 +252,20 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text('Unable to load admin statistics'),
+            if (adminService.error != null) ...[
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  adminService.error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: () {

@@ -22,26 +22,17 @@ Deno.serve(async (req: Request) => {
     if (scope === 'global') {
       const [householdsRes, subscriptionsRes, usersRes, aiUsageRes, auditRes] = await Promise.all([
         supabase.from('households').select('id', { count: 'exact', head: true }).is('deleted_at', null),
-        supabase
-          .from('subscriptions')
-          .select('id', { count: 'exact', head: true })
-          .eq('status', 'active')
-          .is('deleted_at', null),
+        supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status', 'active'),
         supabase.from('users').select('id', { count: 'exact', head: true }).is('deleted_at', null),
         supabase.from('ai_usage').select('chat_count').eq('month', currentMonth),
         supabase.from('audit_logs').select('created_at').order('created_at', { ascending: false }).limit(1),
       ])
 
-      if (householdsRes.error || subscriptionsRes.error || usersRes.error || aiUsageRes.error || auditRes.error) {
-        console.error('admin-stats global query error:', {
-          households: householdsRes.error,
-          subscriptions: subscriptionsRes.error,
-          users: usersRes.error,
-          aiUsage: aiUsageRes.error,
-          audit: auditRes.error,
-        })
-        return json({ error: 'Failed to load admin statistics' }, 500)
-      }
+      if (householdsRes.error) console.error('households error:', householdsRes.error)
+      if (subscriptionsRes.error) console.error('subscriptions error:', subscriptionsRes.error)
+      if (usersRes.error) console.error('users error:', usersRes.error)
+      if (aiUsageRes.error) console.error('ai_usage error:', aiUsageRes.error)
+      if (auditRes.error) console.error('audit_logs error:', auditRes.error)
 
       const aiUsageThisMonth = (aiUsageRes.data ?? []).reduce(
         (sum, item) => sum + Number(item.chat_count ?? 0),
@@ -60,31 +51,17 @@ Deno.serve(async (req: Request) => {
     const scopedIds = await getScopedResourceIds(supabase, scope)
     const [householdRes, subscriptionsRes, usersRes, aiUsageRes, auditRes] = await Promise.all([
       supabase.from('households').select('id').eq('id', scope).is('deleted_at', null).maybeSingle(),
-      supabase
-        .from('subscriptions')
-        .select('id', { count: 'exact', head: true })
-        .eq('household_id', scope)
-        .eq('status', 'active')
-        .is('deleted_at', null),
-      supabase
-        .from('users')
-        .select('id', { count: 'exact', head: true })
-        .eq('household_id', scope)
-        .is('deleted_at', null),
+      supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('household_id', scope).eq('status', 'active'),
+      supabase.from('users').select('id', { count: 'exact', head: true }).eq('household_id', scope).is('deleted_at', null),
       supabase.from('ai_usage').select('chat_count').eq('household_id', scope).eq('month', currentMonth),
       supabase.from('audit_logs').select('resource_type, resource_id, created_at').order('created_at', { ascending: false }).limit(200),
     ])
 
-    if (householdRes.error || subscriptionsRes.error || usersRes.error || aiUsageRes.error || auditRes.error) {
-      console.error('admin-stats scoped query error:', {
-        household: householdRes.error,
-        subscriptions: subscriptionsRes.error,
-        users: usersRes.error,
-        aiUsage: aiUsageRes.error,
-        audit: auditRes.error,
-      })
-      return json({ error: 'Failed to load admin statistics' }, 500)
-    }
+    if (householdRes.error) console.error('household error:', householdRes.error)
+    if (subscriptionsRes.error) console.error('subscriptions error:', subscriptionsRes.error)
+    if (usersRes.error) console.error('users error:', usersRes.error)
+    if (aiUsageRes.error) console.error('ai_usage error:', aiUsageRes.error)
+    if (auditRes.error) console.error('audit_logs error:', auditRes.error)
 
     const aiUsageThisMonth = (aiUsageRes.data ?? []).reduce(
       (sum, item) => sum + Number(item.chat_count ?? 0),

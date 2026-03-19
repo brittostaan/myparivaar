@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../models/admin_models.dart';
 import 'auth_service.dart';
@@ -89,11 +90,14 @@ class AdminService extends ChangeNotifier {
     _setError(null);
 
     try {
+      debugPrint('🔄 Fetching admin stats...');
       final data = await _post('admin-stats', {});
       _stats = AdminStats.fromJson(data);
+      debugPrint('✅ Admin stats loaded: $_stats');
       notifyListeners();
       return _stats;
     } catch (e) {
+      debugPrint('❌ fetchStats error: $e');
       _setError('Failed to fetch admin stats: $e');
       return null;
     } finally {
@@ -205,38 +209,49 @@ class AdminService extends ChangeNotifier {
 
     final idToken = await _authService.getIdToken(true);
 
+    final url = '$_supabaseUrl/functions/v1/$function';
+    debugPrint('📤 AdminService POST to: $url');
+    debugPrint('📤 Request body: $body');
+
     final http.Response response;
     try {
       response = await _http.post(
-        Uri.parse('$_supabaseUrl/functions/v1/$function'),
+        Uri.parse(url),
         headers: {
           'Authorization': 'Bearer $idToken',
           'Content-Type': 'application/json',
         },
         body: jsonEncode(body),
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('❌ Network error: $e');
       throw const AdminException('Network error: unable to reach the server.');
     }
+
+    debugPrint('📥 Response status: ${response.statusCode}');
+    debugPrint('📥 Response body: ${response.body}');
 
     final Map<String, dynamic> data;
     try {
       data = jsonDecode(response.body) as Map<String, dynamic>;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('❌ JSON decode error: $e');
       throw const AdminException('Unexpected response from server.');
     }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      debugPrint('✅ Success: $data');
       return data;
     }
 
     if (response.statusCode == 403) {
+      debugPrint('❌ Forbidden: Admin access denied');
       throw const AdminException('Admin access denied. Insufficient permissions.');
     }
 
-    throw AdminException(
-      data['error'] as String? ?? 'Request failed (${response.statusCode}).',
-    );
+    final errorMsg = data['error'] as String? ?? 'Request failed (${response.statusCode}).';
+    debugPrint('❌ Error: $errorMsg');
+    throw AdminException(errorMsg);
   }
 
   void _setLoading(bool value) {

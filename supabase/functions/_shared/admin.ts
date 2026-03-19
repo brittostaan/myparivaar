@@ -3,6 +3,12 @@ import { corsHeaders } from './cors.ts'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+
+// Anon client used solely for JWT verification via auth.getUser()
+const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: false },
+})
 
 export interface AdminActor {
   id: string
@@ -48,17 +54,11 @@ export async function requireAdmin(
 
   const token = authHeader.slice(7).trim()
 
-  // Decode Supabase JWT — base64url uses - and _ which atob() can't handle natively
-  let decoded: { sub?: string; email?: string }
-  try {
-    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4))
-    decoded = JSON.parse(atob(b64 + pad)) as { sub?: string; email?: string }
-  } catch {
-    throw json({ error: 'Invalid or malformed token' }, 401)
-  }
-  if (!decoded.sub) {
-    throw json({ error: 'Invalid token: missing sub claim' }, 401)
+  // Verify token cryptographically using Supabase's own auth — same approach as auth-bootstrap
+  const { data: { user: authUser }, error: authError } = await anonClient.auth.getUser(token)
+  if (authError || !authUser) {
+    console.error('admin token verification failed:', authError)
+    throw json({ error: 'Invalid or expired token' }, 401)
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey, {
@@ -69,7 +69,7 @@ export async function requireAdmin(
   const { data: actor, error } = await supabase
     .from('users')
     .select('id, email, role, household_id, staff_role, staff_scope, admin_permissions')
-    .eq('firebase_uid', decoded.sub)
+    .eq('firebase_uid', authUser.id)
     .is('deleted_at', null)
     .maybeSingle<AdminActor>()
 

@@ -124,6 +124,18 @@ Deno.serve(async (req: Request) => {
     if (lookupErr) throw lookupErr;
 
     if (existingUser) {
+      if (!existingUser.email && email && email != 'no-email@placeholder.com') {
+        const { data: repairedUser, error: repairErr } = await supabase
+          .from("users")
+          .update({ email })
+          .eq("id", existingUser.id)
+          .select(USER_COLS)
+          .single();
+
+        if (repairErr) throw repairErr;
+        existingUser.email = repairedUser.email;
+      }
+
       // Fetch household if linked
       let household = null;
       if (existingUser.household_id) {

@@ -47,11 +47,23 @@ CREATE TABLE IF NOT EXISTS app.audit_logs (
 ALTER TABLE app.audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- Create deny-all policy (Edge Functions use service role)
-CREATE POLICY "deny_direct_access"
-ON app.audit_logs
-FOR ALL
-TO anon, authenticated
-USING (false);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'app'
+      AND tablename = 'audit_logs'
+      AND policyname = 'deny_direct_access'
+  ) THEN
+    CREATE POLICY "deny_direct_access"
+    ON app.audit_logs
+    FOR ALL
+    TO anon, authenticated
+    USING (false);
+  END IF;
+END
+$$;
 
 -- Create indexes for fast queries
 CREATE INDEX IF NOT EXISTS idx_audit_logs_admin_user_id ON app.audit_logs(admin_user_id);
@@ -79,11 +91,23 @@ CREATE TABLE IF NOT EXISTS app.feature_flags (
 ALTER TABLE app.feature_flags ENABLE ROW LEVEL SECURITY;
 
 -- Create deny-all policy
-CREATE POLICY "deny_direct_access"
-ON app.feature_flags
-FOR ALL
-TO anon, authenticated
-USING (false);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'app'
+      AND tablename = 'feature_flags'
+      AND policyname = 'deny_direct_access'
+  ) THEN
+    CREATE POLICY "deny_direct_access"
+    ON app.feature_flags
+    FOR ALL
+    TO anon, authenticated
+    USING (false);
+  END IF;
+END
+$$;
 
 -- Create index
 CREATE INDEX IF NOT EXISTS idx_feature_flags_name ON app.feature_flags(name);
@@ -108,11 +132,23 @@ CREATE TABLE IF NOT EXISTS app.household_feature_overrides (
 ALTER TABLE app.household_feature_overrides ENABLE ROW LEVEL SECURITY;
 
 -- Create deny-all policy
-CREATE POLICY "deny_direct_access"
-ON app.household_feature_overrides
-FOR ALL
-TO anon, authenticated
-USING (false);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'app'
+      AND tablename = 'household_feature_overrides'
+      AND policyname = 'deny_direct_access'
+  ) THEN
+    CREATE POLICY "deny_direct_access"
+    ON app.household_feature_overrides
+    FOR ALL
+    TO anon, authenticated
+    USING (false);
+  END IF;
+END
+$$;
 
 -- Create index
 CREATE INDEX IF NOT EXISTS idx_household_feature_overrides_household_id 
@@ -132,15 +168,35 @@ ALTER TABLE app.households
 -- 6. Trigger for updated_at on new tables
 -- ============================================================================
 
-CREATE TRIGGER handle_feature_flags_updated_at
-  BEFORE UPDATE ON app.feature_flags
-  FOR EACH ROW
-  EXECUTE FUNCTION app.handle_updated_at();
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_trigger
+    WHERE tgname = 'handle_feature_flags_updated_at'
+  ) THEN
+    CREATE TRIGGER handle_feature_flags_updated_at
+      BEFORE UPDATE ON app.feature_flags
+      FOR EACH ROW
+      EXECUTE FUNCTION app.handle_updated_at();
+  END IF;
+END
+$$;
 
-CREATE TRIGGER handle_household_feature_overrides_updated_at
-  BEFORE UPDATE ON app.household_feature_overrides
-  FOR EACH ROW
-  EXECUTE FUNCTION app.handle_updated_at();
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_trigger
+    WHERE tgname = 'handle_household_feature_overrides_updated_at'
+  ) THEN
+    CREATE TRIGGER handle_household_feature_overrides_updated_at
+      BEFORE UPDATE ON app.household_feature_overrides
+      FOR EACH ROW
+      EXECUTE FUNCTION app.handle_updated_at();
+  END IF;
+END
+$$;
 
 -- ============================================================================
 -- 7. Insert default feature flags

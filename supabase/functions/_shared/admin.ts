@@ -62,7 +62,7 @@ export async function requireAdmin(
   const { data: actor, error } = await supabase
     .from('users')
     .select('id, email, role, household_id, staff_role, staff_scope, admin_permissions')
-    .eq('id', decoded.sub)
+    .eq('firebase_uid', decoded.sub)
     .is('deleted_at', null)
     .maybeSingle<AdminActor>()
 

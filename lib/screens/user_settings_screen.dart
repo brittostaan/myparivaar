@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/member.dart';
 import '../services/auth_service.dart';
+import '../services/family_service.dart';
 import '../widgets/app_header.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
@@ -25,15 +27,210 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   final List<String> _currencies = ['INR (₹)', 'USD (\$)', 'EUR (€)', 'GBP (£)'];
   final List<String> _themes = ['System', 'Light', 'Dark'];
 
+  // Family members state
+  List<Member> _familyMembers = [];
+  bool _loadingMembers = true;
+  bool _invitingMember = false;
+  InviteResult? _currentInvite;
+  String? _selectedPhoneNumber;
+
+  late FamilyService _familyService;
+
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _initializeFamilyService();
+    _loadFamilyMembers();
+  }
+
+  void _initializeFamilyService() {
+    final authService = context.read<AuthService>();
+    _familyService = FamilyService(
+      supabaseUrl: 'https://ksceakczqabcfzewpwwx.supabase.co',
+      authService: authService,
+    );
   }
 
   void _loadSettings() {
     // In a real app, these would be loaded from SharedPreferences or user profile
     // For MVP, using default values
+  }
+
+  Future<void> _loadFamilyMembers() async {
+    if (!mounted) return;
+    setState(() {
+      _loadingMembers = true;
+    });
+    try {
+      final members = await _familyService.fetchMembers();
+      if (mounted) {
+        setState(() {
+          _familyMembers = members;
+          _loadingMembers = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingMembers = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not load family members'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showInviteMemberDialog() {
+    final phoneController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Invite Family Member'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter the phone number of the family member you want to invite:',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(
+                hintText: '+91 98765 43210',
+                labelText: 'Phone Number',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final phoneNumber = phoneController.text.trim();
+              if (phoneNumber.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter a phone number'),
+                  ),
+                );
+                return;
+              }
+              Navigator.pop(context);
+              await _inviteMember(phoneNumber);
+            },
+            child: const Text('Send Invite'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _inviteMember(String phoneNumber) async {
+    setState(() {
+      _invitingMember = true;
+    });
+    try {
+      final invite = await _familyService.inviteMember(phoneNumber);
+      if (mounted) {
+        setState(() {
+          _currentInvite = invite;
+          _invitingMember = false;
+        });
+        _showInviteCodeDialog(invite);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _invitingMember = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error inviting member: $e'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showInviteCodeDialog(InviteResult invite) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Invite Code Generated'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Share this code with ${invite.phoneNumber}:',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context).primaryColor.withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      invite.inviteCode,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      // Copy to clipboard
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Invite code copied to clipboard'),
+                        ),
+                      );
+                    },
+                    icon: const Icon(AppIcons.copy),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Expires at: ${invite.expiresAt.toLocal().toString().split('.')[0]}',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.grey600,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _exportData() async {
@@ -207,6 +404,108 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                               ),
                             ),
                           ],
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Family Section
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Family',
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              if (!_loadingMembers)
+                                FilledButton.icon(
+                                  onPressed: _showInviteMemberDialog,
+                                  icon: const Icon(Icons.person_add, size: 18),
+                                  label: const Text('Invite Member'),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          if (_loadingMembers)
+                            const Center(
+                              child: SizedBox(
+                                height: 40,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            )
+                          else if (_familyMembers.isEmpty)
+                            Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      AppIcons.people,
+                                      size: 48,
+                                      color: AppColors.grey400,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'No family members yet',
+                                      style: TextStyle(
+                                        color: AppColors.grey600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    OutlinedButton.icon(
+                                      onPressed: _showInviteMemberDialog,
+                                      icon: const Icon(Icons.person_add, size: 18),
+                                      label: const Text('Invite Your First Member'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          else
+                            Column(
+                              children: _familyMembers
+                                  .asMap()
+                                  .entries
+                                  .map((entry) {
+                                final index = entry.key;
+                                final member = entry.value;
+                                return Column(
+                                  children: [
+                                    ListTile(
+                                      leading: CircleAvatar(
+                                        child: Text(
+                                          (member.displayName?.isNotEmpty == true
+                                              ? member.displayName![0]
+                                              : member.phone.substring(0, 1))
+                                              .toUpperCase(),
+                                        ),
+                                      ),
+                                      title: Text(member.displayLabel),
+                                      subtitle: Text(
+                                        member.isAdmin ? 'Admin' : 'Member',
+                                        style: TextStyle(
+                                          color: member.isAdmin
+                                              ? Theme.of(context).primaryColor
+                                              : AppColors.grey600,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    if (index < _familyMembers.length - 1)
+                                      const Divider(height: 1),
+                                  ],
+                                );
+                              }).toList(),
+                            ),
                         ],
                       ),
                     ),

@@ -39,6 +39,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               const AppHeader(
                 title: 'Notifications',
                 avatarIcon: AppIcons.notifications,
+                showViewModeSelector: false,
+                showSettingsButton: false,
+                showNotifications: false,
               ),
               Expanded(
                 child: Consumer<NotificationService>(

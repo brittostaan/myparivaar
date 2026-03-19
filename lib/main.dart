@@ -685,9 +685,18 @@ class _LoginScreenState extends State<_LoginScreen> {
   }
 
   void _navigateByStatus(AuthStatus status) {
-    final route =
-        status == AuthStatus.ready ? _routeFromEndpoint() : '/household-setup';
-    Navigator.of(context).pushReplacementNamed(route);
+    if (status == AuthStatus.ready) {
+      final authService = context.read<AuthService>();
+      // Admin-only users (no household) always land on admin center
+      if (authService.currentUser?.isPlatformAdmin == true &&
+          !authService.hasHousehold) {
+        Navigator.of(context).pushReplacementNamed('/admin-center');
+        return;
+      }
+      Navigator.of(context).pushReplacementNamed(_routeFromEndpoint());
+    } else {
+      Navigator.of(context).pushReplacementNamed('/household-setup');
+    }
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────

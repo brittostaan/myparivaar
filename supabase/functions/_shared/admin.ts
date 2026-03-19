@@ -47,11 +47,18 @@ export async function requireAdmin(
   }
 
   const token = authHeader.slice(7).trim()
-  
-  // Decode Supabase JWT (don't verify signature as Supabase handles it via anon key)
-  const decoded = JSON.parse(atob(token.split('.')[1])) as { sub?: string; email?: string }
+
+  // Decode Supabase JWT — base64url uses - and _ which atob() can't handle natively
+  let decoded: { sub?: string; email?: string }
+  try {
+    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4))
+    decoded = JSON.parse(atob(b64 + pad)) as { sub?: string; email?: string }
+  } catch {
+    throw json({ error: 'Invalid or malformed token' }, 401)
+  }
   if (!decoded.sub) {
-    throw json({ error: 'Invalid token format' }, 401)
+    throw json({ error: 'Invalid token: missing sub claim' }, 401)
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey, {

@@ -193,6 +193,7 @@ void main() async {
         ChangeNotifierProvider(
           create: (context) => AdminService(
             supabaseUrl: _kSupabaseUrl,
+            supabaseAnonKey: _kSupabaseAnonKey,
             authService: context.read<AuthService>(),
           ),
         ),

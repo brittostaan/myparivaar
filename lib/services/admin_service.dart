@@ -25,13 +25,16 @@ class AdminException implements Exception {
 class AdminService extends ChangeNotifier {
   AdminService({
     required String supabaseUrl,
+    required String supabaseAnonKey,
     required AuthService authService,
     http.Client? httpClient,
   })  : _supabaseUrl = supabaseUrl.replaceAll(RegExp(r'/$'), ''),
+        _supabaseAnonKey = supabaseAnonKey,
         _authService = authService,
         _http = httpClient ?? http.Client();
 
   final String _supabaseUrl;
+  final String _supabaseAnonKey;
   final AuthService _authService;
   final http.Client _http;
 
@@ -217,6 +220,7 @@ class AdminService extends ChangeNotifier {
       response = await _http.post(
         Uri.parse(url),
         headers: {
+          'apikey': _supabaseAnonKey,
           'Authorization': 'Bearer $idToken',
           'Content-Type': 'application/json',
         },

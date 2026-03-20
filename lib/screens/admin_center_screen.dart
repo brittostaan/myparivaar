@@ -68,6 +68,16 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
   String? _featureFlagsError;
   String _featureFlagsFilter = 'all'; // 'all', 'ai', 'finance', 'integration', 'general'
 
+  // Analytics tab state
+  AdminAnalyticsOverview? _analyticsOverview;
+  List<SubscriptionTrend> _subscriptionTrends = [];
+  List<HouseholdTrend> _householdTrends = [];
+  List<AdminActivitySummary> _adminActivity = [];
+  List<AIUsageTrend> _aiUsageTrends = [];
+  bool _analyticsLoading = false;
+  bool _analyticsLoaded = false;
+  String? _analyticsError;
+
   @override
   void initState() {
     super.initState();
@@ -122,6 +132,10 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
 
     if (index == 5 && !_featureFlagsLoaded && !_featureFlagsLoading) {
       await _loadFeatureFlags();
+    }
+
+    if (index == 6 && !_analyticsLoaded && !_analyticsLoading) {
+      await _loadAnalytics();
     }
   }
 
@@ -286,6 +300,65 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
         _featureFlagsLoading = false;
         _featureFlagsError = e.toString();
       });
+    }
+  }
+
+  Future<void> _loadAnalytics() async {
+    setState(() {
+      _analyticsLoading = true;
+      _analyticsError = null;
+    });
+    try {
+      await Future.wait([
+        _adminService.fetchAnalyticsOverview().then((ov) {
+          if (mounted) {
+            setState(() {
+              _analyticsOverview = ov;
+            });
+          }
+        }),
+        _adminService.fetchSubscriptionTrends().then((trends) {
+          if (mounted) {
+            setState(() {
+              _subscriptionTrends = trends;
+            });
+          }
+        }),
+        _adminService.fetchHouseholdTrends().then((trends) {
+          if (mounted) {
+            setState(() {
+              _householdTrends = trends;
+            });
+          }
+        }),
+        _adminService.fetchAdminActivity().then((activity) {
+          if (mounted) {
+            setState(() {
+              _adminActivity = activity;
+            });
+          }
+        }),
+        _adminService.fetchAIUsageTrends().then((trends) {
+          if (mounted) {
+            setState(() {
+              _aiUsageTrends = trends;
+            });
+          }
+        }),
+      ]);
+      if (mounted) {
+        setState(() {
+          _analyticsLoaded = true;
+          _analyticsLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _analyticsLoading = false;
+          _analyticsError = e.toString();
+        });
+      }
     }
   }
 
@@ -639,7 +712,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
       case 5:
         return _buildFeatureFlagsTab();
       case 6:
-        return _buildPlaceholder('Analytics & Reports', 'Coming in Phase 5');
+        return _buildAnalyticsTab();
       case 7:
         return _buildAuditLogs(adminService);
       case 8:
@@ -2373,6 +2446,268 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
     }
   }
 
+  // ── Analytics & Reports Tab ────────────────────────────────────────────────
+
+  Widget _buildAnalyticsTab() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Analytics & Reports',
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Platform-wide usage statistics, trends, and admin activity monitoring.',
+            style: TextStyle(fontSize: 13, color: AppColors.grey600),
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: _buildAnalyticsPanel(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnalyticsPanel() {
+    if (_analyticsLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_analyticsError != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+            const SizedBox(height: 16),
+            const Text('Error loading analytics', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            Text(_analyticsError!, style: const TextStyle(fontSize: 13, color: AppColors.grey600), textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            FilledButton(onPressed: _loadAnalytics, child: const Text('Retry')),
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Overview metrics
+          if (_analyticsOverview != null)
+            _buildAnalyticsOverviewCards(_analyticsOverview!),
+
+          const SizedBox(height: 24),
+
+          // Trends sections
+          if (_subscriptionTrends.isNotEmpty) ...[
+            _buildSubscriptionTrendsSection(),
+            const SizedBox(height: 24),
+          ],
+
+          if (_householdTrends.isNotEmpty) ...[
+            _buildHouseholdTrendsSection(),
+            const SizedBox(height: 24),
+          ],
+
+          if (_aiUsageTrends.isNotEmpty) ...[
+            _buildAIUsageTrendsSection(),
+            const SizedBox(height: 24),
+          ],
+
+          if (_adminActivity.isNotEmpty)
+            _buildAdminActivitySection(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnalyticsOverviewCards(AdminAnalyticsOverview overview) {
+    return Wrap(
+      spacing: 16,
+      runSpacing: 16,
+      children: [
+        _AnalyticsCard(
+          title: 'Total Households',
+          value: overview.totalHouseholds.toString(),
+          icon: Icons.home_work_outlined,
+          color: const Color(0xFF3B82F6),
+        ),
+        _AnalyticsCard(
+          title: 'Active Subscriptions',
+          value: overview.activeSubscriptions.toString(),
+          icon: Icons.card_membership_outlined,
+          color: const Color(0xFF10B981),
+        ),
+        _AnalyticsCard(
+          title: 'Total Users',
+          value: overview.totalUsers.toString(),
+          icon: Icons.people_outlined,
+          color: const Color(0xFF8B5CF6),
+        ),
+        _AnalyticsCard(
+          title: 'AI Usage (Month)',
+          value: overview.aiUsageThisMonth.toString(),
+          icon: Icons.smart_toy_outlined,
+          color: const Color(0xFFF59E0B),
+        ),
+        _AnalyticsCard(
+          title: 'Churn Rate',
+          value: '${overview.churnRateLastMonth.toStringAsFixed(1)}%',
+          icon: Icons.trending_down_outlined,
+          color: const Color(0xFFEF4444),
+        ),
+        _AnalyticsCard(
+          title: 'Period',
+          value: overview.period,
+          icon: Icons.calendar_month_outlined,
+          color: AppColors.grey600,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubscriptionTrendsSection() {
+    final lastSix = _subscriptionTrends.length > 6 ? _subscriptionTrends.sublist(_subscriptionTrends.length - 6) : _subscriptionTrends;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Subscription Trends (Last 6 Months)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(border: Border.all(color: AppColors.grey200), borderRadius: BorderRadius.circular(8)),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final trend in lastSix) ...[
+                  _MiniTrendCard(
+                    month: trend.month,
+                    label1: 'Active: ${trend.activeSubscriptions}',
+                    label2: 'New: ${trend.newSubscriptions}',
+                    label3: 'Cancelled: ${trend.cancelledSubscriptions}',
+                  ),
+                  const SizedBox(width: 12),
+                ]
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHouseholdTrendsSection() {
+    final lastSix = _householdTrends.length > 6 ? _householdTrends.sublist(_householdTrends.length - 6) : _householdTrends;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Household Trends (Last 6 Months)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(border: Border.all(color: AppColors.grey200), borderRadius: BorderRadius.circular(8)),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final trend in lastSix) ...[
+                  _MiniTrendCard(
+                    month: trend.month,
+                    label1: 'New: ${trend.newHouseholds}',
+                    label2: 'Active: ${trend.activeHouseholds}',
+                    label3: 'Suspended: ${trend.suspendedHouseholds}',
+                  ),
+                  const SizedBox(width: 12),
+                ]
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAIUsageTrendsSection() {
+    final lastSix = _aiUsageTrends.length > 6 ? _aiUsageTrends.sublist(_aiUsageTrends.length - 6) : _aiUsageTrends;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('AI Usage Trends (Last 6 Months)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(border: Border.all(color: AppColors.grey200), borderRadius: BorderRadius.circular(8)),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final trend in lastSix) ...[
+                  _MiniTrendCard(
+                    month: trend.month,
+                    label1: 'Queries: ${trend.totalChatQueries}',
+                    label2: 'Summaries: ${trend.totalSummariesGenerated}',
+                    label3: 'Avg/User: ${trend.averageQueriesPerUser.toStringAsFixed(1)}',
+                  ),
+                  const SizedBox(width: 12),
+                ]
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdminActivitySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Admin Activity (Last 30 Days)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 12),
+        for (final admin in _adminActivity.take(5))
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: AppColors.grey100, borderRadius: BorderRadius.circular(6)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(admin.adminEmail, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      Text('${admin.actionCount} actions', style: const TextStyle(fontSize: 12, color: AppColors.grey600)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final action in admin.topActions.take(3))
+                        Chip(
+                          label: Text('${action.action}: ${action.count}', style: const TextStyle(fontSize: 11)),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   // ── Approvals Queue Tab ────────────────────────────────────────────────────
 
   Widget _buildApprovalsTab() {
@@ -2943,6 +3278,93 @@ class _FeatureFlagRow extends StatelessWidget {
             onChanged: (value) => onToggle(value),
             activeColor: const Color(0xFF0EA5E9),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Card widget for displaying a single analytics metric
+class _AnalyticsCard extends StatelessWidget {
+  const _AnalyticsCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AppColors.grey200),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      constraints: const BoxConstraints(minWidth: 140),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 12, color: AppColors.grey600),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Mini trend card for horizontal scrolling trend displays
+class _MiniTrendCard extends StatelessWidget {
+  const _MiniTrendCard({
+    required this.month,
+    required this.label1,
+    required this.label2,
+    required this.label3,
+  });
+
+  final String month;
+  final String label1;
+  final String label2;
+  final String label3;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        border: Border.all(color: AppColors.grey200),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            month,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+          ),
+          const SizedBox(height: 8),
+          Text(label1, style: const TextStyle(fontSize: 11, color: AppColors.grey600)),
+          const SizedBox(height: 4),
+          Text(label2, style: const TextStyle(fontSize: 11, color: AppColors.grey600)),
+          const SizedBox(height: 4),
+          Text(label3, style: const TextStyle(fontSize: 11, color: AppColors.grey600)),
         ],
       ),
     );

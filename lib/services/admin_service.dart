@@ -798,6 +798,159 @@ class AdminService extends ChangeNotifier {
     }
   }
 
+  // ── Phase 5: Analytics & Reports ───────────────────────────────────────────
+
+  AdminAnalyticsOverview? _analyticsOverview;
+  List<SubscriptionTrend> _subscriptionTrends = [];
+  List<HouseholdTrend> _householdTrends = [];
+  List<AdminActivitySummary> _adminActivity = [];
+  List<AIUsageTrend> _aiUsageTrends = [];
+
+  AdminAnalyticsOverview? get analyticsOverview => _analyticsOverview;
+  List<SubscriptionTrend> get subscriptionTrends => _subscriptionTrends;
+  List<HouseholdTrend> get householdTrends => _householdTrends;
+  List<AdminActivitySummary> get adminActivity => _adminActivity;
+  List<AIUsageTrend> get aiUsageTrends => _aiUsageTrends;
+
+  /// Fetch analytics overview for specified month (default: current month).
+  Future<AdminAnalyticsOverview?> fetchAnalyticsOverview({
+    String? month,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-analytics', {
+        'action': 'get_overview',
+        if (month != null) 'month': month,
+      });
+
+      _analyticsOverview = AdminAnalyticsOverview.fromJson(
+        data['overview'] as Map<String, dynamic>,
+      );
+
+      notifyListeners();
+      return _analyticsOverview;
+    } catch (e) {
+      _setError('Failed to fetch analytics overview: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Fetch subscription trends over last N months.
+  Future<List<SubscriptionTrend>> fetchSubscriptionTrends({
+    int monthsBack = 12,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-analytics', {
+        'action': 'get_subscription_trends',
+        'monthsBack': monthsBack,
+      });
+
+      final trendsList = data['trends'] as List? ?? [];
+      _subscriptionTrends = trendsList
+          .map((e) => SubscriptionTrend.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      notifyListeners();
+      return _subscriptionTrends;
+    } catch (e) {
+      _setError('Failed to fetch subscription trends: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Fetch household trends over last N months.
+  Future<List<HouseholdTrend>> fetchHouseholdTrends({
+    int monthsBack = 12,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-analytics', {
+        'action': 'get_household_trends',
+        'monthsBack': monthsBack,
+      });
+
+      final trendsList = data['trends'] as List? ?? [];
+      _householdTrends = trendsList
+          .map((e) => HouseholdTrend.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      notifyListeners();
+      return _householdTrends;
+    } catch (e) {
+      _setError('Failed to fetch household trends: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Fetch admin activity summary for last N days.
+  Future<List<AdminActivitySummary>> fetchAdminActivity({
+    int daysBack = 30,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-analytics', {
+        'action': 'get_admin_activity',
+        'daysBack': daysBack,
+      });
+
+      final activityList = data['activity'] as List? ?? [];
+      _adminActivity = activityList
+          .map((e) => AdminActivitySummary.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      notifyListeners();
+      return _adminActivity;
+    } catch (e) {
+      _setError('Failed to fetch admin activity: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Fetch AI usage trends over last N months.
+  Future<List<AIUsageTrend>> fetchAIUsageTrends({
+    int monthsBack = 12,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-analytics', {
+        'action': 'get_ai_usage_trends',
+        'monthsBack': monthsBack,
+      });
+
+      final trendsList = data['trends'] as List? ?? [];
+      _aiUsageTrends = trendsList
+          .map((e) => AIUsageTrend.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      notifyListeners();
+      return _aiUsageTrends;
+    } catch (e) {
+      _setError('Failed to fetch AI usage trends: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // ── Internal methods ───────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> _post(

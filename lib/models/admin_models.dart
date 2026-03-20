@@ -654,3 +654,161 @@ class AdminFeatureFlagOverride {
     );
   }
 }
+
+/// Analytics overview snapshot for current period.
+class AdminAnalyticsOverview {
+  const AdminAnalyticsOverview({
+    required this.period,
+    required this.totalHouseholds,
+    required this.activeSubscriptions,
+    required this.totalUsers,
+    required this.aiUsageThisMonth,
+    required this.churnRateLastMonth,
+  });
+
+  final String period; // YYYY-MM format
+  final int totalHouseholds;
+  final int activeSubscriptions;
+  final int totalUsers;
+  final int aiUsageThisMonth;
+  final double churnRateLastMonth; // Percentage
+
+  factory AdminAnalyticsOverview.fromJson(Map<String, dynamic> json) {
+    return AdminAnalyticsOverview(
+      period: json['period'] as String? ?? '',
+      totalHouseholds: (json['total_households'] as num?)?.toInt() ?? 0,
+      activeSubscriptions: (json['active_subscriptions'] as num?)?.toInt() ?? 0,
+      totalUsers: (json['total_users'] as num?)?.toInt() ?? 0,
+      aiUsageThisMonth: (json['ai_usage_this_month'] as num?)?.toInt() ?? 0,
+      churnRateLastMonth: (json['churn_rate_last_month'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+/// Subscription trend data for a month.
+class SubscriptionTrend {
+  const SubscriptionTrend({
+    required this.month,
+    required this.activeSubscriptions,
+    required this.newSubscriptions,
+    required this.cancelledSubscriptions,
+    required this.planBreakdown,
+  });
+
+  final String month; // YYYY-MM format
+  final int activeSubscriptions;
+  final int newSubscriptions;
+  final int cancelledSubscriptions;
+  final Map<String, int> planBreakdown; // planId -> count
+
+  factory SubscriptionTrend.fromJson(Map<String, dynamic> json) {
+    return SubscriptionTrend(
+      month: json['month'] as String? ?? '',
+      activeSubscriptions: (json['activeSubscriptions'] as num?)?.toInt() ?? 0,
+      newSubscriptions: (json['newSubscriptions'] as num?)?.toInt() ?? 0,
+      cancelledSubscriptions: (json['cancelledSubscriptions'] as num?)?.toInt() ?? 0,
+      planBreakdown: (json['planBreakdown'] as Map?)?.cast<String, int>() ?? {},
+    );
+  }
+}
+
+/// Household trend data for a month.
+class HouseholdTrend {
+  const HouseholdTrend({
+    required this.month,
+    required this.newHouseholds,
+    required this.activeHouseholds,
+    required this.suspendedHouseholds,
+  });
+
+  final String month; // YYYY-MM format
+  final int newHouseholds;
+  final int activeHouseholds;
+  final int suspendedHouseholds;
+
+  factory HouseholdTrend.fromJson(Map<String, dynamic> json) {
+    return HouseholdTrend(
+      month: json['month'] as String? ?? '',
+      newHouseholds: (json['newHouseholds'] as num?)?.toInt() ?? 0,
+      activeHouseholds: (json['activeHouseholds'] as num?)?.toInt() ?? 0,
+      suspendedHouseholds: (json['suspendedHouseholds'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+/// Admin activity summary.
+class AdminActivitySummary {
+  const AdminActivitySummary({
+    required this.adminId,
+    required this.adminEmail,
+    required this.actionCount,
+    required this.lastActiveAt,
+    required this.topActions,
+  });
+
+  final String adminId;
+  final String adminEmail;
+  final int actionCount;
+  final DateTime lastActiveAt;
+  final List<AdminActionFrequency> topActions; // Top 5 actions
+
+  factory AdminActivitySummary.fromJson(Map<String, dynamic> json) {
+    final topActionsJson = (json['topActions'] as List?) ?? [];
+    final topActions = topActionsJson
+        .map((e) => AdminActionFrequency.fromJson(e as Map<String, dynamic>))
+        .toList();
+
+    return AdminActivitySummary(
+      adminId: json['adminId'] as String? ?? '',
+      adminEmail: json['adminEmail'] as String? ?? 'Unknown',
+      actionCount: (json['actionCount'] as num?)?.toInt() ?? 0,
+      lastActiveAt: DateTime.tryParse(json['lastActiveAt'] as String? ?? '') ?? DateTime.now(),
+      topActions: topActions,
+    );
+  }
+}
+
+/// Single action frequency entry.
+class AdminActionFrequency {
+  const AdminActionFrequency({
+    required this.action,
+    required this.count,
+  });
+
+  final String action;
+  final int count;
+
+  factory AdminActionFrequency.fromJson(Map<String, dynamic> json) {
+    return AdminActionFrequency(
+      action: json['action'] as String? ?? '',
+      count: (json['count'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+/// AI usage trend for a month.
+class AIUsageTrend {
+  const AIUsageTrend({
+    required this.month,
+    required this.totalChatQueries,
+    required this.totalSummariesGenerated,
+    required this.activeUsersThisMonth,
+    required this.averageQueriesPerUser,
+  });
+
+  final String month; // YYYY-MM format
+  final int totalChatQueries;
+  final int totalSummariesGenerated;
+  final int activeUsersThisMonth;
+  final double averageQueriesPerUser;
+
+  factory AIUsageTrend.fromJson(Map<String, dynamic> json) {
+    return AIUsageTrend(
+      month: json['month'] as String? ?? '',
+      totalChatQueries: (json['totalChatQueries'] as num?)?.toInt() ?? 0,
+      totalSummariesGenerated: (json['totalSummariesGenerated'] as num?)?.toInt() ?? 0,
+      activeUsersThisMonth: (json['activeUsersThisMonth'] as num?)?.toInt() ?? 0,
+      averageQueriesPerUser: (json['averageQueriesPerUser'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}

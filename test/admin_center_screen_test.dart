@@ -331,6 +331,21 @@ class FakeAdminService extends AdminService {
   List<AdminFeatureFlag> get featureFlags => const [];
 
   @override
+  AdminAnalyticsOverview? get analyticsOverview => null;
+
+  @override
+  List<SubscriptionTrend> get subscriptionTrends => const [];
+
+  @override
+  List<HouseholdTrend> get householdTrends => const [];
+
+  @override
+  List<AdminActivitySummary> get adminActivity => const [];
+
+  @override
+  List<AIUsageTrend> get aiUsageTrends => const [];
+
+  @override
   bool get isLoading => false;
 
   @override
@@ -380,6 +395,21 @@ class FakeAdminService extends AdminService {
 
   @override
   Future<List<AdminFeatureFlag>> fetchFeatureFlags({String? householdId}) async => [];
+
+  @override
+  Future<AdminAnalyticsOverview?> fetchAnalyticsOverview({String? month}) async => null;
+
+  @override
+  Future<List<SubscriptionTrend>> fetchSubscriptionTrends({int monthsBack = 12}) async => [];
+
+  @override
+  Future<List<HouseholdTrend>> fetchHouseholdTrends({int monthsBack = 12}) async => [];
+
+  @override
+  Future<List<AdminActivitySummary>> fetchAdminActivity({int daysBack = 30}) async => [];
+
+  @override
+  Future<List<AIUsageTrend>> fetchAIUsageTrends({int monthsBack = 12}) async => [];
 }
 
 AppUser _memberUser() {

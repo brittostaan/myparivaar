@@ -109,6 +109,11 @@ export async function requireAdmin(
 
   const token = authHeader.slice(7).trim()
   console.log('[requireAdmin] Token extracted, length:', token.length)
+  // Log token structure for debugging
+  const tokenParts = token.split('.')
+  console.log('[requireAdmin] Token format: JWT parts:', tokenParts.length, 
+    'first 8 chars:', token.slice(0, 8),
+    'looks like JWT:', tokenParts.length === 3)
 
   // Verify token cryptographically using Supabase's own auth — same approach as auth-bootstrap
   console.log('[requireAdmin] Attempting token verification with anonClient...')

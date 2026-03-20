@@ -322,6 +322,12 @@ class FakeAdminService extends AdminService {
   List<AdminApprovalRequest> get approvalRequests => const [];
 
   @override
+  List<AdminSubscription> get subscriptions => const [];
+
+  @override
+  List<AdminPlan> get plans => const [];
+
+  @override
   bool get isLoading => false;
 
   @override
@@ -362,6 +368,12 @@ class FakeAdminService extends AdminService {
     String? actionType,
     int limit = 100,
   }) async => [];
+
+  @override
+  Future<List<AdminSubscription>> fetchSubscriptions({String? status, int limit = 100}) async => [];
+
+  @override
+  Future<List<AdminPlan>> fetchPlans() async => [];
 }
 
 AppUser _memberUser() {

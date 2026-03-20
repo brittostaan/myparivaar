@@ -43,6 +43,8 @@ class AdminService extends ChangeNotifier {
   List<AdminApprovalRequest> _approvalRequests = [];
   List<AdminStaff> _staff = [];
   List<AdminUser> _users = [];
+  List<AdminSubscription> _subscriptions = [];
+  List<AdminPlan> _plans = [];
   AdminStats? _stats;
   bool _isLoading = false;
   String? _error;
@@ -52,6 +54,8 @@ class AdminService extends ChangeNotifier {
   List<AdminApprovalRequest> get approvalRequests => _approvalRequests;
   List<AdminStaff> get staff => _staff;
   List<AdminUser> get users => _users;
+  List<AdminSubscription> get subscriptions => _subscriptions;
+  List<AdminPlan> get plans => _plans;
   AdminStats? get stats => _stats;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -159,6 +163,162 @@ class AdminService extends ChangeNotifier {
       return _users;
     } catch (e) {
       _setError('Failed to fetch users: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Fetch all platform subscriptions.
+  Future<List<AdminSubscription>> fetchSubscriptions({
+    String? status,
+    int limit = 100,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _post('admin-subscriptions', {
+        'action': 'list_subscriptions',
+        if (status != null && status.trim().isNotEmpty) 'status': status.trim(),
+        'limit': limit,
+      });
+      final rows = data['subscriptions'] as List? ?? [];
+      _subscriptions = rows
+          .map((e) => AdminSubscription.fromJson(e as Map<String, dynamic>))
+          .toList();
+      notifyListeners();
+      return _subscriptions;
+    } catch (e) {
+      _setError('Failed to fetch subscriptions: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Change the plan for a household.
+  Future<AdminSubscription> changePlan({
+    required String householdId,
+    required String planName,
+    String? reason,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _post('admin-subscriptions', {
+        'action': 'change_plan',
+        'household_id': householdId,
+        'plan_name': planName,
+        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+      });
+      final sub = AdminSubscription.fromJson(
+        data['subscription'] as Map<String, dynamic>,
+      );
+      _subscriptions = _subscriptions
+          .map((s) => s.householdId == householdId ? sub : s)
+          .toList();
+      notifyListeners();
+      return sub;
+    } catch (e) {
+      _setError('Failed to change plan: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Cancel an existing subscription.
+  Future<void> cancelSubscription({
+    required String subscriptionId,
+    String? reason,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _post('admin-subscriptions', {
+        'action': 'cancel_subscription',
+        'subscription_id': subscriptionId,
+        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+      });
+      _subscriptions = _subscriptions.map((s) {
+        if (s.id == subscriptionId) {
+          return AdminSubscription.fromJson({
+            'id': s.id,
+            'household_id': s.householdId,
+            'household_name': s.householdName,
+            'plan_id': s.planId,
+            'plan_name': s.planName,
+            'plan_display_name': s.planDisplayName,
+            'status': 'cancelled',
+            'billing_cycle': s.billingCycle,
+            'amount_paid': s.amountPaid,
+            'currency': s.currency,
+            'started_at': s.startedAt.toIso8601String(),
+            'created_at': s.createdAt.toIso8601String(),
+          });
+        }
+        return s;
+      }).toList();
+      notifyListeners();
+    } catch (e) {
+      _setError('Failed to cancel subscription: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Fetch all plan definitions.
+  Future<List<AdminPlan>> fetchPlans() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _post('admin-subscriptions', {'action': 'list_plans'});
+      final rows = data['plans'] as List? ?? [];
+      _plans = rows
+          .map((e) => AdminPlan.fromJson(e as Map<String, dynamic>))
+          .toList();
+      notifyListeners();
+      return _plans;
+    } catch (e) {
+      _setError('Failed to fetch plans: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Update limits on an existing plan (super admin only).
+  Future<AdminPlan> updatePlan({
+    required String planId,
+    String? displayName,
+    String? description,
+    double? priceMonthly,
+    double? priceYearly,
+    int? maxFamilyMembers,
+    int? aiWeeklySummaries,
+    int? aiChatQueries,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _post('admin-subscriptions', {
+        'action': 'update_plan',
+        'plan_id': planId,
+        if (displayName != null) 'display_name': displayName.trim(),
+        if (description != null) 'description': description.trim(),
+        if (priceMonthly != null) 'price_monthly': priceMonthly,
+        if (priceYearly != null) 'price_yearly': priceYearly,
+        if (maxFamilyMembers != null) 'max_family_members': maxFamilyMembers,
+        if (aiWeeklySummaries != null) 'ai_weekly_summaries': aiWeeklySummaries,
+        if (aiChatQueries != null) 'ai_chat_queries': aiChatQueries,
+      });
+      final updated = AdminPlan.fromJson(data['plan'] as Map<String, dynamic>);
+      _plans = _plans.map((p) => p.id == planId ? updated : p).toList();
+      notifyListeners();
+      return updated;
+    } catch (e) {
+      _setError('Failed to update plan: $e');
       rethrow;
     } finally {
       _setLoading(false);

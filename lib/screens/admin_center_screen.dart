@@ -48,6 +48,19 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
   String _approvalsStatusFilter = 'pending';
   String? _approvalsError;
 
+  // Subscriptions tab state
+  List<AdminSubscription> _subscriptions = [];
+  bool _subscriptionsLoading = false;
+  bool _subscriptionsLoaded = false;
+  String _subscriptionsStatusFilter = 'active';
+  String? _subscriptionsError;
+
+  // Plans tab state
+  List<AdminPlan> _plansList = [];
+  bool _plansLoading = false;
+  bool _plansLoaded = false;
+  String? _plansError;
+
   @override
   void initState() {
     super.initState();
@@ -90,6 +103,14 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
 
     if (index == 9 && !_approvalsLoaded && !_approvalsLoading) {
       await _loadApprovals();
+    }
+
+    if (index == 3 && !_subscriptionsLoaded && !_subscriptionsLoading) {
+      await _loadSubscriptions();
+    }
+
+    if (index == 4 && !_plansLoaded && !_plansLoading) {
+      await _loadPlans();
     }
   }
 
@@ -191,6 +212,48 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
       setState(() {
         _approvalsLoading = false;
         _approvalsError = e.toString();
+      });
+    }
+  }
+
+  Future<void> _loadSubscriptions() async {
+    setState(() {
+      _subscriptionsLoading = true;
+      _subscriptionsError = null;
+    });
+    try {
+      final result = await _adminService.fetchSubscriptions(
+        status: _subscriptionsStatusFilter == 'all' ? null : _subscriptionsStatusFilter,
+      );
+      setState(() {
+        _subscriptions = result;
+        _subscriptionsLoaded = true;
+        _subscriptionsLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _subscriptionsLoading = false;
+        _subscriptionsError = e.toString();
+      });
+    }
+  }
+
+  Future<void> _loadPlans() async {
+    setState(() {
+      _plansLoading = true;
+      _plansError = null;
+    });
+    try {
+      final result = await _adminService.fetchPlans();
+      setState(() {
+        _plansList = result;
+        _plansLoaded = true;
+        _plansLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _plansLoading = false;
+        _plansError = e.toString();
       });
     }
   }
@@ -539,9 +602,9 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
       case 2:
         return _buildUsersTab();
       case 3:
-        return _buildPlaceholder('Subscriptions', 'Coming in Phase 3');
+        return _buildSubscriptionsTab();
       case 4:
-        return _buildPlaceholder('Plans', 'Coming in Phase 3');
+        return _buildPlansTab();
       case 5:
         return _buildPlaceholder('Feature Toggles', 'Coming in Phase 4');
       case 6:
@@ -1473,6 +1536,670 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
     }
   }
 
+  // ── Subscriptions Tab ──────────────────────────────────────────────────────
+
+  Widget _buildSubscriptionsTab() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Subscriptions',
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              ...['active', 'cancelled', 'expired', 'all'].map((s) {
+                final selected = _subscriptionsStatusFilter == s;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: FilterChip(
+                    label: Text(s == 'all' ? 'All' : _capitalize(s)),
+                    selected: selected,
+                    onSelected: (_) async {
+                      setState(() {
+                        _subscriptionsStatusFilter = s;
+                        _subscriptionsLoaded = false;
+                      });
+                      await _loadSubscriptions();
+                    },
+                  ),
+                );
+              }),
+              const Spacer(),
+              OutlinedButton.icon(
+                onPressed: _subscriptionsLoading ? null : _loadSubscriptions,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Refresh'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Expanded(child: _buildSubscriptionsPanel()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubscriptionsPanel() {
+    if (_subscriptionsLoading && _subscriptions.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_subscriptionsError != null && _subscriptions.isEmpty) {
+      return _buildPanelCard(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_subscriptionsError!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 12),
+            FilledButton(onPressed: _loadSubscriptions, child: const Text('Retry')),
+          ],
+        ),
+      );
+    }
+
+    if (_subscriptions.isEmpty) {
+      return _buildPanelCard(child: Center(
+        child: Text('No ${_subscriptionsStatusFilter == 'all' ? '' : '$_subscriptionsStatusFilter '}subscriptions found.'),
+      ));
+    }
+
+    return _buildPanelCard(
+      child: ListView.separated(
+        itemCount: _subscriptions.length,
+        separatorBuilder: (_, __) => const Divider(height: 1),
+        itemBuilder: (_, index) {
+          final sub = _subscriptions[index];
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: sub.isActive
+                  ? const Color(0xFFD1FAE5)
+                  : const Color(0xFFF3F4F6),
+              child: Icon(
+                Icons.card_membership_outlined,
+                size: 20,
+                color: sub.isActive
+                    ? const Color(0xFF047857)
+                    : AppColors.grey400,
+              ),
+            ),
+            title: Text(
+              sub.householdName ?? sub.householdId,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              '${sub.planDisplayName ?? sub.planName ?? 'Unknown plan'} • '
+              'Started: ${sub.startedAt.toString().substring(0, 10)}',
+              style: const TextStyle(fontSize: 12, color: AppColors.grey600),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _StatusChip(
+                  label: sub.planName?.toUpperCase() ?? 'UNKNOWN',
+                  color: (sub.planName == 'paid')
+                      ? const Color(0xFF7C3AED)
+                      : const Color(0xFF3B82F6),
+                ),
+                const SizedBox(width: 8),
+                _StatusChip(
+                  label: sub.statusLabel,
+                  color: sub.isActive
+                      ? const Color(0xFF047857)
+                      : const Color(0xFF9CA3AF),
+                ),
+                const SizedBox(width: 8),
+                PopupMenuButton<String>(
+                  tooltip: 'Actions',
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (value) {
+                    if (value == 'change_plan') {
+                      _showChangePlanDialog(sub);
+                    } else if (value == 'cancel') {
+                      _confirmCancelSubscription(sub);
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(
+                      value: 'change_plan',
+                      child: Text('Change Plan'),
+                    ),
+                    if (sub.isActive)
+                      const PopupMenuItem(
+                        value: 'cancel',
+                        child: Text(
+                          'Cancel Subscription',
+                          style: TextStyle(color: Color(0xFFB91C1C)),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _showChangePlanDialog(AdminSubscription sub) async {
+    final availablePlans = _plansList.isNotEmpty
+        ? _plansList
+        : await _adminService.fetchPlans().onError((_, __) => []);
+
+    if (!mounted) return;
+
+    String selectedPlan = sub.planName ?? 'free';
+    final reasonCtrl = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocalState) => AlertDialog(
+          title: Text('Change Plan — ${sub.householdName ?? sub.householdId}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Select new plan:'),
+              const SizedBox(height: 8),
+              if (availablePlans.isEmpty)
+                const Text('No plans available', style: TextStyle(color: AppColors.grey600))
+              else
+                ...availablePlans.map((p) => RadioListTile<String>(
+                  value: p.name,
+                  groupValue: selectedPlan,
+                  title: Text(p.displayName),
+                  subtitle: Text(p.isFree ? 'Free' : '₹${p.priceMonthly.toStringAsFixed(0)}/mo'),
+                  onChanged: (v) {
+                    if (v != null) setLocalState(() => selectedPlan = v);
+                  },
+                )),
+              const SizedBox(height: 12),
+              TextField(
+                controller: reasonCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Reason (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: selectedPlan == sub.planName
+                  ? null
+                  : () => Navigator.of(ctx).pop(true),
+              child: const Text('Change Plan'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final reason = reasonCtrl.text.trim();
+    reasonCtrl.dispose();
+
+    if (confirmed != true) return;
+
+    try {
+      await _adminService.changePlan(
+        householdId: sub.householdId,
+        planName: selectedPlan,
+        reason: reason.isEmpty ? null : reason,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Plan changed successfully.')),
+      );
+      setState(() => _subscriptionsLoaded = false);
+      await _loadSubscriptions();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed: $e')),
+      );
+    }
+  }
+
+  Future<void> _confirmCancelSubscription(AdminSubscription sub) async {
+    final reasonCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel Subscription'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Cancel ${sub.planDisplayName ?? sub.planName} subscription for '
+                '${sub.householdName ?? sub.householdId}?'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Reason (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Keep'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB91C1C)),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Cancel Subscription'),
+          ),
+        ],
+      ),
+    );
+
+    final reason = reasonCtrl.text.trim();
+    reasonCtrl.dispose();
+
+    if (confirmed != true) return;
+
+    try {
+      await _adminService.cancelSubscription(
+        subscriptionId: sub.id,
+        reason: reason.isEmpty ? null : reason,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Subscription cancelled.')),
+      );
+      setState(() => _subscriptionsLoaded = false);
+      await _loadSubscriptions();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed: $e')),
+      );
+    }
+  }
+
+  // ── Plans Tab ──────────────────────────────────────────────────────────────
+
+  Widget _buildPlansTab() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Plans',
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: _plansLoading ? null : _loadPlans,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Refresh'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Platform subscription plan definitions and limits.',
+            style: TextStyle(fontSize: 13, color: AppColors.grey600),
+          ),
+          const SizedBox(height: 20),
+          Expanded(child: _buildPlansPanel()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlansPanel() {
+    if (_plansLoading && _plansList.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_plansError != null && _plansList.isEmpty) {
+      return _buildPanelCard(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_plansError!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 12),
+            FilledButton(onPressed: _loadPlans, child: const Text('Retry')),
+          ],
+        ),
+      );
+    }
+
+    if (_plansList.isEmpty) {
+      return _buildPanelCard(child: const Center(child: Text('No plans found.')));
+    }
+
+    return SingleChildScrollView(
+      child: Column(
+        children: _plansList.map(_buildPlanCard).toList(),
+      ),
+    );
+  }
+
+  Widget _buildPlanCard(AdminPlan plan) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(
+          color: plan.isFree ? AppColors.grey200 : const Color(0xFF8B5CF6),
+          width: plan.isFree ? 1 : 2,
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            plan.displayName,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _StatusChip(
+                            label: plan.isActive ? 'Active' : 'Inactive',
+                            color: plan.isActive
+                                ? const Color(0xFF047857)
+                                : AppColors.grey400,
+                          ),
+                        ],
+                      ),
+                      if (plan.description != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          plan.description!,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.grey600,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Text(
+                        plan.isFree
+                            ? 'Free'
+                            : '₹${plan.priceMonthly.toStringAsFixed(0)}/month  •  ₹${plan.priceYearly.toStringAsFixed(0)}/year',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: plan.isFree
+                              ? AppColors.grey600
+                              : const Color(0xFF7C3AED),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: () => _showEditPlanDialog(plan),
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Edit Limits'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF3B82F6),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 32,
+              runSpacing: 12,
+              children: [
+                _PlanLimitItem(
+                  icon: Icons.people_outlined,
+                  label: 'Family Members',
+                  value: '${plan.maxFamilyMembers}',
+                ),
+                _PlanLimitItem(
+                  icon: Icons.summarize_outlined,
+                  label: 'AI Summaries / week',
+                  value: '${plan.aiWeeklySummaries}',
+                ),
+                _PlanLimitItem(
+                  icon: Icons.chat_bubble_outline,
+                  label: 'AI Chat / month',
+                  value: '${plan.aiChatQueries}',
+                ),
+                _PlanLimitItem(
+                  icon: Icons.upload_file_outlined,
+                  label: 'CSV Import',
+                  value: plan.csvImportEnabled ? 'Enabled' : 'Disabled',
+                  positive: plan.csvImportEnabled,
+                ),
+                _PlanLimitItem(
+                  icon: Icons.email_outlined,
+                  label: 'Email Ingestion',
+                  value: plan.emailIngestionEnabled ? 'Enabled' : 'Disabled',
+                  positive: plan.emailIngestionEnabled,
+                ),
+                _PlanLimitItem(
+                  icon: Icons.mic_outlined,
+                  label: 'Voice Features',
+                  value: plan.voiceFeaturesEnabled ? 'Enabled' : 'Disabled',
+                  positive: plan.voiceFeaturesEnabled,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showEditPlanDialog(AdminPlan plan) async {
+    final displayNameCtrl = TextEditingController(text: plan.displayName);
+    final descCtrl = TextEditingController(text: plan.description ?? '');
+    final priceMonthlyCtrl =
+        TextEditingController(text: plan.priceMonthly.toStringAsFixed(2));
+    final priceYearlyCtrl =
+        TextEditingController(text: plan.priceYearly.toStringAsFixed(2));
+    final maxMembersCtrl =
+        TextEditingController(text: plan.maxFamilyMembers.toString());
+    final aiSummariesCtrl =
+        TextEditingController(text: plan.aiWeeklySummaries.toString());
+    final aiChatCtrl =
+        TextEditingController(text: plan.aiChatQueries.toString());
+    final formKey = GlobalKey<FormState>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Edit ${plan.displayName}'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: displayNameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Display Name',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: descCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: priceMonthlyCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Price/month (₹)',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (v) =>
+                            double.tryParse(v ?? '') == null ? 'Invalid' : null,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: priceYearlyCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Price/year (₹)',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (v) =>
+                            double.tryParse(v ?? '') == null ? 'Invalid' : null,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: maxMembersCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Max members',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (v) =>
+                            int.tryParse(v ?? '') == null ? 'Invalid' : null,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: aiSummariesCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'AI summaries/week',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (v) =>
+                            int.tryParse(v ?? '') == null ? 'Invalid' : null,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: aiChatCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'AI chat/month',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (v) =>
+                            int.tryParse(v ?? '') == null ? 'Invalid' : null,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() == true) {
+                Navigator.of(ctx).pop(true);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    final displayNameVal = displayNameCtrl.text.trim();
+    final descVal = descCtrl.text.trim();
+    final priceMonthly = double.tryParse(priceMonthlyCtrl.text.trim());
+    final priceYearly = double.tryParse(priceYearlyCtrl.text.trim());
+    final maxMembers = int.tryParse(maxMembersCtrl.text.trim());
+    final aiSummaries = int.tryParse(aiSummariesCtrl.text.trim());
+    final aiChat = int.tryParse(aiChatCtrl.text.trim());
+
+    for (final c in [
+      displayNameCtrl, descCtrl, priceMonthlyCtrl, priceYearlyCtrl,
+      maxMembersCtrl, aiSummariesCtrl, aiChatCtrl,
+    ]) {
+      c.dispose();
+    }
+
+    if (confirmed != true) return;
+
+    try {
+      await _adminService.updatePlan(
+        planId: plan.id,
+        displayName: displayNameVal,
+        description: descVal.isEmpty ? null : descVal,
+        priceMonthly: priceMonthly,
+        priceYearly: priceYearly,
+        maxFamilyMembers: maxMembers,
+        aiWeeklySummaries: aiSummaries,
+        aiChatQueries: aiChat,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Plan updated successfully.')),
+      );
+      setState(() {
+        _plansLoaded = false;
+      });
+      await _loadPlans();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed: $e')),
+      );
+    }
+  }
+
   // ── Approvals Queue Tab ────────────────────────────────────────────────────
 
   Widget _buildApprovalsTab() {
@@ -1932,6 +2659,49 @@ class _StatusChip extends StatelessWidget {
           fontSize: 12,
         ),
       ),
+    );
+  }
+}
+
+class _PlanLimitItem extends StatelessWidget {
+  const _PlanLimitItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.positive = true,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool positive;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = positive ? const Color(0xFF047857) : AppColors.grey400;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 6),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, color: AppColors.grey600),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

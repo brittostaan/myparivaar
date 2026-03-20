@@ -428,3 +428,142 @@ class AdminUser {
     );
   }
 }
+
+/// Subscription record for a household.
+class AdminSubscription {
+  const AdminSubscription({
+    required this.id,
+    required this.householdId,
+    this.householdName,
+    required this.planId,
+    this.planName,
+    this.planDisplayName,
+    required this.status,
+    required this.billingCycle,
+    required this.amountPaid,
+    required this.currency,
+    required this.startedAt,
+    this.expiresAt,
+    this.cancelledAt,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String householdId;
+  final String? householdName;
+  final String planId;
+  final String? planName;
+  final String? planDisplayName;
+  final String status; // active | cancelled | expired | suspended
+  final String billingCycle;
+  final double amountPaid;
+  final String currency;
+  final DateTime startedAt;
+  final DateTime? expiresAt;
+  final DateTime? cancelledAt;
+  final DateTime createdAt;
+
+  bool get isActive => status == 'active';
+  bool get isCancelled => status == 'cancelled';
+  bool get isExpired => status == 'expired';
+
+  String get statusLabel {
+    switch (status) {
+      case 'active':
+        return 'Active';
+      case 'cancelled':
+        return 'Cancelled';
+      case 'expired':
+        return 'Expired';
+      case 'suspended':
+        return 'Suspended';
+      default:
+        return status;
+    }
+  }
+
+  factory AdminSubscription.fromJson(Map<String, dynamic> json) {
+    return AdminSubscription(
+      id: json['id'] as String? ?? '',
+      householdId: json['household_id'] as String? ?? '',
+      householdName: json['household_name'] as String?,
+      planId: json['plan_id'] as String? ?? '',
+      planName: json['plan_name'] as String?,
+      planDisplayName: json['plan_display_name'] as String?,
+      status: json['status'] as String? ?? 'active',
+      billingCycle: json['billing_cycle'] as String? ?? 'monthly',
+      amountPaid: (json['amount_paid'] as num?)?.toDouble() ?? 0.0,
+      currency: json['currency'] as String? ?? 'INR',
+      startedAt: DateTime.tryParse(json['started_at'] as String? ?? '') ?? DateTime.now(),
+      expiresAt: json['expires_at'] != null
+          ? DateTime.tryParse(json['expires_at'] as String)
+          : null,
+      cancelledAt: json['cancelled_at'] != null
+          ? DateTime.tryParse(json['cancelled_at'] as String)
+          : null,
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
+}
+
+/// Platform plan definition with feature limits.
+class AdminPlan {
+  const AdminPlan({
+    required this.id,
+    required this.name,
+    required this.displayName,
+    this.description,
+    required this.priceMonthly,
+    required this.priceYearly,
+    required this.currency,
+    required this.maxFamilyMembers,
+    required this.aiWeeklySummaries,
+    required this.aiChatQueries,
+    required this.csvImportEnabled,
+    required this.emailIngestionEnabled,
+    required this.voiceFeaturesEnabled,
+    required this.isActive,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  final String id;
+  final String name;
+  final String displayName;
+  final String? description;
+  final double priceMonthly;
+  final double priceYearly;
+  final String currency;
+  final int maxFamilyMembers;
+  final int aiWeeklySummaries;
+  final int aiChatQueries;
+  final bool csvImportEnabled;
+  final bool emailIngestionEnabled;
+  final bool voiceFeaturesEnabled;
+  final bool isActive;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  bool get isFree => priceMonthly == 0;
+
+  factory AdminPlan.fromJson(Map<String, dynamic> json) {
+    return AdminPlan(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      displayName: json['display_name'] as String? ?? '',
+      description: json['description'] as String?,
+      priceMonthly: (json['price_monthly'] as num?)?.toDouble() ?? 0.0,
+      priceYearly: (json['price_yearly'] as num?)?.toDouble() ?? 0.0,
+      currency: json['currency'] as String? ?? 'INR',
+      maxFamilyMembers: (json['max_family_members'] as num?)?.toInt() ?? 8,
+      aiWeeklySummaries: (json['ai_weekly_summaries'] as num?)?.toInt() ?? 1,
+      aiChatQueries: (json['ai_chat_queries'] as num?)?.toInt() ?? 5,
+      csvImportEnabled: json['csv_import_enabled'] as bool? ?? true,
+      emailIngestionEnabled: json['email_ingestion_enabled'] as bool? ?? true,
+      voiceFeaturesEnabled: json['voice_features_enabled'] as bool? ?? true,
+      isActive: json['is_active'] as bool? ?? true,
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
+}

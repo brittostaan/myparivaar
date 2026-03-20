@@ -639,6 +639,165 @@ class AdminService extends ChangeNotifier {
     return 'none';
   }
 
+  // ── Phase 4: Feature Flags ─────────────────────────────────────────────────
+
+  List<AdminFeatureFlag> _featureFlags = [];
+
+  List<AdminFeatureFlag> get featureFlags => _featureFlags;
+
+  /// Fetch all feature flags, optionally with household overrides for context.
+  Future<List<AdminFeatureFlag>> fetchFeatureFlags({
+    String? householdId,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-feature-flags', {
+        'action': 'list_flags',
+        if (householdId != null) 'householdId': householdId,
+      });
+
+      final flagList = data['flags'] as List? ?? [];
+      _featureFlags = flagList
+          .map((e) => AdminFeatureFlag.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      notifyListeners();
+      return _featureFlags;
+    } catch (e) {
+      _setError('Failed to fetch feature flags: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Toggle global flag state (super-admin only).
+  Future<AdminFeatureFlag> toggleFlag({
+    required String flagId,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-feature-flags', {
+        'action': 'toggle_flag',
+        'flagId': flagId,
+      });
+
+      final flag = AdminFeatureFlag.fromJson(
+        data['flag'] as Map<String, dynamic>,
+      );
+
+      final index = _featureFlags.indexWhere((f) => f.id == flagId);
+      if (index >= 0) {
+        _featureFlags[index] = flag;
+      }
+
+      notifyListeners();
+      return flag;
+    } catch (e) {
+      _setError('Failed to toggle flag: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Set a per-household feature flag override (super-admin only).
+  Future<AdminFeatureFlagOverride> setHouseholdOverride({
+    required String householdId,
+    required String flagId,
+    required bool isEnabled,
+    String? reason,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-feature-flags', {
+        'action': 'set_household_override',
+        'householdId': householdId,
+        'flagId': flagId,
+        'isEnabled': isEnabled,
+        if (reason != null) 'reason': reason,
+      });
+
+      final override = AdminFeatureFlagOverride.fromJson(
+        data['override'] as Map<String, dynamic>,
+      );
+
+      // Update the flag's household_override in local state
+      final flagIndex = _featureFlags.indexWhere((f) => f.id == flagId);
+      if (flagIndex >= 0) {
+        // Reconstruct the flag with updated override
+        final existingFlag = _featureFlags[flagIndex];
+        _featureFlags[flagIndex] = AdminFeatureFlag(
+          id: existingFlag.id,
+          name: existingFlag.name,
+          displayName: existingFlag.displayName,
+          description: existingFlag.description,
+          isEnabled: existingFlag.isEnabled,
+          category: existingFlag.category,
+          isBeta: existingFlag.isBeta,
+          createdAt: existingFlag.createdAt,
+          updatedAt: existingFlag.updatedAt,
+          householdOverride: override,
+        );
+      }
+
+      notifyListeners();
+      return override;
+    } catch (e) {
+      _setError('Failed to set household override: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Remove a per-household feature flag override (super-admin only).
+  Future<void> removeHouseholdOverride({
+    required String overrideId,
+    required String flagId,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      await _post('admin-feature-flags', {
+        'action': 'remove_household_override',
+        'overrideId': overrideId,
+      });
+
+      // Clear the override from local state
+      final flagIndex = _featureFlags.indexWhere((f) => f.id == flagId);
+      if (flagIndex >= 0) {
+        final existingFlag = _featureFlags[flagIndex];
+        _featureFlags[flagIndex] = AdminFeatureFlag(
+          id: existingFlag.id,
+          name: existingFlag.name,
+          displayName: existingFlag.displayName,
+          description: existingFlag.description,
+          isEnabled: existingFlag.isEnabled,
+          category: existingFlag.category,
+          isBeta: existingFlag.isBeta,
+          createdAt: existingFlag.createdAt,
+          updatedAt: existingFlag.updatedAt,
+          householdOverride: null,
+        );
+      }
+
+      notifyListeners();
+    } catch (e) {
+      _setError('Failed to remove household override: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // ── Internal methods ───────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> _post(

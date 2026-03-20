@@ -328,6 +328,9 @@ class FakeAdminService extends AdminService {
   List<AdminPlan> get plans => const [];
 
   @override
+  List<AdminFeatureFlag> get featureFlags => const [];
+
+  @override
   bool get isLoading => false;
 
   @override
@@ -374,6 +377,9 @@ class FakeAdminService extends AdminService {
 
   @override
   Future<List<AdminPlan>> fetchPlans() async => [];
+
+  @override
+  Future<List<AdminFeatureFlag>> fetchFeatureFlags({String? householdId}) async => [];
 }
 
 AppUser _memberUser() {

@@ -61,6 +61,13 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
   bool _plansLoaded = false;
   String? _plansError;
 
+  // Feature Flags tab state
+  List<AdminFeatureFlag> _featureFlags = [];
+  bool _featureFlagsLoading = false;
+  bool _featureFlagsLoaded = false;
+  String? _featureFlagsError;
+  String _featureFlagsFilter = 'all'; // 'all', 'ai', 'finance', 'integration', 'general'
+
   @override
   void initState() {
     super.initState();
@@ -111,6 +118,10 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
 
     if (index == 4 && !_plansLoaded && !_plansLoading) {
       await _loadPlans();
+    }
+
+    if (index == 5 && !_featureFlagsLoaded && !_featureFlagsLoading) {
+      await _loadFeatureFlags();
     }
   }
 
@@ -254,6 +265,26 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
       setState(() {
         _plansLoading = false;
         _plansError = e.toString();
+      });
+    }
+  }
+
+  Future<void> _loadFeatureFlags() async {
+    setState(() {
+      _featureFlagsLoading = true;
+      _featureFlagsError = null;
+    });
+    try {
+      final result = await _adminService.fetchFeatureFlags();
+      setState(() {
+        _featureFlags = result;
+        _featureFlagsLoaded = true;
+        _featureFlagsLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _featureFlagsLoading = false;
+        _featureFlagsError = e.toString();
       });
     }
   }
@@ -606,7 +637,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
       case 4:
         return _buildPlansTab();
       case 5:
-        return _buildPlaceholder('Feature Toggles', 'Coming in Phase 4');
+        return _buildFeatureFlagsTab();
       case 6:
         return _buildPlaceholder('Analytics & Reports', 'Coming in Phase 5');
       case 7:
@@ -2200,6 +2231,148 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
     }
   }
 
+  // ── Feature Flags Tab ──────────────────────────────────────────────────────
+
+  Widget _buildFeatureFlagsTab() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Feature Flags',
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Manage platform-wide feature toggles and household-specific overrides.',
+            style: TextStyle(fontSize: 13, color: AppColors.grey600),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final category in ['all', 'ai', 'finance', 'integration', 'general'])
+                      FilterChip(
+                        label: Text(category == 'all' ? 'All' : category.capitalizeFirst()),
+                        selected: _featureFlagsFilter == category,
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() {
+                              _featureFlagsFilter = category;
+                            });
+                          }
+                        },
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                onPressed: _loadFeatureFlags,
+                icon: const Icon(Icons.refresh_outlined, size: 16),
+                label: const Text('Refresh'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: _buildFeatureFlagsPanel(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureFlagsPanel() {
+    if (_featureFlagsLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_featureFlagsError != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+            const SizedBox(height: 16),
+            Text(
+              'Error loading feature flags',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _featureFlagsError!,
+              style: const TextStyle(fontSize: 13, color: AppColors.grey600),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_featureFlags.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.toggle_off_outlined, size: 48, color: AppColors.grey400),
+            const SizedBox(height: 16),
+            const Text(
+              'No feature flags',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final filtered = _featureFlagsFilter == 'all'
+        ? _featureFlags
+        : _featureFlags.where((f) => f.category == _featureFlagsFilter).toList();
+
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          for (int i = 0; i < filtered.length; i++) ...[
+            if (i > 0) const Divider(height: 1),
+            _FeatureFlagRow(
+              flag: filtered[i],
+              onToggle: (isEnabled) => _handleToggleFlag(filtered[i], isEnabled),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleToggleFlag(AdminFeatureFlag flag, bool isEnabled) async {
+    try {
+      await _adminService.toggleFlag(flagId: flag.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${flag.displayName} toggled successfully'),
+        ),
+      );
+      setState(() {
+        _featureFlagsLoaded = false;
+      });
+      await _loadFeatureFlags();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed: $e')),
+      );
+    }
+  }
+
   // ── Approvals Queue Tab ────────────────────────────────────────────────────
 
   Widget _buildApprovalsTab() {
@@ -2703,5 +2876,82 @@ class _PlanLimitItem extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// Row widget for displaying a single feature flag with toggle
+class _FeatureFlagRow extends StatelessWidget {
+  const _FeatureFlagRow({
+    required this.flag,
+    required this.onToggle,
+  });
+
+  final AdminFeatureFlag flag;
+  final Function(bool) onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      flag.displayName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (flag.isBeta)
+                      const Chip(
+                        label: Text('Beta', style: TextStyle(fontSize: 11)),
+                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                      ),
+                    const SizedBox(width: 8),
+                    Text(
+                      flag.category.capitalizeFirst(),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.grey600,
+                      ),
+                    ),
+                  ],
+                ),
+                if (flag.description != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    flag.description!,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.grey600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Switch(
+            value: flag.isEnabled,
+            onChanged: (value) => onToggle(value),
+            activeColor: const Color(0xFF0EA5E9),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+extension on String {
+  String capitalizeFirst() {
+    if (isEmpty) return this;
+    return '${this[0].toUpperCase()}${substring(1)}';
   }
 }

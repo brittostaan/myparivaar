@@ -567,3 +567,90 @@ class AdminPlan {
     );
   }
 }
+
+/// Feature flag for platform-wide feature control.
+class AdminFeatureFlag {
+  const AdminFeatureFlag({
+    required this.id,
+    required this.name,
+    required this.displayName,
+    this.description,
+    required this.isEnabled,
+    required this.category,
+    required this.isBeta,
+    required this.createdAt,
+    required this.updatedAt,
+    this.householdOverride,
+  });
+
+  final String id;
+  final String name; // Internal name like 'ai_chat', 'csv_import'
+  final String displayName; // User-facing name
+  final String? description;
+  final bool isEnabled; // Global default
+  final String category; // 'ai', 'finance', 'integration', 'general'
+  final bool isBeta;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final AdminFeatureFlagOverride? householdOverride; // For specific household context
+
+  bool get effectivelyEnabled {
+    if (householdOverride != null) {
+      return householdOverride!.isEnabled;
+    }
+    return isEnabled;
+  }
+
+  factory AdminFeatureFlag.fromJson(Map<String, dynamic> json) {
+    return AdminFeatureFlag(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      displayName: json['display_name'] as String? ?? '',
+      description: json['description'] as String?,
+      isEnabled: json['is_enabled'] as bool? ?? false,
+      category: json['category'] as String? ?? 'general',
+      isBeta: json['is_beta'] as bool? ?? false,
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? '') ?? DateTime.now(),
+      householdOverride: json['household_override'] != null
+          ? AdminFeatureFlagOverride.fromJson(json['household_override'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+}
+
+/// Per-household override for a feature flag.
+class AdminFeatureFlagOverride {
+  const AdminFeatureFlagOverride({
+    required this.id,
+    required this.householdId,
+    required this.featureFlagId,
+    required this.isEnabled,
+    this.reason,
+    this.overrideByAdminId,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  final String id;
+  final String householdId;
+  final String featureFlagId;
+  final bool isEnabled;
+  final String? reason; // Why this override was set
+  final String? overrideByAdminId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  factory AdminFeatureFlagOverride.fromJson(Map<String, dynamic> json) {
+    return AdminFeatureFlagOverride(
+      id: json['id'] as String? ?? '',
+      householdId: json['household_id'] as String? ?? '',
+      featureFlagId: json['feature_flag_id'] as String? ?? '',
+      isEnabled: json['is_enabled'] as bool? ?? false,
+      reason: json['reason'] as String?,
+      overrideByAdminId: json['override_by_admin_id'] as String?,
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
+}

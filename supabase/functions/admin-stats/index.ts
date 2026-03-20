@@ -1,4 +1,9 @@
-import { json, requireAdmin, getScopedResourceIds } from '../_shared/admin.ts'
+import {
+  ADMIN_PERMISSIONS,
+  json,
+  requireAdmin,
+  getScopedResourceIds,
+} from '../_shared/admin.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 
 function monthKey(date: Date): string {
@@ -16,7 +21,9 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { supabase, scope } = await requireAdmin(req)
+    const { supabase, scope } = await requireAdmin(req, {
+      requiredPermissions: [ADMIN_PERMISSIONS.viewDashboard],
+    })
     const currentMonth = monthKey(new Date())
 
     if (scope === 'global') {

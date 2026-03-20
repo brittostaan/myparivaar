@@ -197,3 +197,234 @@ class AdminStats {
     );
   }
 }
+
+/// Lightweight household entry for list/search views in Admin Center
+class AdminHouseholdSummary {
+  const AdminHouseholdSummary({
+    required this.id,
+    required this.name,
+    required this.plan,
+    required this.suspended,
+    required this.memberCount,
+    required this.activeMemberCount,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  final String id;
+  final String name;
+  final String plan;
+  final bool suspended;
+  final int memberCount;
+  final int activeMemberCount;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  factory AdminHouseholdSummary.fromJson(Map<String, dynamic> json) {
+    int toInt(dynamic value) => value == null ? 0 : (value as num).toInt();
+
+    return AdminHouseholdSummary(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? 'Unnamed household',
+      plan: json['plan'] as String? ?? 'free',
+      suspended: json['suspended'] as bool? ?? false,
+      memberCount: toInt(json['member_count']),
+      activeMemberCount: toInt(json['active_member_count']),
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
+}
+
+class AdminHouseholdMember {
+  const AdminHouseholdMember({
+    required this.id,
+    required this.displayName,
+    required this.email,
+    required this.role,
+    required this.isActive,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String? displayName;
+  final String? email;
+  final String role;
+  final bool isActive;
+  final DateTime createdAt;
+
+  factory AdminHouseholdMember.fromJson(Map<String, dynamic> json) {
+    return AdminHouseholdMember(
+      id: json['id'] as String? ?? '',
+      displayName: json['display_name'] as String?,
+      email: json['email'] as String?,
+      role: json['role'] as String? ?? 'member',
+      isActive: json['is_active'] as bool? ?? true,
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
+}
+
+/// Household detail payload for admin actions and right-side detail panel
+class AdminHouseholdDetail {
+  const AdminHouseholdDetail({
+    required this.id,
+    required this.name,
+    required this.plan,
+    required this.suspended,
+    this.suspensionReason,
+    this.adminNotes,
+    required this.memberCount,
+    required this.activeMemberCount,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.members,
+  });
+
+  final String id;
+  final String name;
+  final String plan;
+  final bool suspended;
+  final String? suspensionReason;
+  final String? adminNotes;
+  final int memberCount;
+  final int activeMemberCount;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final List<AdminHouseholdMember> members;
+
+  factory AdminHouseholdDetail.fromJson(Map<String, dynamic> json) {
+    int toInt(dynamic value) => value == null ? 0 : (value as num).toInt();
+
+    final memberRows = json['members'] as List? ?? [];
+    return AdminHouseholdDetail(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? 'Unnamed household',
+      plan: json['plan'] as String? ?? 'free',
+      suspended: json['suspended'] as bool? ?? false,
+      suspensionReason: json['suspension_reason'] as String?,
+      adminNotes: json['admin_notes'] as String?,
+      memberCount: toInt(json['member_count']),
+      activeMemberCount: toInt(json['active_member_count']),
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? '') ?? DateTime.now(),
+      members: memberRows
+          .map((member) => AdminHouseholdMember.fromJson(member as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+/// Admin approval request for two-person control workflows.
+class AdminApprovalRequest {
+  const AdminApprovalRequest({
+    required this.id,
+    required this.actionType,
+    required this.resourceType,
+    this.resourceId,
+    required this.requestPayload,
+    this.reason,
+    required this.status,
+    required this.requestedByUserId,
+    required this.requestedByEmail,
+    this.approvedByUserId,
+    this.approvedByEmail,
+    required this.requestedAt,
+    this.decidedAt,
+    this.expiresAt,
+  });
+
+  final String id;
+  final String actionType;
+  final String resourceType;
+  final String? resourceId;
+  final Map<String, dynamic> requestPayload;
+  final String? reason;
+  final String status; // pending | approved | rejected | expired
+  final String requestedByUserId;
+  final String requestedByEmail;
+  final String? approvedByUserId;
+  final String? approvedByEmail;
+  final DateTime requestedAt;
+  final DateTime? decidedAt;
+  final DateTime? expiresAt;
+
+  factory AdminApprovalRequest.fromJson(Map<String, dynamic> json) {
+    return AdminApprovalRequest(
+      id: json['id'] as String? ?? '',
+      actionType: json['action_type'] as String? ?? 'unknown',
+      resourceType: json['resource_type'] as String? ?? 'unknown',
+      resourceId: json['resource_id'] as String?,
+      requestPayload: json['request_payload'] as Map<String, dynamic>? ?? {},
+      reason: json['reason'] as String?,
+      status: json['status'] as String? ?? 'pending',
+      requestedByUserId: json['requested_by_user_id'] as String? ?? '',
+      requestedByEmail: json['requested_by_email'] as String? ?? 'Unknown',
+      approvedByUserId: json['approved_by_user_id'] as String?,
+      approvedByEmail: json['approved_by_email'] as String?,
+      requestedAt: DateTime.tryParse(json['requested_at'] as String? ?? '') ?? DateTime.now(),
+      decidedAt: json['decided_at'] != null
+          ? DateTime.tryParse(json['decided_at'] as String)
+          : null,
+      expiresAt: json['expires_at'] != null
+          ? DateTime.tryParse(json['expires_at'] as String)
+          : null,
+    );
+  }
+
+  bool get isPending => status == 'pending';
+  bool get isApproved => status == 'approved';
+  bool get isRejected => status == 'rejected';
+  bool get isExpired => status == 'expired' || (expiresAt?.isBefore(DateTime.now()) ?? false);
+}
+
+/// Platform user entry for the admin Users Management tab.
+class AdminUser {
+  const AdminUser({
+    required this.id,
+    required this.email,
+    required this.displayName,
+    required this.role,
+    this.staffRole,
+    this.staffScope,
+    required this.isActive,
+    this.householdId,
+    this.householdName,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String? email;
+  final String? displayName;
+  final String role;
+  final String? staffRole;
+  final String? staffScope;
+  final bool isActive;
+  final String? householdId;
+  final String? householdName;
+  final DateTime createdAt;
+
+  bool get isPlatformAdmin => role == 'super_admin' || staffRole != null;
+
+  String get displayRoleName {
+    if (role == 'super_admin') return 'Super Admin';
+    if (staffRole == 'support_staff') return 'Support Staff';
+    if (role == 'admin') return 'Admin';
+    return 'Member';
+  }
+
+  factory AdminUser.fromJson(Map<String, dynamic> json) {
+    return AdminUser(
+      id: json['id'] as String? ?? '',
+      email: json['email'] as String?,
+      displayName: json['display_name'] as String?,
+      role: json['role'] as String? ?? 'member',
+      staffRole: json['staff_role'] as String?,
+      staffScope: json['staff_scope'] as String?,
+      isActive: json['is_active'] as bool? ?? true,
+      householdId: json['household_id'] as String?,
+      householdName: json['household_name'] as String?,
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
+}

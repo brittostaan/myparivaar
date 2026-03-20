@@ -27,6 +27,52 @@ export interface AdminContext {
   isSuperAdmin: boolean
 }
 
+export const ADMIN_PERMISSIONS = {
+  viewDashboard: 'view_dashboard',
+  viewHouseholds: 'view_households',
+  manageHouseholds: 'manage_households',
+  viewUsers: 'view_users',
+  manageUsers: 'manage_users',
+  moderateContent: 'moderate_content',
+  manageSupportTickets: 'manage_support_tickets',
+  manageStaff: 'manage_staff',
+  manageFeatures: 'manage_features',
+  viewAuditLogs: 'view_audit_logs',
+  viewAnalytics: 'view_analytics',
+  exportReports: 'export_reports',
+  manageSecurity: 'manage_security',
+} as const
+
+export type AdminPermission = typeof ADMIN_PERMISSIONS[keyof typeof ADMIN_PERMISSIONS]
+
+const ALL_ADMIN_PERMISSIONS = new Set(Object.values(ADMIN_PERMISSIONS))
+const SUPPORT_DEFAULT_PERMISSIONS = new Set<AdminPermission>([
+  ADMIN_PERMISSIONS.viewDashboard,
+  ADMIN_PERMISSIONS.viewHouseholds,
+  ADMIN_PERMISSIONS.viewUsers,
+  ADMIN_PERMISSIONS.moderateContent,
+  ADMIN_PERMISSIONS.manageSupportTickets,
+  ADMIN_PERMISSIONS.viewAuditLogs,
+  ADMIN_PERMISSIONS.viewAnalytics,
+])
+
+const DUAL_APPROVAL_DEFAULT_TTL_HOURS = 24
+
+export type DualApprovalActionType =
+  | 'assign_staff_role'
+  | 'revoke_staff_role'
+  | 'change_staff_scope'
+  | 'critical_config_change'
+
+interface ApprovalRequestRecord {
+  id: string
+  action_type: DualApprovalActionType
+  status: 'pending' | 'approved' | 'rejected' | 'expired'
+  requested_by_user_id: string
+  approved_by_user_id: string | null
+  expires_at: string | null
+}
+
 export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -42,7 +88,10 @@ export function parseBody(req: Request): Promise<Record<string, unknown>> {
 
 export async function requireAdmin(
   req: Request,
-  options?: { requireSuperAdmin?: boolean },
+  options?: {
+    requireSuperAdmin?: boolean
+    requiredPermissions?: AdminPermission[]
+  },
 ): Promise<AdminContext> {
   const authHeader = req.headers.get('Authorization') ?? ''
   if (!authHeader.startsWith('Bearer ')) {
@@ -93,12 +142,200 @@ export async function requireAdmin(
     throw json({ error: 'Admin access denied' }, 403)
   }
 
-  return {
+  const context: AdminContext = {
     supabase,
     actor,
     scope: isSuperAdmin ? 'global' : actor.staff_scope ?? actor.household_id ?? 'none',
     isSuperAdmin,
   }
+
+  if (options?.requiredPermissions && options.requiredPermissions.length > 0) {
+    requireAdminPermissions(context, options.requiredPermissions)
+  }
+
+  return context
+}
+
+function actorExplicitPermissions(actor: AdminActor): Set<AdminPermission> {
+  const result = new Set<AdminPermission>()
+  const raw = actor.admin_permissions
+  if (!raw || typeof raw !== 'object') {
+    return result
+  }
+
+  for (const [key, value] of Object.entries(raw)) {
+    if (value === true && ALL_ADMIN_PERMISSIONS.has(key as AdminPermission)) {
+      result.add(key as AdminPermission)
+    }
+  }
+
+  return result
+}
+
+export function hasAdminPermission(actor: AdminActor, permission: AdminPermission): boolean {
+  if (actor.role === 'super_admin' || actor.staff_role === 'super_admin') {
+    return true
+  }
+
+  if (!ALL_ADMIN_PERMISSIONS.has(permission)) {
+    return false
+  }
+
+  const explicit = actorExplicitPermissions(actor)
+  if (explicit.size > 0) {
+    return explicit.has(permission)
+  }
+
+  return actor.staff_role === 'support_staff' && SUPPORT_DEFAULT_PERMISSIONS.has(permission)
+}
+
+export function requireAdminPermissions(context: AdminContext, permissions: AdminPermission[]): void {
+  for (const permission of permissions) {
+    if (!hasAdminPermission(context.actor, permission)) {
+      throw json(
+        {
+          error: 'Admin permission denied',
+          missing_permission: permission,
+        },
+        403,
+      )
+    }
+  }
+}
+
+function isDualApprovalEnforced(): boolean {
+  return (Deno.env.get('ADMIN_DUAL_APPROVAL_ENFORCED') ?? '').toLowerCase() === 'true'
+}
+
+export async function requestDualApproval(
+  context: AdminContext,
+  payload: {
+    actionType: DualApprovalActionType
+    resourceType: string
+    resourceId?: string | null
+    reason?: string | null
+    requestPayload?: Record<string, unknown>
+    expiresInHours?: number
+  },
+): Promise<string> {
+  const expiresHours = Number.isFinite(payload.expiresInHours)
+    ? Math.max(1, Math.min(168, Math.trunc(payload.expiresInHours!)))
+    : DUAL_APPROVAL_DEFAULT_TTL_HOURS
+
+  const expiresAt = new Date(Date.now() + expiresHours * 60 * 60 * 1000).toISOString()
+
+  const { data, error } = await context.supabase
+    .from('admin_approval_requests')
+    .insert({
+      action_type: payload.actionType,
+      resource_type: payload.resourceType,
+      resource_id: payload.resourceId ?? null,
+      request_payload: payload.requestPayload ?? {},
+      reason: payload.reason ?? null,
+      status: 'pending',
+      requested_by_user_id: context.actor.id,
+      expires_at: expiresAt,
+    })
+    .select('id')
+    .single<{ id: string }>()
+
+  if (error || !data) {
+    console.error('requestDualApproval insert error:', error)
+    throw json({ error: 'Failed to create approval request' }, 500)
+  }
+
+  return data.id
+}
+
+export async function verifyDualApproval(
+  context: AdminContext,
+  payload: {
+    approvalRequestId: string
+    expectedActionType: DualApprovalActionType
+  },
+): Promise<void> {
+  const { data, error } = await context.supabase
+    .from('admin_approval_requests')
+    .select('id, action_type, status, requested_by_user_id, approved_by_user_id, expires_at')
+    .eq('id', payload.approvalRequestId)
+    .maybeSingle<ApprovalRequestRecord>()
+
+  if (error) {
+    console.error('verifyDualApproval lookup error:', error)
+    throw json({ error: 'Failed to validate approval request' }, 500)
+  }
+
+  if (!data) {
+    throw json({ error: 'Approval request not found' }, 404)
+  }
+
+  if (data.action_type !== payload.expectedActionType) {
+    throw json({ error: 'Approval request does not match action type' }, 400)
+  }
+
+  if (data.status !== 'approved') {
+    throw json({ error: 'Approval request is not approved' }, 403)
+  }
+
+  if (data.requested_by_user_id === context.actor.id) {
+    throw json({ error: 'Requester cannot execute their own approval request' }, 403)
+  }
+
+  if (data.approved_by_user_id == null) {
+    throw json({ error: 'Approval request missing approver' }, 403)
+  }
+
+  if (data.approved_by_user_id === context.actor.id) {
+    throw json({ error: 'Approver cannot execute approved action' }, 403)
+  }
+
+  if (data.expires_at && new Date(data.expires_at).getTime() < Date.now()) {
+    throw json({ error: 'Approval request has expired' }, 403)
+  }
+}
+
+export async function ensureDualApproval(
+  context: AdminContext,
+  payload: {
+    actionType: DualApprovalActionType
+    resourceType: string
+    resourceId?: string | null
+    reason?: string | null
+    requestPayload?: Record<string, unknown>
+    approvalRequestId?: string | null
+    force?: boolean
+  },
+): Promise<void> {
+  const shouldEnforce = payload.force === true || isDualApprovalEnforced()
+  if (!shouldEnforce) {
+    return
+  }
+
+  if (payload.approvalRequestId) {
+    await verifyDualApproval(context, {
+      approvalRequestId: payload.approvalRequestId,
+      expectedActionType: payload.actionType,
+    })
+    return
+  }
+
+  const requestId = await requestDualApproval(context, {
+    actionType: payload.actionType,
+    resourceType: payload.resourceType,
+    resourceId: payload.resourceId,
+    reason: payload.reason,
+    requestPayload: payload.requestPayload,
+  })
+
+  throw json(
+    {
+      requires_approval: true,
+      approval_request_id: requestId,
+      approval_action_type: payload.actionType,
+      message: 'Dual approval required before this action can be executed',
+    },
+    202,
+  )
 }
 
 export async function writeAuditLog(

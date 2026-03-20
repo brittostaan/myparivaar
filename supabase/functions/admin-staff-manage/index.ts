@@ -1,4 +1,11 @@
-import { json, parseBody, requireAdmin, writeAuditLog } from '../_shared/admin.ts'
+import {
+  ADMIN_PERMISSIONS,
+  ensureDualApproval,
+  json,
+  parseBody,
+  requireAdmin,
+  writeAuditLog,
+} from '../_shared/admin.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 
 const STAFF_COLS = 'id, email, display_name, staff_role, staff_scope, admin_permissions, created_at, role'
@@ -43,11 +50,35 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { supabase, actor } = await requireAdmin(req, { requireSuperAdmin: true })
+    const context = await requireAdmin(req, {
+      requireSuperAdmin: true,
+      requiredPermissions: [ADMIN_PERMISSIONS.manageStaff],
+    })
+    const { supabase, actor } = context
     const body = await parseBody(req)
     const action = typeof body.action === 'string' ? body.action.trim() : ''
+    const approvalRequestId = typeof body.approval_request_id === 'string'
+      ? body.approval_request_id.trim()
+      : null
+    const reason = typeof body.reason === 'string' ? body.reason.trim() : null
     const userAgent = req.headers.get('user-agent')
     const ipAddress = pickClientIp(req)
+
+    if (action === 'list') {
+      const { data: staffUsers, error: listError } = await supabase
+        .from('users')
+        .select(STAFF_COLS)
+        .not('staff_role', 'is', null)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+
+      if (listError) {
+        console.error('admin-staff-manage list error:', listError)
+        return json({ error: 'Failed to list staff' }, 500)
+      }
+
+      return json({ staff: staffUsers ?? [] })
+    }
 
     if (action === 'add') {
       const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
@@ -78,6 +109,19 @@ Deno.serve(async (req: Request) => {
       if (existingUser.role === 'super_admin' || existingUser.staff_role === 'super_admin') {
         return json({ error: 'Target user is already a super admin' }, 400)
       }
+
+      await ensureDualApproval(context, {
+        actionType: 'assign_staff_role',
+        resourceType: 'user',
+        resourceId: existingUser.id,
+        reason,
+        approvalRequestId,
+        requestPayload: {
+          email,
+          initial_scope: initialScope,
+          action,
+        },
+      })
 
       const previousState = {
         staff_role: existingUser.staff_role,
@@ -151,6 +195,18 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'Super admin access cannot be removed here' }, 400)
       }
 
+      await ensureDualApproval(context, {
+        actionType: 'revoke_staff_role',
+        resourceType: 'user',
+        resourceId: existingUser.id,
+        reason,
+        approvalRequestId,
+        requestPayload: {
+          staff_user_id: staffUserId,
+          action,
+        },
+      })
+
       const previousState = {
         staff_role: existingUser.staff_role,
         staff_scope: existingUser.staff_scope,
@@ -219,6 +275,19 @@ Deno.serve(async (req: Request) => {
       if (existingUser.staff_role !== 'support_staff') {
         return json({ error: 'Target user is not support staff' }, 400)
       }
+
+      await ensureDualApproval(context, {
+        actionType: 'change_staff_scope',
+        resourceType: 'user',
+        resourceId: existingUser.id,
+        reason,
+        approvalRequestId,
+        requestPayload: {
+          staff_user_id: staffUserId,
+          new_scope: newScope,
+          action,
+        },
+      })
 
       const previousState = {
         staff_scope: existingUser.staff_scope,

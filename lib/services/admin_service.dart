@@ -40,12 +40,18 @@ class AdminService extends ChangeNotifier {
 
   // ── In-memory state ────────────────────────────────────────────────────────
   List<AuditLog> _auditLogs = [];
+  List<AdminApprovalRequest> _approvalRequests = [];
+  List<AdminStaff> _staff = [];
+  List<AdminUser> _users = [];
   AdminStats? _stats;
   bool _isLoading = false;
   String? _error;
 
   // ── Public read-only state ─────────────────────────────────────────────────
   List<AuditLog> get auditLogs => _auditLogs;
+  List<AdminApprovalRequest> get approvalRequests => _approvalRequests;
+  List<AdminStaff> get staff => _staff;
+  List<AdminUser> get users => _users;
   AdminStats? get stats => _stats;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -107,11 +113,65 @@ class AdminService extends ChangeNotifier {
     }
   }
 
+  /// Fetch all current staff members (super_admin + support_staff).
+  Future<List<AdminStaff>> fetchStaff() async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-staff-manage', {'action': 'list'});
+      final rows = data['staff'] as List? ?? [];
+      _staff = rows
+          .map((e) => AdminStaff.fromJson(e as Map<String, dynamic>))
+          .toList();
+      notifyListeners();
+      return _staff;
+    } catch (e) {
+      _setError('Failed to fetch staff: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Fetch platform users for admin Users Management tab.
+  Future<List<AdminUser>> fetchUsers({
+    String? query,
+    String? role,
+    int limit = 100,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-users', {
+        'action': 'list',
+        if (query != null && query.trim().isNotEmpty) 'query': query.trim(),
+        if (role != null && role.trim().isNotEmpty) 'role': role.trim(),
+        'limit': limit,
+      });
+
+      final rows = data['users'] as List? ?? [];
+      _users = rows
+          .map((e) => AdminUser.fromJson(e as Map<String, dynamic>))
+          .toList();
+      notifyListeners();
+      return _users;
+    } catch (e) {
+      _setError('Failed to fetch users: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   /// Add a new admin staff member [email] with optional [initialScope]
   /// [initialScope] — 'global' (platform-wide) or household UUID (scoped)
   Future<AdminStaff> addStaff({
     required String email,
     required String initialScope,
+    String? approvalRequestId,
+    String? reason,
   }) async {
     _setLoading(true);
     _setError(null);
@@ -121,6 +181,9 @@ class AdminService extends ChangeNotifier {
         'action': 'add',
         'email': email.trim(),
         'initial_scope': initialScope,
+        if (approvalRequestId != null && approvalRequestId.trim().isNotEmpty)
+          'approval_request_id': approvalRequestId.trim(),
+        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
       });
 
       final staff = AdminStaff.fromJson(data['staff'] as Map<String, dynamic>);
@@ -134,7 +197,11 @@ class AdminService extends ChangeNotifier {
   }
 
   /// Remove an admin staff member [staffUserId]
-  Future<void> removeStaff(String staffUserId) async {
+  Future<void> removeStaff(
+    String staffUserId, {
+    String? approvalRequestId,
+    String? reason,
+  }) async {
     _setLoading(true);
     _setError(null);
 
@@ -142,6 +209,9 @@ class AdminService extends ChangeNotifier {
       await _post('admin-staff-manage', {
         'action': 'remove',
         'staff_user_id': staffUserId,
+        if (approvalRequestId != null && approvalRequestId.trim().isNotEmpty)
+          'approval_request_id': approvalRequestId.trim(),
+        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
       });
     } catch (e) {
       _setError('Failed to remove staff: $e');
@@ -156,6 +226,8 @@ class AdminService extends ChangeNotifier {
   Future<AdminStaff> updateStaffScope({
     required String staffUserId,
     required String staffScope,
+    String? approvalRequestId,
+    String? reason,
   }) async {
     _setLoading(true);
     _setError(null);
@@ -165,6 +237,9 @@ class AdminService extends ChangeNotifier {
         'action': 'update_scope',
         'staff_user_id': staffUserId,
         'new_scope': staffScope,
+        if (approvalRequestId != null && approvalRequestId.trim().isNotEmpty)
+          'approval_request_id': approvalRequestId.trim(),
+        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
       });
 
       final staff = AdminStaff.fromJson(data['staff'] as Map<String, dynamic>);
@@ -181,6 +256,215 @@ class AdminService extends ChangeNotifier {
   bool get isCurrentUserAdmin {
     final user = _authService.currentUser;
     return user?.isPlatformAdmin == true;
+  }
+
+  /// Fetch households for admin management list.
+  Future<List<AdminHouseholdSummary>> fetchHouseholds({
+    String? query,
+    bool? suspendedOnly,
+    int limit = 100,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-households', {
+        'action': 'list',
+        if (query != null && query.trim().isNotEmpty) 'query': query.trim(),
+        if (suspendedOnly != null) 'suspended_only': suspendedOnly,
+        'limit': limit,
+      });
+
+      final rows = data['households'] as List? ?? [];
+      return rows
+          .map((row) => AdminHouseholdSummary.fromJson(row as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      _setError('Failed to fetch households: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<AdminHouseholdDetail> fetchHouseholdDetail(String householdId) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-households', {
+        'action': 'detail',
+        'household_id': householdId,
+      });
+
+      return AdminHouseholdDetail.fromJson(data['household'] as Map<String, dynamic>);
+    } catch (e) {
+      _setError('Failed to fetch household details: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<AdminHouseholdDetail> suspendHousehold({
+    required String householdId,
+    required String reason,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-households', {
+        'action': 'suspend',
+        'household_id': householdId,
+        'reason': reason.trim(),
+      });
+
+      return AdminHouseholdDetail.fromJson(data['household'] as Map<String, dynamic>);
+    } catch (e) {
+      _setError('Failed to suspend household: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<AdminHouseholdDetail> reactivateHousehold({
+    required String householdId,
+    required String reason,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-households', {
+        'action': 'reactivate',
+        'household_id': householdId,
+        'reason': reason.trim(),
+      });
+
+      return AdminHouseholdDetail.fromJson(data['household'] as Map<String, dynamic>);
+    } catch (e) {
+      _setError('Failed to reactivate household: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<AdminHouseholdDetail> updateHouseholdNotes({
+    required String householdId,
+    required String notes,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-households', {
+        'action': 'update_notes',
+        'household_id': householdId,
+        'admin_notes': notes.trim(),
+      });
+
+      return AdminHouseholdDetail.fromJson(data['household'] as Map<String, dynamic>);
+    } catch (e) {
+      _setError('Failed to update household notes: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Fetch approval requests for dual-approval decision workflows.
+  Future<List<AdminApprovalRequest>> fetchApprovalRequests({
+    String? status,
+    String? actionType,
+    int limit = 100,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-approval-manage', {
+        'action': 'list',
+        if (status != null && status.trim().isNotEmpty) 'status': status.trim(),
+        if (actionType != null && actionType.trim().isNotEmpty) 'action_type': actionType.trim(),
+        'limit': limit,
+      });
+
+      final rows = data['approval_requests'] as List? ?? [];
+      _approvalRequests = rows
+          .map((row) => AdminApprovalRequest.fromJson(row as Map<String, dynamic>))
+          .toList();
+
+      notifyListeners();
+      return _approvalRequests;
+    } catch (e) {
+      _setError('Failed to fetch approval requests: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Approve an existing dual-approval request.
+  Future<AdminApprovalRequest> approveApprovalRequest({
+    required String approvalRequestId,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-approval-manage', {
+        'action': 'approve',
+        'approval_request_id': approvalRequestId.trim(),
+      });
+
+      final approval = AdminApprovalRequest.fromJson(
+        data['approval_request'] as Map<String, dynamic>,
+      );
+
+      _approvalRequests = _approvalRequests
+          .map((existing) => existing.id == approval.id ? approval : existing)
+          .toList();
+      notifyListeners();
+      return approval;
+    } catch (e) {
+      _setError('Failed to approve request: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Reject an existing dual-approval request.
+  Future<AdminApprovalRequest> rejectApprovalRequest({
+    required String approvalRequestId,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final data = await _post('admin-approval-manage', {
+        'action': 'reject',
+        'approval_request_id': approvalRequestId.trim(),
+      });
+
+      final approval = AdminApprovalRequest.fromJson(
+        data['approval_request'] as Map<String, dynamic>,
+      );
+
+      _approvalRequests = _approvalRequests
+          .map((existing) => existing.id == approval.id ? approval : existing)
+          .toList();
+      notifyListeners();
+      return approval;
+    } catch (e) {
+      _setError('Failed to reject request: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
   }
 
   /// Get admin scope of current user ('global' or household_id)

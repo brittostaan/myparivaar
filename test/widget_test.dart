@@ -34,6 +34,7 @@ void main() {
           ChangeNotifierProvider(
             create: (context) => AdminService(
               supabaseUrl: 'test',
+              supabaseAnonKey: 'test-anon-key',
               authService: context.read<AuthService>(),
             ),
           ),

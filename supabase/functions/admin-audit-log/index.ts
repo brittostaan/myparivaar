@@ -1,4 +1,5 @@
 import {
+  ADMIN_PERMISSIONS,
   getScopedResourceIds,
   isLogVisibleToScope,
   json,
@@ -17,7 +18,9 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { supabase, scope } = await requireAdmin(req)
+    const { supabase, scope } = await requireAdmin(req, {
+      requiredPermissions: [ADMIN_PERMISSIONS.viewAuditLogs],
+    })
     const body = await parseBody(req)
     const requestedLimit = Number(body.limit ?? 50)
     const limit = Number.isFinite(requestedLimit)

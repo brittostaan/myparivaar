@@ -1,3 +1,5 @@
+import 'admin_permissions.dart';
+
 /// Represents the authenticated user record stored in Supabase.
 class AppUser {
   const AppUser({
@@ -46,6 +48,45 @@ class AppUser {
   bool get isSuperAdmin => role == 'super_admin';
   bool get isSupportStaff => staffRole == 'support_staff' || role == 'support_staff';
   bool get isPlatformAdmin => isSuperAdmin || isSupportStaff;
+
+  bool hasAdminPermission(String permissionKey) {
+    if (isSuperAdmin) {
+      return true;
+    }
+
+    if (!isPlatformAdmin || !AdminPermissions.all.contains(permissionKey)) {
+      return false;
+    }
+
+    final raw = adminPermissions?[permissionKey];
+    if (raw is bool) {
+      return raw;
+    }
+
+    // Fall back to role defaults when explicit permissions are not stored.
+    return isSupportStaff && AdminPermissions.supportAdminDefaults.contains(permissionKey);
+  }
+
+  Set<String> get effectiveAdminPermissions {
+    if (isSuperAdmin) {
+      return AdminPermissions.superAdminDefaults;
+    }
+
+    final explicit = <String>{};
+    if (adminPermissions != null) {
+      for (final entry in adminPermissions!.entries) {
+        if (entry.value == true && AdminPermissions.all.contains(entry.key)) {
+          explicit.add(entry.key);
+        }
+      }
+    }
+
+    if (explicit.isNotEmpty) {
+      return explicit;
+    }
+
+    return isSupportStaff ? AdminPermissions.supportAdminDefaults : <String>{};
+  }
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
     final createdAtRaw = json['created_at']?.toString();

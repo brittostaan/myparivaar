@@ -93,8 +93,14 @@ export async function requireAdmin(
     requiredPermissions?: AdminPermission[]
   },
 ): Promise<AdminContext> {
+  console.log('[requireAdmin] Starting authorization check')
+  
   const authHeader = req.headers.get('Authorization') ?? ''
+  console.log('[requireAdmin] Auth header present:', !!authHeader)
+  console.log('[requireAdmin] Auth header format:', authHeader.slice(0, 20) + (authHeader.length > 20 ? '...' : ''))
+  
   if (!authHeader.startsWith('Bearer ')) {
+    console.error('[requireAdmin] Missing Bearer prefix')
     throw new Response(JSON.stringify({ error: 'Missing or malformed Authorization header' }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -102,19 +108,40 @@ export async function requireAdmin(
   }
 
   const token = authHeader.slice(7).trim()
+  console.log('[requireAdmin] Token extracted, length:', token.length)
 
   // Verify token cryptographically using Supabase's own auth — same approach as auth-bootstrap
-  const { data: { user: authUser }, error: authError } = await anonClient.auth.getUser(token)
+  console.log('[requireAdmin] Attempting token verification with anonClient...')
+  let result
+  try {
+    result = await anonClient.auth.getUser(token)
+  } catch (err) {
+    console.error('[requireAdmin] Exception during getUser call:', err)
+    throw json({ error: 'Token verification failed: ' + (err instanceof Error ? err.message : String(err)) }, 401)
+  }
+  
+  console.log('[requireAdmin] getUser result:', {
+    hasData: !!result.data,
+    hasUser: !!result.data?.user,
+    hasError: !!result.error,
+    error: result.error,
+    userId: result.data?.user?.id?.slice(0, 8) + '...',
+  })
+  
+  const { data: { user: authUser } = {}, error: authError } = result
   if (authError || !authUser) {
-    console.error('admin token verification failed:', authError)
+    console.error('[requireAdmin] Token verification failed. Error:', authError, 'User:', authUser)
     throw json({ error: 'Invalid or expired token' }, 401)
   }
+
+  console.log('[requireAdmin] Token verified for user:', authUser.id.slice(0, 8) + '...')
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { persistSession: false },
     db: { schema: 'app' },
   })
 
+  console.log('[requireAdmin] Looking up user in database with firebase_uid:', authUser.id.slice(0, 8) + '...')
   const { data: actor, error } = await supabase
     .from('users')
     .select('id, email, role, household_id, staff_role, staff_scope, admin_permissions')
@@ -123,25 +150,38 @@ export async function requireAdmin(
     .maybeSingle<AdminActor>()
 
   if (error) {
-    console.error('admin auth lookup error:', error)
+    console.error('[requireAdmin] Database lookup error:', error)
     throw json({ error: 'Failed to verify admin access' }, 500)
   }
 
   if (!actor) {
+    console.error('[requireAdmin] User not found in database for firebase_uid:', authUser.id)
     throw json({ error: 'User not found' }, 404)
   }
 
+  console.log('[requireAdmin] User found in database:', {
+    id: actor.id.slice(0, 8) + '...',
+    role: actor.role,
+    staff_role: actor.staff_role,
+    household_id: actor.household_id,
+  })
+
   const isSuperAdmin = actor.role === 'super_admin' || actor.staff_role === 'super_admin'
   const isSupportStaff = actor.staff_role === 'support_staff'
+  console.log('[requireAdmin] Role check:', { isSuperAdmin, isSupportStaff })
 
   if (options?.requireSuperAdmin) {
     if (!isSuperAdmin) {
+      console.error('[requireAdmin] Super admin required but user is not super admin')
       throw json({ error: 'Super admin access required' }, 403)
     }
   } else if (!isSuperAdmin && !isSupportStaff) {
+    console.error('[requireAdmin] Admin access denied - user is neither super_admin nor support_staff')
     throw json({ error: 'Admin access denied' }, 403)
   }
 
+  console.log('[requireAdmin] Authorization successful for user:', actor.id.slice(0, 8) + '...')
+  
   const context: AdminContext = {
     supabase,
     actor,

@@ -22,6 +22,8 @@ import 'screens/admin_center_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/more_screen.dart';
 import 'screens/voice_expense_screen.dart';
+import 'screens/anomaly_detection_screen.dart';
+import 'screens/financial_simulator_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/admin_service.dart';
@@ -494,6 +496,24 @@ class MyParivaaarApp extends StatelessWidget {
           builder: (_) => NavigationShell(
             currentRoute: routeName,
             child: const VoiceExpenseScreen(),
+          ),
+        );
+
+      case '/anomaly-detection':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const AnomalyDetectionScreen(),
+          ),
+        );
+
+      case '/financial-simulator':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const FinancialSimulatorScreen(),
           ),
         );
 

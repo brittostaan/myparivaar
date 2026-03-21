@@ -6,6 +6,7 @@ import '../models/budget.dart';
 import '../services/auth_service.dart';
 import '../services/budget_service.dart';
 import '../services/family_service.dart';
+import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
 import '../utils/tag_utils.dart';
@@ -52,6 +53,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
   // Incremented on every load; stale async responses are discarded.
   int _loadGeneration = 0;
 
+  // AI Budget Insights
+  bool _isLoadingInsights = false;
+  String? _aiAnalysis;
+  List<String> _aiSuggestions = [];
+  String? _aiInsightsError;
+
   @override
   void initState() {
     super.initState();
@@ -78,6 +85,35 @@ class _BudgetScreenState extends State<BudgetScreen> {
       });
     } catch (_) {
       // Tag suggestions are optional.
+    }
+  }
+
+  Future<void> _fetchAIInsights() async {
+    setState(() {
+      _isLoadingInsights = true;
+      _aiInsightsError = null;
+    });
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final result = await AIService().getBudgetAnalysis(
+        supabaseUrl: authService.supabaseUrl,
+        idToken: await authService.getIdToken(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _aiAnalysis = result['analysis'] as String?;
+        _aiSuggestions = (result['suggestions'] as List<dynamic>?)
+                ?.map((s) => s.toString())
+                .toList() ??
+            [];
+        _isLoadingInsights = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingInsights = false;
+        _aiInsightsError = e.toString();
+      });
     }
   }
 
@@ -616,6 +652,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
           ],
         ),
         const SizedBox(height: 28),
+        // AI Budget Insights
+        _buildAIInsightsCard(isDark, primary),
+        const SizedBox(height: 28),
         Row(
           children: [
             Expanded(
@@ -1153,6 +1192,92 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAIInsightsCard(bool isDark, Color primary) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.deepPurple.shade50, Colors.blue.shade50],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.deepPurple.shade100),
+      ),
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, color: Colors.deepPurple, size: 22),
+              const SizedBox(width: 8),
+              const Text(
+                'AI Budget Insights',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              if (_isLoadingInsights)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                FilledButton.icon(
+                  onPressed: _fetchAIInsights,
+                  icon: const Icon(Icons.auto_awesome, size: 16),
+                  label: Text(_aiAnalysis != null ? 'Refresh' : 'Analyze'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (_aiInsightsError != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _aiInsightsError!,
+              style: const TextStyle(color: AppColors.error, fontSize: 13),
+            ),
+          ],
+          if (_aiAnalysis != null) ...[
+            const SizedBox(height: 16),
+            Text(_aiAnalysis!, style: const TextStyle(fontSize: 14, height: 1.5)),
+          ],
+          if (_aiSuggestions.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Text(
+              'Suggestions',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            ..._aiSuggestions.map((s) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.lightbulb_outline, size: 16, color: Colors.amber.shade700),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(s, style: const TextStyle(fontSize: 13))),
+                    ],
+                  ),
+                )),
+          ],
+          if (_aiAnalysis == null && !_isLoadingInsights && _aiInsightsError == null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Tap Analyze to get AI-powered insights on your budget performance.',
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            ),
+          ],
+        ],
       ),
     );
   }

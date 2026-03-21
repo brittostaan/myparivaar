@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/email_service.dart';
+import '../services/ai_service.dart';
 import '../widgets/app_header.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
@@ -18,6 +19,13 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
   List<EmailAccount> _emailAccounts = [];
   bool _isLoading = true;
   String? _error;
+
+  // Email parsing
+  final _emailBodyController = TextEditingController();
+  final _emailSubjectController = TextEditingController();
+  bool _isParsing = false;
+  List<Map<String, dynamic>>? _parsedTransactions;
+  String? _parseError;
 
   @override
   void initState() {
@@ -195,6 +203,53 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _parseEmailContent() async {
+    final body = _emailBodyController.text.trim();
+    if (body.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Paste an email body to parse')),
+      );
+      return;
+    }
+    setState(() {
+      _isParsing = true;
+      _parseError = null;
+      _parsedTransactions = null;
+    });
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final result = await AIService().parseEmail(
+        emailBody: body,
+        emailSubject: _emailSubjectController.text.trim().isNotEmpty
+            ? _emailSubjectController.text.trim()
+            : null,
+        supabaseUrl: authService.supabaseUrl,
+        idToken: await authService.getIdToken(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _parsedTransactions = (result['transactions'] as List<dynamic>?)
+                ?.map((t) => Map<String, dynamic>.from(t as Map))
+                .toList() ??
+            [];
+        _isParsing = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isParsing = false;
+        _parseError = e.toString();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailBodyController.dispose();
+    _emailSubjectController.dispose();
+    super.dispose();
   }
 
   Future<void> _disconnectEmailAccount(EmailAccount account) async {
@@ -384,6 +439,131 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
                 onTap: () => _connectEmailAccount('outlook'),
               ),
             ],
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // AI Email Parsing section
+        Text(
+          'Parse Bank Email',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.auto_awesome, color: Colors.deepPurple),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'AI-Powered Email Parser',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Paste a bank notification email to extract transaction details automatically.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _emailSubjectController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email Subject (optional)',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _emailBodyController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email Body',
+                    hintText: 'Paste your bank notification email here...',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 5,
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _isParsing ? null : _parseEmailContent,
+                    icon: _isParsing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.auto_awesome, size: 18),
+                    label: Text(_isParsing ? 'Parsing...' : 'Parse Email'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+                if (_parseError != null) ...[
+                  const SizedBox(height: 12),
+                  Text(_parseError!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
+                ],
+                if (_parsedTransactions != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Extracted Transactions (${_parsedTransactions!.length})',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  if (_parsedTransactions!.isEmpty)
+                    const Text('No transactions found in this email.', style: TextStyle(color: Colors.grey))
+                  else
+                    ..._parsedTransactions!.map((t) => Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.grey100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      t['description']?.toString() ?? 'Transaction',
+                                      style: const TextStyle(fontWeight: FontWeight.w600),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${t['type'] ?? 'debit'} • ${t['category'] ?? 'Other'} • ${t['date'] ?? ''}',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                '₹${t['amount'] ?? 0}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: (t['type'] ?? 'debit') == 'credit'
+                                      ? AppColors.success
+                                      : AppColors.error,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )),
+                ],
+              ],
+            ),
           ),
         ),
       ],

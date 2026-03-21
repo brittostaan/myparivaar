@@ -14,6 +14,7 @@ import '../widgets/tag_wrap.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
 import '../utils/tag_utils.dart';
+import '../services/ai_service.dart';
 
 class ExpenseManagementScreen extends StatefulWidget {
   const ExpenseManagementScreen({super.key});
@@ -1318,6 +1319,7 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
   String _selectedCategory = 'food';
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
+  bool _isCategorizing = false;
 
   @override
   void initState() {
@@ -1359,6 +1361,42 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
       });
     } catch (_) {
       // Tag suggestions are optional.
+    }
+  }
+
+  Future<void> _autoCategorize() async {
+    final description = _notesController.text.trim();
+    if (description.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add a note first so AI can suggest a category')),
+      );
+      return;
+    }
+
+    setState(() => _isCategorizing = true);
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final result = await AIService().categorizeExpense(
+        description: description,
+        amount: double.tryParse(_amountController.text),
+        supabaseUrl: authService.supabaseUrl,
+        idToken: await authService.getIdToken(),
+      );
+
+      if (!mounted) return;
+      final category = (result['category'] as String?)?.toLowerCase() ?? '';
+      const validCategories = ['food', 'transport', 'shopping', 'utilities', 'entertainment', 'other'];
+      setState(() {
+        _selectedCategory = validCategories.contains(category) ? category : 'other';
+        _isCategorizing = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isCategorizing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Auto-categorize failed: $e')),
+      );
     }
   }
 
@@ -1480,17 +1518,52 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
                     const SizedBox(height: 28),
 
                     // Category Selection
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'SELECT CATEGORY',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[400],
-                          letterSpacing: 1.2,
+                    Row(
+                      children: [
+                        Text(
+                          'SELECT CATEGORY',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[400],
+                            letterSpacing: 1.2,
+                          ),
                         ),
-                      ),
+                        const Spacer(),
+                        if (_isCategorizing)
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        else
+                          InkWell(
+                            onTap: _autoCategorize,
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.deepPurple.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.auto_awesome, size: 14, color: Colors.deepPurple),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Auto',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.deepPurple,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
 
                     const SizedBox(height: 20),

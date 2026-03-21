@@ -132,6 +132,31 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
                 title: 'AI Insights',
                 avatarIcon: AppIcons.smartToy,
               ),
+              // Quick-access AI tools
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildAIToolCard(
+                        icon: Icons.warning_amber_rounded,
+                        label: 'Anomaly Detection',
+                        color: Colors.orange,
+                        onTap: () => Navigator.pushNamed(context, '/anomaly-detection'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildAIToolCard(
+                        icon: Icons.trending_up,
+                        label: 'Financial Simulator',
+                        color: Colors.teal,
+                        onTap: () => Navigator.pushNamed(context, '/financial-simulator'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const TabBar(
                 tabs: [
                   Tab(icon: Icon(AppIcons.summarize), text: 'Weekly Summary'),
@@ -148,6 +173,43 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAIToolCard({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: color.withOpacity(0.9),
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right, color: color.withOpacity(0.5), size: 20),
+          ],
         ),
       ),
     );

@@ -83,9 +83,16 @@ Deno.serve(async (req: Request) => {
     if (action === 'add') {
       const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
       const initialScope = typeof body.initial_scope === 'string' ? body.initial_scope.trim() : ''
+      const staffRole = typeof body.staff_role === 'string' ? body.staff_role.trim() : 'support_staff'
+
+      const VALID_ASSIGNABLE_ROLES = ['support_staff', 'customer_service', 'reader', 'billing_service']
 
       if (!email || !initialScope) {
         return json({ error: 'email and initial_scope are required' }, 400)
+      }
+
+      if (!VALID_ASSIGNABLE_ROLES.includes(staffRole)) {
+        return json({ error: `Invalid staff_role. Must be one of: ${VALID_ASSIGNABLE_ROLES.join(', ')}` }, 400)
       }
 
       await validateScope(supabase, initialScope)
@@ -132,7 +139,7 @@ Deno.serve(async (req: Request) => {
       const { data: updatedUser, error: updateError } = await supabase
         .from('users')
         .update({
-          staff_role: 'support_staff',
+          staff_role: staffRole,
           staff_scope: initialScope,
           admin_permissions: existingUser.admin_permissions ?? {},
         })
@@ -272,8 +279,8 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'Target user not found' }, 404)
       }
 
-      if (existingUser.staff_role !== 'support_staff') {
-        return json({ error: 'Target user is not support staff' }, 400)
+      if (existingUser.staff_role === 'super_admin' || !existingUser.staff_role) {
+        return json({ error: 'Target user is not a staff member or is a super admin' }, 400)
       }
 
       await ensureDualApproval(context, {

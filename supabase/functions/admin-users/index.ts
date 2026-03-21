@@ -4,6 +4,7 @@ import {
   parseBody,
   requireAdmin,
   requireAdminPermissions,
+  writeAuditLog,
 } from '../_shared/admin.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 
@@ -75,6 +76,78 @@ Deno.serve(async (req: Request) => {
       }))
 
       return json({ users: result, total: result.length })
+    }
+
+    if (action === 'toggle_active') {
+      await requireAdminPermissions(context, [ADMIN_PERMISSIONS.manageUsers])
+
+      const userId = typeof body.user_id === 'string' ? body.user_id.trim() : ''
+      const isActive = typeof body.is_active === 'boolean' ? body.is_active : null
+
+      if (!userId || isActive === null) {
+        return json({ error: 'user_id and is_active are required' }, 400)
+      }
+
+      const { data: existingUser, error: lookupError } = await supabase
+        .from('users')
+        .select(USER_COLS)
+        .eq('id', userId)
+        .is('deleted_at', null)
+        .maybeSingle()
+
+      if (lookupError) {
+        console.error('admin-users toggle_active lookup error:', lookupError)
+        return json({ error: 'Failed to find user' }, 500)
+      }
+
+      if (!existingUser) {
+        return json({ error: 'User not found' }, 404)
+      }
+
+      if (existingUser.role === 'super_admin' || existingUser.staff_role === 'super_admin') {
+        return json({ error: 'Cannot modify super admin status' }, 403)
+      }
+
+      const { data: updatedUser, error: updateError } = await supabase
+        .from('users')
+        .update({ is_active: isActive })
+        .eq('id', userId)
+        .select(USER_COLS)
+        .single()
+
+      if (updateError) {
+        console.error('admin-users toggle_active update error:', updateError)
+        return json({ error: 'Failed to update user status' }, 500)
+      }
+
+      const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
+      const userAgent = req.headers.get('user-agent')
+
+      await writeAuditLog(supabase, {
+        adminUserId: context.actor.id,
+        action: isActive ? 'unsuspend' : 'suspend',
+        resourceType: 'user',
+        resourceId: userId,
+        oldValues: { is_active: existingUser.is_active },
+        newValues: { is_active: isActive },
+        description: `${isActive ? 'Enabled' : 'Disabled'} user ${existingUser.email ?? userId}`,
+        ipAddress,
+        userAgent,
+      })
+
+      return json({
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          display_name: updatedUser.display_name,
+          role: updatedUser.role,
+          staff_role: updatedUser.staff_role,
+          staff_scope: updatedUser.staff_scope,
+          is_active: updatedUser.is_active,
+          household_id: updatedUser.household_id,
+          created_at: updatedUser.created_at,
+        },
+      })
     }
 
     return json({ error: 'Unsupported action' }, 400)

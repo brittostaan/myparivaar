@@ -47,7 +47,10 @@ class AppUser {
   bool get isMember     => role == 'member';
   bool get isSuperAdmin => role == 'super_admin';
   bool get isSupportStaff => staffRole == 'support_staff' || role == 'support_staff';
-  bool get isPlatformAdmin => isSuperAdmin || isSupportStaff;
+  bool get isCustomerService => staffRole == 'customer_service';
+  bool get isReader => staffRole == 'reader';
+  bool get isBillingService => staffRole == 'billing_service';
+  bool get isPlatformAdmin => isSuperAdmin || staffRole != null;
 
   bool hasAdminPermission(String permissionKey) {
     if (isSuperAdmin) {
@@ -64,7 +67,7 @@ class AppUser {
     }
 
     // Fall back to role defaults when explicit permissions are not stored.
-    return isSupportStaff && AdminPermissions.supportAdminDefaults.contains(permissionKey);
+    return AdminPermissions.defaultsForRole(staffRole).contains(permissionKey);
   }
 
   Set<String> get effectiveAdminPermissions {
@@ -85,7 +88,7 @@ class AppUser {
       return explicit;
     }
 
-    return isSupportStaff ? AdminPermissions.supportAdminDefaults : <String>{};
+    return isSupportStaff ? AdminPermissions.supportAdminDefaults : AdminPermissions.defaultsForRole(staffRole);
   }
 
   factory AppUser.fromJson(Map<String, dynamic> json) {

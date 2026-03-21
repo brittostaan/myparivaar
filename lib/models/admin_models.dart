@@ -15,14 +15,34 @@ class AdminStaff {
   final String id;
   final String email;
   final String? displayName;
-  final String staffRole; // 'super_admin' | 'support_staff'
+  final String staffRole; // 'super_admin' | 'support_staff' | 'customer_service' | 'reader' | 'billing_service'
   final String staffScope; // 'global' | household UUID
   final Map<String, dynamic> adminPermissions;
   final DateTime createdAt;
 
   bool get isSuperAdmin => staffRole == 'super_admin';
   bool get isSupportStaff => staffRole == 'support_staff';
+  bool get isCustomerService => staffRole == 'customer_service';
+  bool get isReader => staffRole == 'reader';
+  bool get isBillingService => staffRole == 'billing_service';
   bool get isGlobalScope => staffScope == 'global';
+
+  String get displayRoleName {
+    switch (staffRole) {
+      case 'super_admin':
+        return 'Super Admin';
+      case 'support_staff':
+        return 'Support Staff';
+      case 'customer_service':
+        return 'Customer Service';
+      case 'reader':
+        return 'Reader';
+      case 'billing_service':
+        return 'Billing Service';
+      default:
+        return staffRole;
+    }
+  }
 
   factory AdminStaff.fromJson(Map<String, dynamic> json) {
     return AdminStaff(
@@ -408,7 +428,16 @@ class AdminUser {
 
   String get displayRoleName {
     if (role == 'super_admin') return 'Super Admin';
-    if (staffRole == 'support_staff') return 'Support Staff';
+    switch (staffRole) {
+      case 'support_staff':
+        return 'Support Staff';
+      case 'customer_service':
+        return 'Customer Service';
+      case 'reader':
+        return 'Reader';
+      case 'billing_service':
+        return 'Billing Service';
+    }
     if (role == 'admin') return 'Admin';
     return 'Member';
   }

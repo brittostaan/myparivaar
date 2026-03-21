@@ -705,7 +705,9 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
       case 1:
         return _buildHouseholdsTab(canManageHouseholds);
       case 2:
-        return _buildUsersTab();
+        return _buildUsersTab(
+          user?.hasAdminPermission(AdminPermissions.manageUsers) == true,
+        );
       case 3:
         return _buildSubscriptionsTab();
       case 4:
@@ -1181,7 +1183,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
 
   // ── Users Management Tab ───────────────────────────────────────────────────
 
-  Widget _buildUsersTab() {
+  Widget _buildUsersTab(bool canManageUsers) {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -1214,13 +1216,13 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          Expanded(child: _buildUsersPanel()),
+          Expanded(child: _buildUsersPanel(canManageUsers)),
         ],
       ),
     );
   }
 
-  Widget _buildUsersPanel() {
+  Widget _buildUsersPanel(bool canManageUsers) {
     if (_usersLoading && _users.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -1248,6 +1250,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
         separatorBuilder: (_, __) => const Divider(height: 1),
         itemBuilder: (_, index) {
           final u = _users[index];
+          final isSuperAdmin = u.role == 'super_admin' || u.staffRole == 'super_admin';
           return ListTile(
             leading: CircleAvatar(
               backgroundColor: u.isPlatformAdmin
@@ -1282,18 +1285,109 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                       : const Color(0xFF047857),
                 ),
                 const SizedBox(width: 8),
-                _StatusChip(
-                  label: u.isActive ? 'Active' : 'Inactive',
-                  color: u.isActive
-                      ? const Color(0xFF047857)
-                      : const Color(0xFF9CA3AF),
-                ),
+                if (canManageUsers && !isSuperAdmin)
+                  _UserActiveToggle(
+                    isActive: u.isActive,
+                    onToggle: () => _toggleUserActive(u),
+                  )
+                else
+                  _StatusChip(
+                    label: u.isActive ? 'Active' : 'Inactive',
+                    color: u.isActive
+                        ? const Color(0xFF047857)
+                        : const Color(0xFF9CA3AF),
+                  ),
+                if (canManageUsers && !isSuperAdmin) ...[
+                  const SizedBox(width: 4),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, size: 20),
+                    tooltip: 'Manage',
+                    onSelected: (value) {
+                      if (value == 'toggle_active') {
+                        _toggleUserActive(u);
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      PopupMenuItem(
+                        value: 'toggle_active',
+                        child: Row(
+                          children: [
+                            Icon(
+                              u.isActive ? Icons.block : Icons.check_circle_outline,
+                              size: 18,
+                              color: u.isActive
+                                  ? const Color(0xFFB91C1C)
+                                  : const Color(0xFF047857),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(u.isActive ? 'Disable User' : 'Enable User'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           );
         },
       ),
     );
+  }
+
+  Future<void> _toggleUserActive(AdminUser user) async {
+    final newState = !user.isActive;
+    final action = newState ? 'enable' : 'disable';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('${newState ? 'Enable' : 'Disable'} User'),
+        content: Text(
+          'Are you sure you want to $action ${user.displayName ?? user.email ?? 'this user'}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: newState
+                  ? const Color(0xFF047857)
+                  : const Color(0xFFB91C1C),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(newState ? 'Enable' : 'Disable'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _adminService.toggleUserActive(
+        userId: user.id,
+        isActive: newState,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('User ${newState ? 'enabled' : 'disabled'} successfully'),
+          backgroundColor: const Color(0xFF047857),
+        ),
+      );
+      await _loadUsers();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to $action user: $e'),
+          backgroundColor: const Color(0xFFB91C1C),
+        ),
+      );
+    }
   }
 
   // ── Staff Management Tab ───────────────────────────────────────────────────
@@ -1393,10 +1487,16 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _StatusChip(
-                  label: s.isSuperAdmin ? 'Super Admin' : 'Support Staff',
+                  label: s.displayRoleName,
                   color: s.isSuperAdmin
                       ? const Color(0xFFD97706)
-                      : const Color(0xFF3B82F6),
+                      : s.isCustomerService
+                          ? const Color(0xFF7C3AED)
+                          : s.isReader
+                              ? const Color(0xFF6B7280)
+                              : s.isBillingService
+                                  ? const Color(0xFF0891B2)
+                                  : const Color(0xFF3B82F6),
                 ),
                 if (!s.isSuperAdmin) ...[
                   const SizedBox(width: 8),
@@ -1424,58 +1524,87 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
     final emailCtrl = TextEditingController();
     final scopeCtrl = TextEditingController(text: 'global');
     final formKey = GlobalKey<FormState>();
+    String selectedRole = 'support_staff';
+
+    final roleOptions = {
+      'support_staff': 'Support Staff',
+      'customer_service': 'Customer Service',
+      'reader': 'Reader',
+      'billing_service': 'Billing Service',
+    };
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add Support Staff'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: emailCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Email address',
-                  border: OutlineInputBorder(),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Add Staff Member'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: emailCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Email address',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Email is required' : null,
                 ),
-                keyboardType: TextInputType.emailAddress,
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Email is required' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: scopeCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Scope (\"global\" or household UUID)',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedRole,
+                  decoration: const InputDecoration(
+                    labelText: 'Role',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: roleOptions.entries
+                      .map((e) => DropdownMenuItem(
+                            value: e.key,
+                            child: Text(e.value),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) {
+                      setDialogState(() => selectedRole = v);
+                    }
+                  },
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Scope is required' : null,
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'This action requires a second super admin to approve before taking effect.',
-                style: TextStyle(fontSize: 12, color: AppColors.grey600),
-              ),
-            ],
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: scopeCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Scope ("global" or household UUID)',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Scope is required' : null,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'This action requires a second super admin to approve before taking effect.',
+                  style: TextStyle(fontSize: 12, color: AppColors.grey600),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() == true) {
+                  Navigator.of(ctx).pop(true);
+                }
+              },
+              child: const Text('Submit for Approval'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (formKey.currentState?.validate() == true) {
-                Navigator.of(ctx).pop(true);
-              }
-            },
-            child: const Text('Submit for Approval'),
-          ),
-        ],
       ),
     );
 
@@ -1487,7 +1616,11 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
     if (confirmed != true) return;
 
     try {
-      await _adminService.addStaff(email: email, initialScope: scope);
+      await _adminService.addStaff(
+        email: email,
+        initialScope: scope,
+        staffRole: selectedRole,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -3128,6 +3261,55 @@ class _StatusChip extends StatelessWidget {
           color: color,
           fontWeight: FontWeight.w600,
           fontSize: 12,
+        ),
+      ),
+    );
+  }
+}
+
+class _UserActiveToggle extends StatelessWidget {
+  const _UserActiveToggle({
+    required this.isActive,
+    required this.onToggle,
+  });
+
+  final bool isActive;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onToggle,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: (isActive ? const Color(0xFF047857) : const Color(0xFFB91C1C))
+              .withOpacity(0.12),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: (isActive ? const Color(0xFF047857) : const Color(0xFFB91C1C))
+                .withOpacity(0.3),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isActive ? Icons.check_circle : Icons.cancel,
+              size: 14,
+              color: isActive ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              isActive ? 'Active' : 'Disabled',
+              style: TextStyle(
+                color: isActive ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ],
         ),
       ),
     );

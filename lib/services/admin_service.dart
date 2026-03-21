@@ -169,6 +169,18 @@ class AdminService extends ChangeNotifier {
     }
   }
 
+  /// Toggle a user's active status (enable/disable).
+  Future<void> toggleUserActive({
+    required String userId,
+    required bool isActive,
+  }) async {
+    await _post('admin-users', {
+      'action': 'toggle_active',
+      'user_id': userId,
+      'is_active': isActive,
+    });
+  }
+
   /// Fetch all platform subscriptions.
   Future<List<AdminSubscription>> fetchSubscriptions({
     String? status,
@@ -330,6 +342,7 @@ class AdminService extends ChangeNotifier {
   Future<AdminStaff> addStaff({
     required String email,
     required String initialScope,
+    String staffRole = 'support_staff',
     String? approvalRequestId,
     String? reason,
   }) async {
@@ -341,6 +354,7 @@ class AdminService extends ChangeNotifier {
         'action': 'add',
         'email': email.trim(),
         'initial_scope': initialScope,
+        'staff_role': staffRole,
         if (approvalRequestId != null && approvalRequestId.trim().isNotEmpty)
           'approval_request_id': approvalRequestId.trim(),
         if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),

@@ -64,6 +64,31 @@ const SUPPORT_DEFAULT_PERMISSIONS = new Set<AdminPermission>([
   ADMIN_PERMISSIONS.viewAnalytics,
 ])
 
+const CUSTOMER_SERVICE_DEFAULT_PERMISSIONS = new Set<AdminPermission>([
+  ADMIN_PERMISSIONS.viewDashboard,
+  ADMIN_PERMISSIONS.viewUsers,
+  ADMIN_PERMISSIONS.manageUsers,
+  ADMIN_PERMISSIONS.viewHouseholds,
+  ADMIN_PERMISSIONS.manageSupportTickets,
+  ADMIN_PERMISSIONS.viewAuditLogs,
+])
+
+const READER_DEFAULT_PERMISSIONS = new Set<AdminPermission>([
+  ADMIN_PERMISSIONS.viewDashboard,
+  ADMIN_PERMISSIONS.viewUsers,
+  ADMIN_PERMISSIONS.viewHouseholds,
+  ADMIN_PERMISSIONS.viewAnalytics,
+  ADMIN_PERMISSIONS.viewAuditLogs,
+])
+
+const BILLING_SERVICE_DEFAULT_PERMISSIONS = new Set<AdminPermission>([
+  ADMIN_PERMISSIONS.viewDashboard,
+  ADMIN_PERMISSIONS.viewUsers,
+  ADMIN_PERMISSIONS.viewAnalytics,
+])
+
+const STAFF_ROLES = new Set(['super_admin', 'support_staff', 'customer_service', 'reader', 'billing_service'])
+
 const DUAL_APPROVAL_DEFAULT_TTL_HOURS = 24
 
 export type DualApprovalActionType =
@@ -180,16 +205,16 @@ export async function requireAdmin(
   })
 
   const isSuperAdmin = actor.role === 'super_admin' || actor.staff_role === 'super_admin'
-  const isSupportStaff = actor.staff_role === 'support_staff'
-  console.log('[requireAdmin] Role check:', { isSuperAdmin, isSupportStaff })
+  const isStaffMember = actor.staff_role != null && STAFF_ROLES.has(actor.staff_role)
+  console.log('[requireAdmin] Role check:', { isSuperAdmin, isStaffMember, staff_role: actor.staff_role })
 
   if (options?.requireSuperAdmin) {
     if (!isSuperAdmin) {
       console.error('[requireAdmin] Super admin required but user is not super admin')
       throw json({ error: 'Super admin access required' }, 403)
     }
-  } else if (!isSuperAdmin && !isSupportStaff) {
-    console.error('[requireAdmin] Admin access denied - user is neither super_admin nor support_staff')
+  } else if (!isSuperAdmin && !isStaffMember) {
+    console.error('[requireAdmin] Admin access denied - user has no staff role')
     throw json({ error: 'Admin access denied' }, 403)
   }
 
@@ -239,7 +264,19 @@ export function hasAdminPermission(actor: AdminActor, permission: AdminPermissio
     return explicit.has(permission)
   }
 
-  return actor.staff_role === 'support_staff' && SUPPORT_DEFAULT_PERMISSIONS.has(permission)
+  // Check role-based defaults
+  switch (actor.staff_role) {
+    case 'support_staff':
+      return SUPPORT_DEFAULT_PERMISSIONS.has(permission)
+    case 'customer_service':
+      return CUSTOMER_SERVICE_DEFAULT_PERMISSIONS.has(permission)
+    case 'reader':
+      return READER_DEFAULT_PERMISSIONS.has(permission)
+    case 'billing_service':
+      return BILLING_SERVICE_DEFAULT_PERMISSIONS.has(permission)
+    default:
+      return false
+  }
 }
 
 export function requireAdminPermissions(context: AdminContext, permissions: AdminPermission[]): void {

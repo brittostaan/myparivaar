@@ -56,4 +56,44 @@ class AdminPermissions {
     viewAuditLogs,
     viewAnalytics,
   };
+
+  static const customerServiceDefaults = <String>{
+    viewDashboard,
+    viewUsers,
+    manageUsers,
+    viewHouseholds,
+    manageSupportTickets,
+    viewAuditLogs,
+  };
+
+  static const readerDefaults = <String>{
+    viewDashboard,
+    viewUsers,
+    viewHouseholds,
+    viewAnalytics,
+    viewAuditLogs,
+  };
+
+  static const billingServiceDefaults = <String>{
+    viewDashboard,
+    viewUsers,
+    viewAnalytics,
+  };
+
+  static Set<String> defaultsForRole(String? staffRole) {
+    switch (staffRole) {
+      case 'super_admin':
+        return superAdminDefaults;
+      case 'support_staff':
+        return supportAdminDefaults;
+      case 'customer_service':
+        return customerServiceDefaults;
+      case 'reader':
+        return readerDefaults;
+      case 'billing_service':
+        return billingServiceDefaults;
+      default:
+        return <String>{};
+    }
+  }
 }

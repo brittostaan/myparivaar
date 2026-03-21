@@ -181,6 +181,42 @@ class AdminService extends ChangeNotifier {
     });
   }
 
+  /// Fetch detailed user profile for admin management.
+  Future<AdminUser> fetchUserDetail(String userId) async {
+    final data = await _post('admin-users', {
+      'action': 'get_user',
+      'user_id': userId,
+    });
+    return AdminUser.fromJson(data['user'] as Map<String, dynamic>);
+  }
+
+  /// Update a user's profile fields from admin panel.
+  Future<AdminUser> updateUser({
+    required String userId,
+    String? firstName,
+    String? lastName,
+    String? displayName,
+    String? phone,
+    String? dateOfBirth,
+    String? photoUrl,
+    bool? notificationsEnabled,
+    bool? voiceEnabled,
+  }) async {
+    final data = await _post('admin-users', {
+      'action': 'update_user',
+      'user_id': userId,
+      if (firstName != null) 'first_name': firstName,
+      if (lastName != null) 'last_name': lastName,
+      if (displayName != null) 'display_name': displayName,
+      if (phone != null) 'phone': phone,
+      if (dateOfBirth != null) 'date_of_birth': dateOfBirth,
+      if (photoUrl != null) 'photo_url': photoUrl,
+      if (notificationsEnabled != null) 'notifications_enabled': notificationsEnabled,
+      if (voiceEnabled != null) 'voice_enabled': voiceEnabled,
+    });
+    return AdminUser.fromJson(data['user'] as Map<String, dynamic>);
+  }
+
   /// Fetch all platform subscriptions.
   Future<List<AdminSubscription>> fetchSubscriptions({
     String? status,

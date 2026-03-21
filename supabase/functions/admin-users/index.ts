@@ -8,8 +8,11 @@ import {
 } from '../_shared/admin.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 
-const USER_COLS =
+const USER_LIST_COLS =
   'id, email, display_name, role, staff_role, staff_scope, household_id, is_active, created_at'
+
+const USER_DETAIL_COLS =
+  'id, email, display_name, first_name, last_name, phone, date_of_birth, photo_url, role, staff_role, staff_scope, household_id, is_active, notifications_enabled, voice_enabled, created_at, updated_at'
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -37,7 +40,7 @@ Deno.serve(async (req: Request) => {
 
       let dbQuery = supabase
         .from('users')
-        .select(`${USER_COLS}, households!users_household_id_fkey(name)`)
+        .select(`${USER_LIST_COLS}, households!users_household_id_fkey(name)`)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(limit)
@@ -90,7 +93,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: existingUser, error: lookupError } = await supabase
         .from('users')
-        .select(USER_COLS)
+        .select(USER_LIST_COLS)
         .eq('id', userId)
         .is('deleted_at', null)
         .maybeSingle()
@@ -112,7 +115,7 @@ Deno.serve(async (req: Request) => {
         .from('users')
         .update({ is_active: isActive })
         .eq('id', userId)
-        .select(USER_COLS)
+        .select(USER_LIST_COLS)
         .single()
 
       if (updateError) {
@@ -148,6 +151,121 @@ Deno.serve(async (req: Request) => {
           created_at: updatedUser.created_at,
         },
       })
+    }
+
+    if (action === 'get_user') {
+      const userId = typeof body.user_id === 'string' ? body.user_id.trim() : ''
+      if (!userId) {
+        return json({ error: 'user_id is required' }, 400)
+      }
+
+      const { data: user, error } = await supabase
+        .from('users')
+        .select(`${USER_DETAIL_COLS}, households!users_household_id_fkey(name)`)
+        .eq('id', userId)
+        .is('deleted_at', null)
+        .maybeSingle()
+
+      if (error) {
+        console.error('admin-users get_user error:', error)
+        return json({ error: 'Failed to fetch user' }, 500)
+      }
+
+      if (!user) {
+        return json({ error: 'User not found' }, 404)
+      }
+
+      return json({
+        user: {
+          ...user,
+          household_name: (user.households as { name?: string } | null)?.name ?? null,
+          households: undefined,
+        },
+      })
+    }
+
+    if (action === 'update_user') {
+      await requireAdminPermissions(context, [ADMIN_PERMISSIONS.manageUsers])
+
+      const userId = typeof body.user_id === 'string' ? body.user_id.trim() : ''
+      if (!userId) {
+        return json({ error: 'user_id is required' }, 400)
+      }
+
+      const { data: existingUser, error: lookupError } = await supabase
+        .from('users')
+        .select(USER_DETAIL_COLS)
+        .eq('id', userId)
+        .is('deleted_at', null)
+        .maybeSingle()
+
+      if (lookupError) {
+        console.error('admin-users update_user lookup error:', lookupError)
+        return json({ error: 'Failed to find user' }, 500)
+      }
+
+      if (!existingUser) {
+        return json({ error: 'User not found' }, 404)
+      }
+
+      if (existingUser.role === 'super_admin' || existingUser.staff_role === 'super_admin') {
+        return json({ error: 'Cannot modify super admin profile' }, 403)
+      }
+
+      const updates: Record<string, unknown> = {}
+      const oldValues: Record<string, unknown> = {}
+
+      const allowedFields = [
+        'first_name', 'last_name', 'display_name', 'phone',
+        'date_of_birth', 'photo_url', 'notifications_enabled', 'voice_enabled',
+      ] as const
+
+      for (const field of allowedFields) {
+        if (field in body && body[field] !== undefined) {
+          const newVal = body[field]
+          if (typeof newVal === 'string') {
+            updates[field] = newVal.trim() || null
+          } else if (typeof newVal === 'boolean') {
+            updates[field] = newVal
+          } else if (newVal === null) {
+            updates[field] = null
+          }
+          oldValues[field] = existingUser[field as keyof typeof existingUser]
+        }
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return json({ error: 'No valid fields to update' }, 400)
+      }
+
+      const { data: updatedUser, error: updateError } = await supabase
+        .from('users')
+        .update(updates)
+        .eq('id', userId)
+        .select(USER_DETAIL_COLS)
+        .single()
+
+      if (updateError) {
+        console.error('admin-users update_user error:', updateError)
+        return json({ error: 'Failed to update user' }, 500)
+      }
+
+      const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
+      const userAgent = req.headers.get('user-agent')
+
+      await writeAuditLog(supabase, {
+        adminUserId: context.actor.id,
+        action: 'update',
+        resourceType: 'user',
+        resourceId: userId,
+        oldValues,
+        newValues: updates,
+        description: `Updated profile for ${existingUser.email ?? userId}`,
+        ipAddress,
+        userAgent,
+      })
+
+      return json({ user: updatedUser })
     }
 
     return json({ error: 'Unsupported action' }, 400)

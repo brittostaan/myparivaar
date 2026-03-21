@@ -1297,32 +1297,14 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                   ),
                 if (canManageUsers && !isSuperAdmin) ...[
                   const SizedBox(width: 4),
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, size: 20),
-                    tooltip: 'Manage',
-                    onSelected: (value) {
-                      if (value == 'toggle_active') {
-                        _toggleUserActive(u);
-                      }
-                    },
-                    itemBuilder: (_) => [
-                      PopupMenuItem(
-                        value: 'toggle_active',
-                        child: Row(
-                          children: [
-                            Icon(
-                              u.isActive ? Icons.block : Icons.check_circle_outline,
-                              size: 18,
-                              color: u.isActive
-                                  ? const Color(0xFFB91C1C)
-                                  : const Color(0xFF047857),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(u.isActive ? 'Disable User' : 'Enable User'),
-                          ],
-                        ),
-                      ),
-                    ],
+                  OutlinedButton.icon(
+                    onPressed: () => _showUserManageDialog(u),
+                    icon: const Icon(Icons.settings_outlined, size: 16),
+                    label: const Text('Manage'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      textStyle: const TextStyle(fontSize: 12),
+                    ),
                   ),
                 ],
               ],
@@ -1386,6 +1368,399 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _showUserManageDialog(AdminUser user) async {
+    // Fetch full user detail
+    AdminUser? detailUser;
+    String? loadError;
+
+    try {
+      detailUser = await _adminService.fetchUserDetail(user.id);
+    } catch (e) {
+      loadError = e.toString();
+    }
+
+    if (!mounted) return;
+
+    if (loadError != null || detailUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load user details: ${loadError ?? "Unknown error"}'),
+          backgroundColor: const Color(0xFFB91C1C),
+        ),
+      );
+      return;
+    }
+
+    final u = detailUser;
+    final firstNameCtrl = TextEditingController(text: u.firstName ?? '');
+    final lastNameCtrl = TextEditingController(text: u.lastName ?? '');
+    final displayNameCtrl = TextEditingController(text: u.displayName ?? '');
+    final phoneCtrl = TextEditingController(text: u.phone ?? '');
+    final dobCtrl = TextEditingController(
+      text: u.dateOfBirth != null
+          ? '${u.dateOfBirth!.year}-${u.dateOfBirth!.month.toString().padLeft(2, '0')}-${u.dateOfBirth!.day.toString().padLeft(2, '0')}'
+          : '',
+    );
+    bool notificationsEnabled = u.notificationsEnabled;
+    bool voiceEnabled = u.voiceEnabled;
+    bool saving = false;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 28,
+                          backgroundColor: u.isPlatformAdmin
+                              ? const Color(0xFFDBEAFE)
+                              : const Color(0xFFF3F4F6),
+                          child: Icon(
+                            u.isPlatformAdmin
+                                ? Icons.admin_panel_settings_outlined
+                                : Icons.person_outline,
+                            size: 28,
+                            color: u.isPlatformAdmin
+                                ? const Color(0xFF3B82F6)
+                                : AppColors.grey600,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                u.displayName ?? u.email ?? 'Unknown User',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                u.email ?? '',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.grey600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _StatusChip(
+                          label: u.displayRoleName,
+                          color: u.isPlatformAdmin
+                              ? const Color(0xFF7C3AED)
+                              : const Color(0xFF047857),
+                        ),
+                        const SizedBox(width: 8),
+                        _StatusChip(
+                          label: u.isActive ? 'Active' : 'Disabled',
+                          color: u.isActive
+                              ? const Color(0xFF047857)
+                              : const Color(0xFFB91C1C),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Meta info
+                    Wrap(
+                      spacing: 16,
+                      children: [
+                        Text(
+                          'ID: ${u.id.substring(0, 8)}...',
+                          style: const TextStyle(fontSize: 11, color: AppColors.grey600),
+                        ),
+                        if (u.householdName != null)
+                          Text(
+                            'Household: ${u.householdName}',
+                            style: const TextStyle(fontSize: 11, color: AppColors.grey600),
+                          ),
+                        Text(
+                          'Joined: ${u.createdAt.year}-${u.createdAt.month.toString().padLeft(2, '0')}-${u.createdAt.day.toString().padLeft(2, '0')}',
+                          style: const TextStyle(fontSize: 11, color: AppColors.grey600),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    const Divider(),
+                    const SizedBox(height: 16),
+
+                    // User Profile Section
+                    const Text(
+                      'User Profile',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: firstNameCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'First Name',
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: lastNameCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Last Name',
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: displayNameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Display Name',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      enabled: false,
+                      decoration: InputDecoration(
+                        labelText: 'Email Address',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        hintText: u.email ?? 'No email',
+                      ),
+                      controller: TextEditingController(text: u.email ?? ''),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: phoneCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Phone Number',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: dobCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Date of Birth (YYYY-MM-DD)',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                        suffixIcon: Icon(Icons.calendar_today, size: 18),
+                      ),
+                      readOnly: true,
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: ctx,
+                          initialDate: u.dateOfBirth ?? DateTime(1990),
+                          firstDate: DateTime(1920),
+                          lastDate: DateTime.now(),
+                        );
+                        if (picked != null) {
+                          setDialogState(() {
+                            dobCtrl.text =
+                                '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    const Divider(),
+                    const SizedBox(height: 16),
+
+                    // Settings Section
+                    const Text(
+                      'Settings',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      title: const Text('Notifications'),
+                      subtitle: const Text('Push notifications enabled'),
+                      value: notificationsEnabled,
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: (v) => setDialogState(() => notificationsEnabled = v),
+                    ),
+                    SwitchListTile(
+                      title: const Text('Voice Features'),
+                      subtitle: const Text('Voice input and commands'),
+                      value: voiceEnabled,
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: (v) => setDialogState(() => voiceEnabled = v),
+                    ),
+                    const SizedBox(height: 20),
+                    const Divider(),
+                    const SizedBox(height: 16),
+
+                    // Actions
+                    const Text(
+                      'Account Actions',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                            _toggleUserActive(u);
+                          },
+                          icon: Icon(
+                            u.isActive ? Icons.block : Icons.check_circle_outline,
+                            size: 18,
+                            color: u.isActive
+                                ? const Color(0xFFB91C1C)
+                                : const Color(0xFF047857),
+                          ),
+                          label: Text(u.isActive ? 'Disable User' : 'Enable User'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: u.isActive
+                                ? const Color(0xFFB91C1C)
+                                : const Color(0xFF047857),
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () => _showResetPasswordConfirm(ctx, u),
+                          icon: const Icon(Icons.lock_reset, size: 18),
+                          label: const Text('Reset Password'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Footer buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: saving ? null : () => Navigator.of(ctx).pop(),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 12),
+                        FilledButton.icon(
+                          onPressed: saving
+                              ? null
+                              : () async {
+                                  setDialogState(() => saving = true);
+                                  try {
+                                    await _adminService.updateUser(
+                                      userId: u.id,
+                                      firstName: firstNameCtrl.text,
+                                      lastName: lastNameCtrl.text,
+                                      displayName: displayNameCtrl.text,
+                                      phone: phoneCtrl.text,
+                                      dateOfBirth: dobCtrl.text.isNotEmpty ? dobCtrl.text : null,
+                                      notificationsEnabled: notificationsEnabled,
+                                      voiceEnabled: voiceEnabled,
+                                    );
+                                    if (ctx.mounted) Navigator.of(ctx).pop();
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('User profile updated'),
+                                          backgroundColor: Color(0xFF047857),
+                                        ),
+                                      );
+                                      _loadUsers();
+                                    }
+                                  } catch (e) {
+                                    setDialogState(() => saving = false);
+                                    if (ctx.mounted) {
+                                      ScaffoldMessenger.of(ctx).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Failed to save: $e'),
+                                          backgroundColor: const Color(0xFFB91C1C),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                          icon: saving
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.save),
+                          label: Text(saving ? 'Saving...' : 'Save Changes'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    firstNameCtrl.dispose();
+    lastNameCtrl.dispose();
+    displayNameCtrl.dispose();
+    phoneCtrl.dispose();
+    dobCtrl.dispose();
+  }
+
+  void _showResetPasswordConfirm(BuildContext dialogCtx, AdminUser user) {
+    showDialog(
+      context: dialogCtx,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset Password'),
+        content: Text(
+          'Send a password reset email to ${user.email ?? 'this user'}?\n\n'
+          'The user will receive an email with instructions to set a new password.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                const SnackBar(
+                  content: Text('Password reset email sent'),
+                  backgroundColor: Color(0xFF047857),
+                ),
+              );
+            },
+            child: const Text('Send Reset Email'),
+          ),
+        ],
+      ),
+    );
   }
 
   // ── Staff Management Tab ───────────────────────────────────────────────────

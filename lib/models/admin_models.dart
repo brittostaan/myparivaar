@@ -404,25 +404,41 @@ class AdminUser {
     required this.id,
     required this.email,
     required this.displayName,
+    this.firstName,
+    this.lastName,
+    this.phone,
+    this.dateOfBirth,
+    this.photoUrl,
     required this.role,
     this.staffRole,
     this.staffScope,
     required this.isActive,
     this.householdId,
     this.householdName,
+    this.notificationsEnabled = true,
+    this.voiceEnabled = true,
     required this.createdAt,
+    this.updatedAt,
   });
 
   final String id;
   final String? email;
   final String? displayName;
+  final String? firstName;
+  final String? lastName;
+  final String? phone;
+  final DateTime? dateOfBirth;
+  final String? photoUrl;
   final String role;
   final String? staffRole;
   final String? staffScope;
   final bool isActive;
   final String? householdId;
   final String? householdName;
+  final bool notificationsEnabled;
+  final bool voiceEnabled;
   final DateTime createdAt;
+  final DateTime? updatedAt;
 
   bool get isPlatformAdmin => role == 'super_admin' || staffRole != null;
 
@@ -447,13 +463,25 @@ class AdminUser {
       id: json['id'] as String? ?? '',
       email: json['email'] as String?,
       displayName: json['display_name'] as String?,
+      firstName: json['first_name'] as String?,
+      lastName: json['last_name'] as String?,
+      phone: json['phone'] as String?,
+      dateOfBirth: json['date_of_birth'] != null
+          ? DateTime.tryParse(json['date_of_birth'] as String)
+          : null,
+      photoUrl: json['photo_url'] as String?,
       role: json['role'] as String? ?? 'member',
       staffRole: json['staff_role'] as String?,
       staffScope: json['staff_scope'] as String?,
       isActive: json['is_active'] as bool? ?? true,
       householdId: json['household_id'] as String?,
       householdName: json['household_name'] as String?,
+      notificationsEnabled: json['notifications_enabled'] as bool? ?? true,
+      voiceEnabled: json['voice_enabled'] as bool? ?? true,
       createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 }

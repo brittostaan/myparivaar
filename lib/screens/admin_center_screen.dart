@@ -6,6 +6,7 @@ import '../services/admin_service.dart';
 import '../models/admin_permissions.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../widgets/admin_household_detail_tabs.dart';
 import '../widgets/app_header.dart';
 
 class AdminCenterScreen extends StatefulWidget {
@@ -869,113 +870,75 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
     }
 
     return _buildPanelCard(
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    household.name,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                _StatusChip(
-                  label: household.suspended ? 'Suspended' : 'Active',
-                  color: household.suspended ? const Color(0xFFB91C1C) : const Color(0xFF047857),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text('Household ID: ${household.id}', style: const TextStyle(color: AppColors.grey600)),
-            const SizedBox(height: 4),
-            Text('Plan: ${household.plan.toUpperCase()}', style: const TextStyle(color: AppColors.grey600)),
-            const SizedBox(height: 4),
-            Text(
-              'Members: ${household.activeMemberCount}/${household.memberCount} active',
-              style: const TextStyle(color: AppColors.grey600),
-            ),
-            if (household.suspended && (household.suspensionReason?.isNotEmpty ?? false)) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Suspension reason: ${household.suspensionReason}',
-                style: const TextStyle(color: Color(0xFFB91C1C), fontWeight: FontWeight.w500),
-              ),
-            ],
-            const SizedBox(height: 16),
-            if (canManageHouseholds)
-              Row(
-                children: [
-                  FilledButton.icon(
-                    onPressed: household.suspended
-                        ? () => _toggleHouseholdSuspension(suspend: false)
-                        : () => _toggleHouseholdSuspension(suspend: true),
-                    icon: Icon(household.suspended ? Icons.restart_alt : Icons.block),
-                    label: Text(household.suspended ? 'Reactivate' : 'Suspend'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor:
-                          household.suspended ? const Color(0xFF2563EB) : const Color(0xFFB91C1C),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  OutlinedButton.icon(
-                    onPressed: () => _loadHouseholdDetail(household.id),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Reload'),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 20),
-            const Text(
-              'Admin Notes',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _householdNotesController,
-              enabled: canManageHouseholds,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Internal notes visible to admins only',
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (canManageHouseholds)
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton.icon(
-                  onPressed: _saveHouseholdNotes,
-                  icon: const Icon(Icons.save),
-                  label: const Text('Save Notes'),
-                ),
-              ),
-            const SizedBox(height: 20),
-            const Text(
-              'Members',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            if (household.members.isEmpty)
-              const Text('No members found')
-            else
-              ...household.members.map((member) {
-                return ListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(member.displayName ?? member.email ?? 'Unknown member'),
-                  subtitle: Text('${member.role}${member.email != null ? ' • ${member.email}' : ''}'),
-                  trailing: _StatusChip(
-                    label: member.isActive ? 'Active' : 'Disabled',
-                    color: member.isActive ? const Color(0xFF047857) : const Color(0xFFB91C1C),
-                  ),
-                );
-              }),
-          ],
+      child: AdminHouseholdDetailTabs(
+        household: household,
+        adminService: _adminService,
+        canManage: canManageHouseholds,
+        notesController: _householdNotesController,
+        onSuspendToggle: () => _toggleHouseholdSuspension(
+          suspend: !household.suspended,
         ),
+        onReload: () => _loadHouseholdDetail(household.id),
+        onSaveNotes: _saveHouseholdNotes,
+        onChangePlan: _changeHouseholdPlan,
+        onToggleFeatureOverride: _toggleHouseholdFeatureOverride,
       ),
     );
+  }
+
+  Future<void> _changeHouseholdPlan(String householdId, String planName) async {
+    try {
+      await _adminService.changePlan(
+        householdId: householdId,
+        planName: planName,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Plan changed to $planName'),
+            backgroundColor: const Color(0xFF047857),
+          ),
+        );
+        _loadHouseholdDetail(householdId);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to change plan: $e'),
+            backgroundColor: const Color(0xFFB91C1C),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleHouseholdFeatureOverride(
+      String householdId, String flagId, bool isEnabled) async {
+    try {
+      await _adminService.setHouseholdOverride(
+        householdId: householdId,
+        flagId: flagId,
+        isEnabled: isEnabled,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Feature override ${isEnabled ? 'enabled' : 'disabled'}'),
+            backgroundColor: const Color(0xFF047857),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to set override: $e'),
+            backgroundColor: const Color(0xFFB91C1C),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildPanelCard({required Widget child}) {

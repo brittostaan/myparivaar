@@ -40,6 +40,7 @@ Deno.serve(async (req: Request) => {
     if (action === 'list_subscriptions') {
       const limit = parseLimit(body.limit, 100)
       const statusFilter = typeof body.status === 'string' ? body.status.trim() : ''
+      const householdIdFilter = typeof body.household_id === 'string' ? body.household_id.trim() : ''
 
       let query = supabase
         .from('subscriptions')
@@ -50,6 +51,10 @@ Deno.serve(async (req: Request) => {
 
       if (statusFilter) {
         query = query.eq('status', statusFilter)
+      }
+
+      if (householdIdFilter) {
+        query = query.eq('household_id', householdIdFilter)
       }
 
       const { data, error } = await query

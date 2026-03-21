@@ -49,6 +49,11 @@ Deno.serve(async (req: Request) => {
         dbQuery = dbQuery.eq('role', role)
       }
 
+      const householdId = typeof body.household_id === 'string' ? body.household_id.trim() : ''
+      if (householdId) {
+        dbQuery = dbQuery.eq('household_id', householdId)
+      }
+
       const { data: users, error } = await dbQuery
 
       if (error) {

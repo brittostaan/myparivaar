@@ -535,6 +535,76 @@ class AdminService extends ChangeNotifier {
     }
   }
 
+  // ── Household-scoped queries for detail panel ──────────────────────────────
+
+  /// Fetch users belonging to a specific household.
+  Future<List<AdminUser>> fetchHouseholdUsers(String householdId) async {
+    try {
+      final data = await _post('admin-users', {
+        'action': 'list',
+        'household_id': householdId,
+        'limit': 50,
+      });
+      final rows = data['users'] as List? ?? [];
+      return rows
+          .map((e) => AdminUser.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Fetch subscriptions for a specific household.
+  Future<List<AdminSubscription>> fetchHouseholdSubscriptions(
+      String householdId) async {
+    try {
+      final data = await _post('admin-subscriptions', {
+        'action': 'list_subscriptions',
+        'household_id': householdId,
+      });
+      final rows = data['subscriptions'] as List? ?? [];
+      return rows
+          .map((e) => AdminSubscription.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Fetch feature flags with overrides for a specific household.
+  Future<List<AdminFeatureFlag>> fetchHouseholdFeatureFlags(
+      String householdId) async {
+    try {
+      final data = await _post('admin-feature-flags', {
+        'action': 'list_flags',
+        'householdId': householdId,
+      });
+      final flagList = data['flags'] as List? ?? [];
+      return flagList
+          .map((e) => AdminFeatureFlag.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Fetch audit logs scoped to a specific household.
+  Future<List<AuditLog>> fetchHouseholdAuditLogs(String householdId,
+      {int limit = 50}) async {
+    try {
+      final data = await _post('admin-audit-log', {
+        'household_id': householdId,
+        'limit': limit,
+      });
+      final list = data['audit_logs'] as List? ?? [];
+      return list
+          .map((e) => AuditLog.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Fetch approval requests for dual-approval decision workflows.
   Future<List<AdminApprovalRequest>> fetchApprovalRequests({
     String? status,

@@ -43,6 +43,11 @@ Deno.serve(async (req: Request) => {
       query = query.eq('resource_id', resourceId)
     }
 
+    const householdId = typeof body.household_id === 'string' ? body.household_id.trim() : null
+    if (householdId) {
+      query = query.eq('resource_id', householdId)
+    }
+
     const { data: logs, error } = await query
     if (error) {
       console.error('admin-audit-log query error:', error)

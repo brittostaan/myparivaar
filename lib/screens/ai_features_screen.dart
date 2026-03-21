@@ -131,6 +131,9 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
               const AppHeader(
                 title: 'AI Insights',
                 avatarIcon: AppIcons.smartToy,
+                showViewModeSelector: false,
+                showSettingsButton: false,
+                showNotifications: false,
               ),
               // Quick-access AI tools
               Padding(

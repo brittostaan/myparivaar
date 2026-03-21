@@ -869,3 +869,114 @@ class AIUsageTrend {
     );
   }
 }
+
+/// AI provider (OpenAI, Anthropic, Gemini).
+class AIProvider {
+  const AIProvider({
+    required this.id,
+    required this.name,
+    required this.displayName,
+    required this.baseUrl,
+    required this.isActive,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String name;
+  final String displayName;
+  final String baseUrl;
+  final bool isActive;
+  final DateTime createdAt;
+
+  factory AIProvider.fromJson(Map<String, dynamic> json) {
+    return AIProvider(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      displayName: json['display_name'] as String? ?? '',
+      baseUrl: json['base_url'] as String? ?? '',
+      isActive: json['is_active'] as bool? ?? true,
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
+}
+
+/// Stored API key for an AI provider (key is never returned — only metadata).
+class AIProviderKey {
+  const AIProviderKey({
+    required this.id,
+    required this.providerId,
+    required this.providerName,
+    required this.providerDisplayName,
+    required this.label,
+    required this.isActive,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  final String id;
+  final String providerId;
+  final String providerName;
+  final String providerDisplayName;
+  final String label;
+  final bool isActive;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  factory AIProviderKey.fromJson(Map<String, dynamic> json) {
+    return AIProviderKey(
+      id: json['id'] as String? ?? '',
+      providerId: json['provider_id'] as String? ?? '',
+      providerName: json['provider_name'] as String? ?? '',
+      providerDisplayName: json['provider_display_name'] as String? ?? '',
+      label: json['label'] as String? ?? 'default',
+      isActive: json['is_active'] as bool? ?? true,
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
+}
+
+/// Assignment of a model to a specific AI task.
+class AITaskAssignment {
+  const AITaskAssignment({
+    required this.id,
+    required this.taskSlug,
+    required this.displayName,
+    this.description,
+    this.providerId,
+    this.providerName,
+    this.providerDisplayName,
+    this.modelName,
+    required this.isActive,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  final String id;
+  final String taskSlug;
+  final String displayName;
+  final String? description;
+  final String? providerId;
+  final String? providerName;
+  final String? providerDisplayName;
+  final String? modelName;
+  final bool isActive;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  factory AITaskAssignment.fromJson(Map<String, dynamic> json) {
+    return AITaskAssignment(
+      id: json['id'] as String? ?? '',
+      taskSlug: json['task_slug'] as String? ?? '',
+      displayName: json['display_name'] as String? ?? '',
+      description: json['description'] as String?,
+      providerId: json['provider_id'] as String?,
+      providerName: json['provider_name'] as String?,
+      providerDisplayName: json['provider_display_name'] as String?,
+      modelName: json['model_name'] as String?,
+      isActive: json['is_active'] as bool? ?? false,
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
+}

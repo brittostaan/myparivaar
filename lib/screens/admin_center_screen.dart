@@ -677,6 +677,17 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                                   onTap: () => _selectTab(9),
                                 ),
                             ],
+                            if (canManageFeatures) ...[
+                              const SizedBox(height: 16),
+                              const Divider(height: 1),
+                              const SizedBox(height: 16),
+                              _NavItem(
+                                label: 'AI',
+                                icon: Icons.psychology_outlined,
+                                isSelected: _selectedTabIndex == 10,
+                                onTap: () => _selectTab(10),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -720,6 +731,8 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
         return _buildStaffTab();
       case 9:
         return _buildApprovalsTab();
+      case 10:
+        return _buildAITab();
       default:
         return _buildPlaceholder('Unknown', 'Unknown section');
     }
@@ -3433,6 +3446,521 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
 
   String _capitalize(String s) =>
       s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  // ── AI Administration Tab ──────────────────────────────────────────────────
+
+  bool _aiDataLoaded = false;
+  Map<String, List<String>> _availableModels = {};
+
+  Future<void> _loadAIData() async {
+    if (_aiDataLoaded) return;
+    try {
+      await Future.wait([
+        _adminService.fetchAIProviders(),
+        _adminService.fetchAIKeys(),
+        _adminService.fetchAITasks(),
+      ]);
+      _availableModels = await _adminService.fetchAvailableModels();
+      _aiDataLoaded = true;
+    } catch (_) {}
+  }
+
+  Widget _buildAITab() {
+    return FutureBuilder(
+      future: _loadAIData(),
+      builder: (context, snapshot) {
+        final adminService = context.watch<AdminService>();
+        final providers = adminService.aiProviders;
+        final keys = adminService.aiProviderKeys;
+        final tasks = adminService.aiTaskAssignments;
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'AI Administration',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Manage AI provider connections, API keys, and task model assignments.',
+                style: TextStyle(fontSize: 14, color: AppColors.grey600),
+              ),
+              const SizedBox(height: 24),
+
+              // ── Section 1: Providers & Keys ──
+              _buildAISectionHeader('Providers & API Keys', Icons.vpn_key_outlined),
+              const SizedBox(height: 12),
+              ...providers.map((p) => _buildProviderCard(p, keys)),
+              const SizedBox(height: 32),
+
+              // ── Section 2: Task Assignments ──
+              _buildAISectionHeader('Task Assignments', Icons.assignment_outlined),
+              const SizedBox(height: 8),
+              Text(
+                'Assign an AI provider and model to each application task.',
+                style: TextStyle(fontSize: 13, color: AppColors.grey600),
+              ),
+              const SizedBox(height: 12),
+              ...tasks.map((t) => _buildTaskCard(t, providers)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAISectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppColors.primary),
+        const SizedBox(width: 8),
+        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
+
+  Widget _buildProviderCard(AIProvider provider, List<AIProviderKey> allKeys) {
+    final providerKeys = allKeys.where((k) => k.providerId == provider.id).toList();
+    final hasKey = providerKeys.isNotEmpty;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _providerIcon(provider.name),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(provider.displayName,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      Text(provider.baseUrl,
+                          style: TextStyle(fontSize: 12, color: AppColors.grey600)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: hasKey ? Colors.green.shade50 : Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    hasKey ? '${providerKeys.length} key(s)' : 'No key',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: hasKey ? Colors.green.shade700 : Colors.orange.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (providerKeys.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 8),
+              ...providerKeys.map((k) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Icon(Icons.key, size: 16, color: AppColors.grey400),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(k.label,
+                              style: const TextStyle(fontSize: 13)),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => _testAIKey(k.id),
+                          icon: const Icon(Icons.check_circle_outline, size: 16),
+                          label: const Text('Test', style: TextStyle(fontSize: 12)),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => _removeAIKey(k.id, k.label),
+                          icon: Icon(Icons.delete_outline, size: 16, color: Colors.red.shade400),
+                          label: Text('Remove', style: TextStyle(fontSize: 12, color: Colors.red.shade400)),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )),
+            ],
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => _showAddKeyDialog(provider),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add API Key'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _providerIcon(String providerName) {
+    IconData icon;
+    Color color;
+    switch (providerName) {
+      case 'openai':
+        icon = Icons.auto_awesome;
+        color = const Color(0xFF10A37F);
+        break;
+      case 'anthropic':
+        icon = Icons.psychology;
+        color = const Color(0xFFD4A574);
+        break;
+      case 'gemini':
+        icon = Icons.diamond_outlined;
+        color = const Color(0xFF4285F4);
+        break;
+      default:
+        icon = Icons.smart_toy;
+        color = AppColors.grey600;
+    }
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(icon, color: color, size: 24),
+    );
+  }
+
+  Widget _buildTaskCard(AITaskAssignment task, List<AIProvider> providers) {
+    final isConfigured = task.providerId != null && task.modelName != null;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: ListTile(
+        leading: Icon(
+          _taskIcon(task.taskSlug),
+          color: task.isActive ? AppColors.primary : AppColors.grey400,
+        ),
+        title: Text(task.displayName),
+        subtitle: Text(
+          isConfigured
+              ? '${task.providerDisplayName ?? task.providerName ?? "?"} / ${task.modelName}'
+              : task.description ?? 'Not configured',
+          style: TextStyle(fontSize: 12, color: AppColors.grey600),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: task.isActive ? Colors.green.shade50 : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                task.isActive ? 'Active' : 'Inactive',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: task.isActive ? Colors.green.shade700 : AppColors.grey600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              tooltip: 'Configure',
+              onPressed: () => _showAssignModelDialog(task, providers),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _taskIcon(String slug) {
+    switch (slug) {
+      case 'financial_chat':
+        return Icons.chat_bubble_outline;
+      case 'weekly_summary':
+        return Icons.summarize_outlined;
+      case 'expense_categorization':
+        return Icons.category_outlined;
+      case 'budget_analysis':
+        return Icons.analytics_outlined;
+      case 'voice_processing':
+        return Icons.mic_outlined;
+      case 'email_parsing':
+        return Icons.email_outlined;
+      case 'anomaly_detection':
+        return Icons.warning_amber_outlined;
+      case 'financial_simulator':
+        return Icons.science_outlined;
+      default:
+        return Icons.smart_toy_outlined;
+    }
+  }
+
+  // ── AI Dialogs ──
+
+  void _showAddKeyDialog(AIProvider provider) {
+    final keyController = TextEditingController();
+    final labelController = TextEditingController(text: 'default');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Add API Key — ${provider.displayName}'),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: labelController,
+                decoration: const InputDecoration(
+                  labelText: 'Label',
+                  hintText: 'e.g. production, dev',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: keyController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'API Key',
+                  hintText: 'sk-...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final key = keyController.text.trim();
+              final label = labelController.text.trim();
+              if (key.isEmpty) return;
+              Navigator.pop(ctx);
+              try {
+                await _adminService.addAIKey(
+                  providerId: provider.id,
+                  apiKey: key,
+                  label: label.isEmpty ? 'default' : label,
+                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('API key added')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Add Key'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _testAIKey(String keyId) async {
+    try {
+      final result = await _adminService.testAIKey(keyId);
+      final valid = result['valid'] as bool? ?? false;
+      final message = result['message'] as String? ?? '';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(valid ? 'Key is valid' : 'Invalid: $message'),
+            backgroundColor: valid ? Colors.green : Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Test failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeAIKey(String keyId, String label) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove API Key'),
+        content: Text('Remove key "$label"? Tasks using this provider may stop working.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _adminService.removeAIKey(keyId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('API key removed')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  void _showAssignModelDialog(AITaskAssignment task, List<AIProvider> providers) {
+    String? selectedProviderId = task.providerId;
+    String? selectedModel = task.modelName;
+    bool isActive = task.isActive;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final selectedProvider = providers
+              .where((p) => p.id == selectedProviderId)
+              .firstOrNull;
+          final modelsForProvider = selectedProvider != null
+              ? (_availableModels[selectedProvider.name] ?? [])
+              : <String>[];
+
+          return AlertDialog(
+            title: Text('Configure: ${task.displayName}'),
+            content: SizedBox(
+              width: 400,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (task.description != null) ...[
+                    Text(task.description!,
+                        style: TextStyle(fontSize: 13, color: AppColors.grey600)),
+                    const SizedBox(height: 16),
+                  ],
+                  DropdownButtonFormField<String>(
+                    value: selectedProviderId,
+                    decoration: const InputDecoration(
+                      labelText: 'Provider',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('None')),
+                      ...providers.map((p) => DropdownMenuItem(
+                            value: p.id,
+                            child: Text(p.displayName),
+                          )),
+                    ],
+                    onChanged: (v) {
+                      setDialogState(() {
+                        selectedProviderId = v;
+                        selectedModel = null;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: modelsForProvider.contains(selectedModel) ? selectedModel : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Model',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('None')),
+                      ...modelsForProvider.map((m) => DropdownMenuItem(
+                            value: m,
+                            child: Text(m),
+                          )),
+                    ],
+                    onChanged: selectedProviderId == null
+                        ? null
+                        : (v) => setDialogState(() => selectedModel = v),
+                  ),
+                  const SizedBox(height: 16),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Active'),
+                    subtitle: const Text('Enable this task for users'),
+                    value: isActive,
+                    onChanged: (v) => setDialogState(() => isActive = v),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  try {
+                    await _adminService.assignAIModel(
+                      taskId: task.id,
+                      providerId: selectedProviderId,
+                      modelName: selectedModel,
+                      isActive: isActive,
+                    );
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Task updated')),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e')),
+                      );
+                    }
+                  }
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildPlaceholder(String title, String subtitle) {
     return SingleChildScrollView(

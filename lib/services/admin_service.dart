@@ -1071,6 +1071,155 @@ class AdminService extends ChangeNotifier {
     }
   }
 
+  // ── Phase 6: AI Administration ─────────────────────────────────────────────
+
+  List<AIProvider> _aiProviders = [];
+  List<AIProviderKey> _aiProviderKeys = [];
+  List<AITaskAssignment> _aiTaskAssignments = [];
+
+  List<AIProvider> get aiProviders => _aiProviders;
+  List<AIProviderKey> get aiProviderKeys => _aiProviderKeys;
+  List<AITaskAssignment> get aiTaskAssignments => _aiTaskAssignments;
+
+  Future<List<AIProvider>> fetchAIProviders() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _post('admin-ai-config', {'action': 'list_providers'});
+      final list = data['providers'] as List? ?? [];
+      _aiProviders = list.map((e) => AIProvider.fromJson(e as Map<String, dynamic>)).toList();
+      notifyListeners();
+      return _aiProviders;
+    } catch (e) {
+      _setError('Failed to fetch AI providers: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<List<AIProviderKey>> fetchAIKeys() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _post('admin-ai-config', {'action': 'list_keys'});
+      final list = data['keys'] as List? ?? [];
+      _aiProviderKeys = list.map((e) => AIProviderKey.fromJson(e as Map<String, dynamic>)).toList();
+      notifyListeners();
+      return _aiProviderKeys;
+    } catch (e) {
+      _setError('Failed to fetch AI keys: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> addAIKey({
+    required String providerId,
+    required String apiKey,
+    String label = 'default',
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _post('admin-ai-config', {
+        'action': 'add_key',
+        'provider_id': providerId,
+        'api_key': apiKey,
+        'label': label,
+      });
+      await fetchAIKeys();
+    } catch (e) {
+      _setError('Failed to add AI key: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> removeAIKey(String keyId) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _post('admin-ai-config', {'action': 'remove_key', 'key_id': keyId});
+      await fetchAIKeys();
+    } catch (e) {
+      _setError('Failed to remove AI key: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<Map<String, dynamic>> testAIKey(String keyId) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _post('admin-ai-config', {'action': 'test_key', 'key_id': keyId});
+      return data;
+    } catch (e) {
+      _setError('Failed to test AI key: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<List<AITaskAssignment>> fetchAITasks() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _post('admin-ai-config', {'action': 'list_tasks'});
+      final list = data['tasks'] as List? ?? [];
+      _aiTaskAssignments = list.map((e) => AITaskAssignment.fromJson(e as Map<String, dynamic>)).toList();
+      notifyListeners();
+      return _aiTaskAssignments;
+    } catch (e) {
+      _setError('Failed to fetch AI tasks: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> assignAIModel({
+    required String taskId,
+    String? providerId,
+    String? modelName,
+    bool? isActive,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _post('admin-ai-config', {
+        'action': 'assign_model',
+        'task_id': taskId,
+        if (providerId != null) 'provider_id': providerId,
+        if (modelName != null) 'model_name': modelName,
+        if (isActive != null) 'is_active': isActive,
+      });
+      await fetchAITasks();
+    } catch (e) {
+      _setError('Failed to assign AI model: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<Map<String, List<String>>> fetchAvailableModels() async {
+    try {
+      final data = await _post('admin-ai-config', {'action': 'list_models'});
+      final models = data['models'] as Map<String, dynamic>? ?? {};
+      return models.map((key, value) =>
+          MapEntry(key, (value as List).cast<String>()));
+    } catch (e) {
+      _setError('Failed to fetch available models: $e');
+      rethrow;
+    }
+  }
+
   // ── Internal methods ───────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> _post(

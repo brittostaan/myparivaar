@@ -41,30 +41,9 @@ Deno.serve(async (req: Request) => {
       const limit = parseLimit(body.limit, 100)
       const statusFilter = typeof body.status === 'string' ? body.status.trim() : ''
 
-      type SubRow = {
-        id: string
-        household_id: string
-        status: string
-        billing_cycle: string
-        amount_paid: number
-        currency: string
-        started_at: string
-        expires_at: string | null
-        cancelled_at: string | null
-        created_at: string
-        plan_id: string
-        plans: { id: string; name: string; display_name: string; price_monthly: number } | null
-        households: { id: string; name: string } | null
-      }
-
       let query = supabase
         .from('subscriptions')
-        .select(`
-          id, household_id, status, billing_cycle, amount_paid, currency,
-          started_at, expires_at, cancelled_at, created_at, plan_id,
-          plans(id, name, display_name, price_monthly),
-          households(id, name)
-        `)
+        .select('id, household_id, status, billing_cycle, amount_paid, currency, started_at, expires_at, cancelled_at, created_at, plan_id')
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(limit)
@@ -80,23 +59,45 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'Failed to list subscriptions' }, 500)
       }
 
-      const rows = (data ?? []) as SubRow[]
-      const result = rows.map((s) => ({
-        id: s.id,
-        household_id: s.household_id,
-        household_name: s.households?.name ?? null,
-        plan_id: s.plan_id,
-        plan_name: s.plans?.name ?? null,
-        plan_display_name: s.plans?.display_name ?? null,
-        status: s.status,
-        billing_cycle: s.billing_cycle,
-        amount_paid: s.amount_paid,
-        currency: s.currency,
-        started_at: s.started_at,
-        expires_at: s.expires_at,
-        cancelled_at: s.cancelled_at,
-        created_at: s.created_at,
-      }))
+      const rows = data ?? []
+
+      // Collect unique plan_ids and household_ids for batch lookup
+      const planIds = [...new Set(rows.map((r: Record<string, unknown>) => r.plan_id as string).filter(Boolean))]
+      const householdIds = [...new Set(rows.map((r: Record<string, unknown>) => r.household_id as string).filter(Boolean))]
+
+      // Batch fetch plans and households
+      const [plansRes, householdsRes] = await Promise.all([
+        planIds.length > 0
+          ? supabase.from('plans').select('id, name, display_name, price_monthly').in('id', planIds)
+          : Promise.resolve({ data: [], error: null }),
+        householdIds.length > 0
+          ? supabase.from('households').select('id, name').in('id', householdIds)
+          : Promise.resolve({ data: [], error: null }),
+      ])
+
+      const planMap = new Map((plansRes.data ?? []).map((p: Record<string, unknown>) => [p.id, p]))
+      const hhMap = new Map((householdsRes.data ?? []).map((h: Record<string, unknown>) => [h.id, h]))
+
+      const result = rows.map((s: Record<string, unknown>) => {
+        const plan = planMap.get(s.plan_id) as Record<string, unknown> | undefined
+        const hh = hhMap.get(s.household_id) as Record<string, unknown> | undefined
+        return {
+          id: s.id,
+          household_id: s.household_id,
+          household_name: hh?.name ?? null,
+          plan_id: s.plan_id,
+          plan_name: plan?.name ?? null,
+          plan_display_name: plan?.display_name ?? null,
+          status: s.status,
+          billing_cycle: s.billing_cycle,
+          amount_paid: s.amount_paid,
+          currency: s.currency,
+          started_at: s.started_at,
+          expires_at: s.expires_at,
+          cancelled_at: s.cancelled_at,
+          created_at: s.created_at,
+        }
+      })
 
       return json({ subscriptions: result, total: result.length })
     }
@@ -226,7 +227,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: sub, error: subError } = await supabase
         .from('subscriptions')
-        .select('id, household_id, status, plan_id, plans(name, display_name), households(name)')
+        .select('id, household_id, status, plan_id')
         .eq('id', subscriptionId)
         .is('deleted_at', null)
         .maybeSingle()
@@ -241,6 +242,12 @@ Deno.serve(async (req: Request) => {
       if (sub.status === 'cancelled') {
         return json({ error: 'Subscription is already cancelled' }, 400)
       }
+
+      // Fetch plan and household names separately
+      const [planRes, hhRes] = await Promise.all([
+        supabase.from('plans').select('name, display_name').eq('id', sub.plan_id).maybeSingle(),
+        supabase.from('households').select('name').eq('id', sub.household_id).maybeSingle(),
+      ])
 
       const ipAddress = pickClientIp(req)
       const userAgent = req.headers.get('user-agent')
@@ -257,8 +264,8 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'Failed to cancel subscription' }, 500)
       }
 
-      const householdName = (sub.households as { name?: string } | null)?.name ?? 'Unknown'
-      const planName = (sub.plans as { name?: string } | null)?.name ?? 'unknown'
+      const householdName = hhRes.data?.name ?? 'Unknown'
+      const planName = planRes.data?.name ?? 'unknown'
 
       await writeAuditLog(supabase, {
         adminUserId: actor.id,

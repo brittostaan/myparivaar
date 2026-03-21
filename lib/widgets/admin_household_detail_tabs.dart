@@ -47,6 +47,12 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
   List<AuditLog>? _auditLogs;
   List<AdminPlan>? _plans;
 
+  Map<String, dynamic>? _aiSettings;
+  Map<String, dynamic>? _aiUsage;
+  bool _aiSettingsLoading = false;
+  String? _aiSettingsError;
+  bool _aiSettingsSaving = false;
+
   bool _usersLoading = false;
   bool _subscriptionsLoading = false;
   bool _featuresLoading = false;
@@ -67,6 +73,7 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
     Tab(text: 'Features'),
     Tab(text: 'Analytics'),
     Tab(text: 'Audit Logs'),
+    Tab(text: 'AI Settings'),
   ];
 
   @override
@@ -86,10 +93,13 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
       _featureFlags = null;
       _auditLogs = null;
       _plans = null;
+      _aiSettings = null;
+      _aiUsage = null;
       _usersError = null;
       _subscriptionsError = null;
       _featuresError = null;
       _auditError = null;
+      _aiSettingsError = null;
       _lastLoadedHouseholdId = null;
       if (_tabController.index != 0) {
         _tabController.animateTo(0);
@@ -129,6 +139,9 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
         break;
       case 5: // Audit Logs
         if (_auditLogs == null && !_auditLoading) _loadAuditLogs(hid);
+        break;
+      case 6: // AI Settings
+        if (_aiSettings == null && !_aiSettingsLoading) _loadAISettings(hid);
         break;
     }
   }
@@ -186,6 +199,54 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
       if (mounted) setState(() => _featuresError = '$e');
     } finally {
       if (mounted) setState(() => _featuresLoading = false);
+    }
+  }
+
+  Future<void> _loadAISettings(String hid) async {
+    setState(() {
+      _aiSettingsLoading = true;
+      _aiSettingsError = null;
+    });
+    try {
+      final data = await widget.adminService.fetchHouseholdAISettings(hid);
+      if (mounted) {
+        setState(() {
+          _aiSettings = data['ai_settings'] as Map<String, dynamic>?;
+          _aiUsage = data['ai_usage'] as Map<String, dynamic>?;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _aiSettingsError = '$e');
+    } finally {
+      if (mounted) setState(() => _aiSettingsLoading = false);
+    }
+  }
+
+  Future<void> _saveAISetting(String key, dynamic value) async {
+    setState(() => _aiSettingsSaving = true);
+    try {
+      final data = await widget.adminService.updateHouseholdAISettings(
+        householdId: widget.household.id,
+        aiEnabled: key == 'ai_enabled' ? value as bool : null,
+        chatQueriesLimit: key == 'chat_queries_limit' ? value as int : null,
+        weeklySummariesLimit: key == 'weekly_summaries_limit' ? value as int : null,
+        budgetAnalysisLimit: key == 'budget_analysis_limit' ? value as int : null,
+        anomalyDetectionLimit: key == 'anomaly_detection_limit' ? value as int : null,
+        simulatorLimit: key == 'simulator_limit' ? value as int : null,
+      );
+      if (mounted) {
+        setState(() {
+          _aiSettings = data['ai_settings'] as Map<String, dynamic>?;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _aiSettingsSaving = false);
     }
   }
 
@@ -262,6 +323,7 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
               _buildFeaturesTab(),
               _buildAnalyticsTab(),
               _buildAuditLogsTab(),
+              _buildAISettingsTab(),
             ],
           ),
         ),
@@ -771,6 +833,286 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
               : null,
         );
       },
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TAB 6: AI Settings
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _buildAISettingsTab() {
+    if (_aiSettingsLoading) return const Center(child: CircularProgressIndicator());
+    if (_aiSettingsError != null) {
+      return _errorRetry(
+          _aiSettingsError!, () => _loadAISettings(widget.household.id));
+    }
+    if (_aiSettings == null) return const Center(child: Text('Loading...'));
+
+    final settings = _aiSettings!;
+    final usage = _aiUsage ?? {};
+    final aiEnabled = settings['ai_enabled'] as bool? ?? true;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Master toggle
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.auto_awesome,
+                    color: aiEnabled ? const Color(0xFF2563EB) : AppColors.grey600,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('AI Features',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        Text(
+                          aiEnabled
+                              ? 'AI features are enabled for this household'
+                              : 'AI features are disabled for this household',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: aiEnabled ? const Color(0xFF047857) : AppColors.grey600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_aiSettingsSaving)
+                    const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else if (widget.canManage)
+                    Switch(
+                      value: aiEnabled,
+                      onChanged: (value) => _saveAISetting('ai_enabled', value),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Usage Limits
+          const Text('Usage Limits (per month)',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 12),
+
+          _buildLimitRow(
+            icon: Icons.chat_bubble_outline,
+            label: 'AI Chat Queries',
+            settingKey: 'chat_queries_limit',
+            currentLimit: (settings['chat_queries_limit'] as num?)?.toInt() ?? 5,
+            currentUsage: (usage['chat_count'] as num?)?.toInt() ?? 0,
+            enabled: aiEnabled,
+          ),
+          _buildLimitRow(
+            icon: Icons.summarize_outlined,
+            label: 'Weekly Summaries',
+            settingKey: 'weekly_summaries_limit',
+            currentLimit: (settings['weekly_summaries_limit'] as num?)?.toInt() ?? 1,
+            currentUsage: usage['summary_generated_at'] != null ? 1 : 0,
+            enabled: aiEnabled,
+            suffix: '/week',
+          ),
+          _buildLimitRow(
+            icon: Icons.analytics_outlined,
+            label: 'Budget Analysis',
+            settingKey: 'budget_analysis_limit',
+            currentLimit: (settings['budget_analysis_limit'] as num?)?.toInt() ?? 10,
+            currentUsage: (usage['budget_analysis_count'] as num?)?.toInt() ?? 0,
+            enabled: aiEnabled,
+          ),
+          _buildLimitRow(
+            icon: Icons.warning_amber_outlined,
+            label: 'Anomaly Detection',
+            settingKey: 'anomaly_detection_limit',
+            currentLimit: (settings['anomaly_detection_limit'] as num?)?.toInt() ?? 5,
+            currentUsage: (usage['anomaly_count'] as num?)?.toInt() ?? 0,
+            enabled: aiEnabled,
+          ),
+          _buildLimitRow(
+            icon: Icons.trending_up,
+            label: 'Financial Simulator',
+            settingKey: 'simulator_limit',
+            currentLimit: (settings['simulator_limit'] as num?)?.toInt() ?? 5,
+            currentUsage: (usage['simulator_count'] as num?)?.toInt() ?? 0,
+            enabled: aiEnabled,
+          ),
+
+          const SizedBox(height: 20),
+
+          // Quick presets
+          if (widget.canManage && aiEnabled) ...[
+            const Text('Quick Presets',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _presetButton('Free Tier', {
+                  'chat_queries_limit': 5,
+                  'weekly_summaries_limit': 1,
+                  'budget_analysis_limit': 10,
+                  'anomaly_detection_limit': 5,
+                  'simulator_limit': 5,
+                }),
+                _presetButton('Premium', {
+                  'chat_queries_limit': 50,
+                  'weekly_summaries_limit': 7,
+                  'budget_analysis_limit': 50,
+                  'anomaly_detection_limit': 30,
+                  'simulator_limit': 30,
+                }),
+                _presetButton('Unlimited', {
+                  'chat_queries_limit': 9999,
+                  'weekly_summaries_limit': 9999,
+                  'budget_analysis_limit': 9999,
+                  'anomaly_detection_limit': 9999,
+                  'simulator_limit': 9999,
+                }),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLimitRow({
+    required IconData icon,
+    required String label,
+    required String settingKey,
+    required int currentLimit,
+    required int currentUsage,
+    required bool enabled,
+    String suffix = '/month',
+  }) {
+    final usagePercent = currentLimit > 0 ? (currentUsage / currentLimit).clamp(0.0, 1.0) : 0.0;
+    final isOverLimit = currentLimit > 0 && currentUsage >= currentLimit;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: enabled ? const Color(0xFF2563EB) : AppColors.grey400),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: enabled ? null : AppColors.grey400,
+                      )),
+                  const SizedBox(height: 4),
+                  // Usage bar
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: usagePercent,
+                      backgroundColor: AppColors.grey200,
+                      valueColor: AlwaysStoppedAnimation(
+                        isOverLimit
+                            ? const Color(0xFFB91C1C)
+                            : enabled
+                                ? const Color(0xFF2563EB)
+                                : AppColors.grey400,
+                      ),
+                      minHeight: 6,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$currentUsage / $currentLimit used $suffix',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isOverLimit ? const Color(0xFFB91C1C) : AppColors.grey600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (widget.canManage && enabled) ...[
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline, size: 20),
+                onPressed: _aiSettingsSaving || currentLimit <= 0
+                    ? null
+                    : () => _saveAISetting(settingKey, currentLimit - 1),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                tooltip: 'Decrease limit',
+              ),
+              SizedBox(
+                width: 40,
+                child: Text(
+                  '$currentLimit',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline, size: 20),
+                onPressed: _aiSettingsSaving
+                    ? null
+                    : () => _saveAISetting(settingKey, currentLimit + 1),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                tooltip: 'Increase limit',
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _presetButton(String label, Map<String, int> limits) {
+    return OutlinedButton(
+      onPressed: _aiSettingsSaving
+          ? null
+          : () async {
+              setState(() => _aiSettingsSaving = true);
+              try {
+                final data = await widget.adminService.updateHouseholdAISettings(
+                  householdId: widget.household.id,
+                  chatQueriesLimit: limits['chat_queries_limit'],
+                  weeklySummariesLimit: limits['weekly_summaries_limit'],
+                  budgetAnalysisLimit: limits['budget_analysis_limit'],
+                  anomalyDetectionLimit: limits['anomaly_detection_limit'],
+                  simulatorLimit: limits['simulator_limit'],
+                );
+                if (mounted) {
+                  setState(() {
+                    _aiSettings = data['ai_settings'] as Map<String, dynamic>?;
+                  });
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to apply preset: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              } finally {
+                if (mounted) setState(() => _aiSettingsSaving = false);
+              }
+            },
+      child: Text(label),
     );
   }
 

@@ -585,6 +585,48 @@ class AdminService extends ChangeNotifier {
     }
   }
 
+  // ── Household AI Settings ───────────────────────────────────────────────
+
+  /// Fetch AI settings and current usage for a household.
+  Future<Map<String, dynamic>> fetchHouseholdAISettings(String householdId) async {
+    try {
+      final data = await _post('admin-households', {
+        'action': 'get_ai_settings',
+        'household_id': householdId,
+      });
+      return data;
+    } catch (e) {
+      throw AdminException('Failed to fetch AI settings: $e');
+    }
+  }
+
+  /// Update AI settings for a household.
+  Future<Map<String, dynamic>> updateHouseholdAISettings({
+    required String householdId,
+    bool? aiEnabled,
+    int? chatQueriesLimit,
+    int? weeklySummariesLimit,
+    int? budgetAnalysisLimit,
+    int? anomalyDetectionLimit,
+    int? simulatorLimit,
+  }) async {
+    try {
+      final data = await _post('admin-households', {
+        'action': 'update_ai_settings',
+        'household_id': householdId,
+        if (aiEnabled != null) 'ai_enabled': aiEnabled,
+        if (chatQueriesLimit != null) 'chat_queries_limit': chatQueriesLimit,
+        if (weeklySummariesLimit != null) 'weekly_summaries_limit': weeklySummariesLimit,
+        if (budgetAnalysisLimit != null) 'budget_analysis_limit': budgetAnalysisLimit,
+        if (anomalyDetectionLimit != null) 'anomaly_detection_limit': anomalyDetectionLimit,
+        if (simulatorLimit != null) 'simulator_limit': simulatorLimit,
+      });
+      return data;
+    } catch (e) {
+      throw AdminException('Failed to update AI settings: $e');
+    }
+  }
+
   // ── Household-scoped queries for detail panel ──────────────────────────────
 
   /// Fetch users belonging to a specific household.

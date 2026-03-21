@@ -359,6 +359,114 @@ Deno.serve(async (req: Request) => {
       })
     }
 
+    if (action === 'get_ai_settings') {
+      requireAdminPermissions(context, [ADMIN_PERMISSIONS.viewHouseholds])
+
+      const householdId = typeof body.household_id === 'string' ? body.household_id.trim() : ''
+      if (!householdId) {
+        return json({ error: 'household_id is required' }, 400)
+      }
+      if (!canAccessHousehold(scope, householdId)) {
+        return json({ error: 'Forbidden for this household scope' }, 403)
+      }
+
+      // Fetch AI settings (or return defaults if none exist)
+      const { data: settings, error: fetchError } = await supabase
+        .from('household_ai_settings')
+        .select('*')
+        .eq('household_id', householdId)
+        .maybeSingle()
+
+      if (fetchError) {
+        console.error('admin-households get_ai_settings error:', fetchError)
+        return json({ error: 'Failed to fetch AI settings' }, 500)
+      }
+
+      // Fetch current usage for this month
+      const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
+      const { data: usage } = await supabase
+        .from('ai_usage')
+        .select('chat_count, summary_generated_at, budget_analysis_count, anomaly_count, simulator_count')
+        .eq('household_id', householdId)
+        .eq('month', currentMonth)
+        .maybeSingle()
+
+      return json({
+        ai_settings: settings ?? {
+          household_id: householdId,
+          ai_enabled: true,
+          chat_queries_limit: 5,
+          weekly_summaries_limit: 1,
+          budget_analysis_limit: 10,
+          anomaly_detection_limit: 5,
+          simulator_limit: 5,
+        },
+        ai_usage: usage ?? {
+          chat_count: 0,
+          summary_generated_at: null,
+          budget_analysis_count: 0,
+          anomaly_count: 0,
+          simulator_count: 0,
+        },
+      })
+    }
+
+    if (action === 'update_ai_settings') {
+      requireAdminPermissions(context, [ADMIN_PERMISSIONS.manageHouseholds])
+
+      const householdId = typeof body.household_id === 'string' ? body.household_id.trim() : ''
+      if (!householdId) {
+        return json({ error: 'household_id is required' }, 400)
+      }
+      if (!canAccessHousehold(scope, householdId)) {
+        return json({ error: 'Forbidden for this household scope' }, 403)
+      }
+
+      const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
+      if (typeof body.ai_enabled === 'boolean') updates.ai_enabled = body.ai_enabled
+      if (typeof body.chat_queries_limit === 'number') updates.chat_queries_limit = Math.max(0, Math.trunc(body.chat_queries_limit))
+      if (typeof body.weekly_summaries_limit === 'number') updates.weekly_summaries_limit = Math.max(0, Math.trunc(body.weekly_summaries_limit))
+      if (typeof body.budget_analysis_limit === 'number') updates.budget_analysis_limit = Math.max(0, Math.trunc(body.budget_analysis_limit))
+      if (typeof body.anomaly_detection_limit === 'number') updates.anomaly_detection_limit = Math.max(0, Math.trunc(body.anomaly_detection_limit))
+      if (typeof body.simulator_limit === 'number') updates.simulator_limit = Math.max(0, Math.trunc(body.simulator_limit))
+
+      // Upsert: insert if not exists, update if exists
+      const { data: settings, error: upsertError } = await supabase
+        .from('household_ai_settings')
+        .upsert(
+          { household_id: householdId, ...updates },
+          { onConflict: 'household_id' },
+        )
+        .select()
+        .single()
+
+      if (upsertError) {
+        console.error('admin-households update_ai_settings error:', upsertError)
+        return json({ error: 'Failed to update AI settings' }, 500)
+      }
+
+      // Fetch household name for audit log
+      const { data: hData } = await supabase
+        .from('households')
+        .select('name')
+        .eq('id', householdId)
+        .single()
+
+      await writeAuditLog(supabase, {
+        adminUserId: actor.id,
+        action: 'update',
+        resourceType: 'household',
+        resourceId: householdId,
+        oldValues: {},
+        newValues: updates,
+        description: `Updated AI settings for household ${hData?.name ?? householdId}`,
+        ipAddress,
+        userAgent,
+      })
+
+      return json({ ai_settings: settings })
+    }
+
     return json({ error: 'Unsupported action' }, 400)
   } catch (error) {
     if (error instanceof Response) {

@@ -230,7 +230,8 @@ ${recentList}`,
     })
   } catch (error) {
     console.error('ai-anomaly-detect error:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    const msg = error instanceof Error ? error.message : 'Internal server error'
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

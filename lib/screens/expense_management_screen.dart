@@ -34,6 +34,11 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   final BudgetService _budgetService = BudgetService();
   List<Budget> _budgets = [];
 
+  // AI Smart Insights
+  bool _loadingInsights = false;
+  String? _smartInsights;
+  String? _smartInsightsError;
+
   @override
   void initState() {
     super.initState();
@@ -520,6 +525,22 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                     ],
                   ),
                 ),
+                FilledButton.icon(
+                  onPressed: _addExpense,
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Add Expense'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 30),
@@ -542,14 +563,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                 )),
                 const SizedBox(width: 20),
                 Expanded(
-                  child: _webComingSoonCard(
-                    isDark: isDark,
-                    primary: primary,
-                    title: 'Smart Insights',
-                    icon: Icons.lightbulb_outlined,
-                    message:
-                        'You spent more on dining this month. Personalized recommendations are under development.',
-                  ),
+                  child: _buildSmartInsightsCard(isDark, primary),
                 ),
                 const SizedBox(width: 20),
                 Expanded(child: _webCategoryDistCard(isDark, primary)),
@@ -1116,6 +1130,92 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _fetchSmartInsights() async {
+    setState(() {
+      _loadingInsights = true;
+      _smartInsightsError = null;
+    });
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final result = await AIService().getBudgetAnalysis(
+        supabaseUrl: authService.supabaseUrl,
+        idToken: await authService.getIdToken(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _smartInsights = result['analysis'] as String?;
+        _loadingInsights = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingInsights = false;
+        _smartInsightsError = e.toString();
+      });
+    }
+  }
+
+  Widget _buildSmartInsightsCard(bool isDark, Color primary) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.deepPurple.shade50, Colors.blue.shade50],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.deepPurple.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.auto_awesome, color: Colors.deepPurple, size: 20),
+            const SizedBox(width: 8),
+            const Text('Smart Insights',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const Spacer(),
+            if (_loadingInsights)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              InkWell(
+                onTap: _fetchSmartInsights,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.deepPurple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _smartInsights != null ? 'Refresh' : 'Analyze',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.deepPurple,
+                    ),
+                  ),
+                ),
+              ),
+          ]),
+          const SizedBox(height: 12),
+          if (_smartInsightsError != null)
+            Text(_smartInsightsError!, style: const TextStyle(color: AppColors.error, fontSize: 12))
+          else if (_smartInsights != null)
+            Text(_smartInsights!, style: TextStyle(fontSize: 12, color: Colors.grey[600], height: 1.4))
+          else
+            Text(
+              'Tap Analyze for AI-powered spending insights.',
+              style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+            ),
+        ],
       ),
     );
   }

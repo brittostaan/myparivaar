@@ -227,7 +227,8 @@ Rules:
     })
   } catch (error) {
     console.error('ai-budget-analysis error:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    const msg = error instanceof Error ? error.message : 'Internal server error'
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

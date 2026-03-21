@@ -50,7 +50,17 @@ async function resolveTask(
     .single()
 
   if (error || !task) {
-    throw new Error(`AI task "${taskSlug}" not found`)
+    // Fallback: use legacy env var when task not configured in DB
+    const legacyKey = Deno.env.get('OPENAI_API_KEY')
+    if (!legacyKey) {
+      throw new Error(`AI task "${taskSlug}" not found and no OPENAI_API_KEY env var set`)
+    }
+    return {
+      providerName: 'openai',
+      baseUrl: 'https://api.openai.com/v1',
+      modelName: 'gpt-4o-mini',
+      apiKey: legacyKey,
+    }
   }
 
   if (!task.is_active) {

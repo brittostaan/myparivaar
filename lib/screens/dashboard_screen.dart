@@ -13,6 +13,7 @@ import '../models/planner_item.dart';
 import '../services/bill_service.dart';
 import '../services/family_planner_service.dart';
 import '../services/investment_service.dart';
+import '../services/ai_service.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/quick_actions_grid.dart';
 import '../widgets/recent_activity_list.dart';
@@ -45,6 +46,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = true;
   bool _isFetching = false;
   String? _error;
+
+  // AI Forecast
+  bool _aiForecastLoading = false;
+  String? _aiForecastProjection;
+  String? _aiForecastError;
 
   @override
   void initState() {
@@ -266,6 +272,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
   double get _forecastExpenses {
     if (_monthlySpend > 0) return _monthlySpend * 1.05;
     return 0;
+  }
+
+  Future<void> _loadAIForecast() async {
+    setState(() {
+      _aiForecastLoading = true;
+      _aiForecastError = null;
+    });
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final result = await AIService().runFinancialSimulation(
+        monthlyIncome: _monthlyBudgetTotal > 0 ? _monthlyBudgetTotal : _monthlySpend * 1.2,
+        monthlyExpenses: _monthlySpend,
+        monthlySavings: (_monthlyBudgetTotal - _monthlySpend).clamp(0, double.infinity),
+        scenarioMonths: 3,
+        supabaseUrl: authService.supabaseUrl,
+        idToken: await authService.getIdToken(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _aiForecastProjection = result['projection'] as String?;
+        _aiForecastLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _aiForecastLoading = false;
+        _aiForecastError = e.toString();
+      });
+    }
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -960,6 +995,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
+            const Spacer(),
+            if (_aiForecastLoading)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              FilledButton.icon(
+                onPressed: _loadAIForecast,
+                icon: const Icon(Icons.auto_awesome, size: 16),
+                label: Text(_aiForecastProjection != null ? 'Refresh' : 'Analyze with AI'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF4F46E5),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
           ],
         ),
         const SizedBox(height: 18),
@@ -1017,6 +1073,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),
+        if (_aiForecastError != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.errorLight,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(_aiForecastError!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
+          ),
+        ],
+        if (_aiForecastProjection != null) ...[
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFF5F3FF), Color(0xFFEEF2FF)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFDDD6FE)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.auto_awesome, size: 16, color: Color(0xFF7C3AED)),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'AI Projection',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF7C3AED)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(_aiForecastProjection!, style: const TextStyle(fontSize: 13, height: 1.5)),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

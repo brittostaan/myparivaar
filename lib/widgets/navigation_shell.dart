@@ -381,6 +381,12 @@ class _NavigationShellState extends State<NavigationShell> {
         connected: true,
       ),
       _WebSidebarItem(
+        label: 'AI Insights',
+        icon: Icons.auto_awesome,
+        route: '/ai',
+        connected: true,
+      ),
+      _WebSidebarItem(
         label: 'Settings',
         icon: Icons.settings_outlined,
         route: '/user-settings',

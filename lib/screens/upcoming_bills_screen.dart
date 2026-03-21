@@ -5,6 +5,7 @@ import '../models/bill.dart';
 import '../services/auth_service.dart';
 import '../services/bill_service.dart';
 import '../services/family_service.dart';
+import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/tag_utils.dart';
 import '../widgets/tag_input_section.dart';
@@ -699,6 +700,7 @@ class _BillFormDialogState extends State<_BillFormDialog> {
   late BillFrequency _frequency;
   late DateTime _dueDate;
   late bool _isRecurring;
+  bool _isCategorizing = false;
 
   @override
   void initState() {
@@ -760,6 +762,43 @@ class _BillFormDialogState extends State<_BillFormDialog> {
     );
   }
 
+  Future<void> _autoCategorize() async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) return;
+    setState(() => _isCategorizing = true);
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final result = await AIService().categorizeExpense(
+        description: name,
+        amount: double.tryParse(_amountCtrl.text.trim()),
+        supabaseUrl: authService.supabaseUrl,
+        idToken: await authService.getIdToken(),
+      );
+      if (!mounted) return;
+      final cat = (result['category'] as String?)?.toLowerCase() ?? '';
+      // Map AI category to BillCategory
+      final mapping = {
+        'rent': BillCategory.rent,
+        'utilities': BillCategory.utilities,
+        'internet': BillCategory.internet,
+        'insurance': BillCategory.insurance,
+        'credit card': BillCategory.creditCard,
+        'creditcard': BillCategory.creditCard,
+        'subscription': BillCategory.subscription,
+        'loan': BillCategory.loan,
+        'school': BillCategory.school,
+        'education': BillCategory.school,
+      };
+      setState(() {
+        _category = mapping[cat] ?? BillCategory.other;
+        _isCategorizing = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isCategorizing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.existing != null;
@@ -808,6 +847,21 @@ class _BillFormDialogState extends State<_BillFormDialog> {
                         },
                       ),
                     ),
+                    const SizedBox(width: 6),
+                    if (_isCategorizing)
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else
+                      IconButton(
+                        onPressed: _autoCategorize,
+                        icon: Icon(Icons.auto_awesome, size: 18, color: Colors.deepPurple),
+                        tooltip: 'AI auto-categorize',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: DropdownButtonFormField<BillFrequency>(

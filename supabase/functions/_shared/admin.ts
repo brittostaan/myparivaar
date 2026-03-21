@@ -5,16 +5,13 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
 
-// Log environment status (without exposing secrets)
-if (!globalThis.__adminEnvLogged) {
-  console.log('[admin.ts init] Environment check:', {
-    SUPABASE_URL_exists: !!supabaseUrl,
-    SUPABASE_URL_length: supabaseUrl?.length,
-    SUPABASE_SERVICE_ROLE_KEY_exists: !!supabaseServiceKey,
-    SUPABASE_ANON_KEY_exists: !!supabaseAnonKey,
-  })
-  globalThis.__adminEnvLogged = true
-}
+// Log environment status at startup (without exposing secrets)
+console.log('[admin.ts init] Environment check:', {
+  SUPABASE_URL_exists: !!supabaseUrl,
+  SUPABASE_URL_length: supabaseUrl?.length,
+  SUPABASE_SERVICE_ROLE_KEY_exists: !!supabaseServiceKey,
+  SUPABASE_ANON_KEY_exists: !!supabaseAnonKey,
+})
 
 // Anon client used solely for JWT verification via auth.getUser()
 const anonClient = createClient(supabaseUrl, supabaseAnonKey, {

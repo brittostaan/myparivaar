@@ -686,7 +686,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                   Expanded(
                     child: Container(
                       color: Colors.white,
-                      child: _buildContent(adminService, canManageHouseholds),
+                      child: _buildContent(adminService, canManageHouseholds, user?.hasAdminPermission(AdminPermissions.manageUsers) == true),
                     ),
                   ),
                 ],
@@ -698,16 +698,14 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
     );
   }
 
-  Widget _buildContent(AdminService adminService, bool canManageHouseholds) {
+  Widget _buildContent(AdminService adminService, bool canManageHouseholds, bool canManageUsers) {
     switch (_selectedTabIndex) {
       case 0:
         return _buildDashboard(adminService);
       case 1:
         return _buildHouseholdsTab(canManageHouseholds);
       case 2:
-        return _buildUsersTab(
-          user?.hasAdminPermission(AdminPermissions.manageUsers) == true,
-        );
+        return _buildUsersTab(canManageUsers);
       case 3:
         return _buildSubscriptionsTab();
       case 4:

@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
@@ -5,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../models/budget.dart';
 import '../services/auth_service.dart';
 import '../services/budget_service.dart';
+import '../services/excel_budget_parser.dart';
 import '../services/family_service.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
@@ -52,6 +56,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
   Map<String, List<Budget>> _historicalBudgets = {};
   // Incremented on every load; stale async responses are discarded.
   int _loadGeneration = 0;
+
+  // Excel upload
+  bool _isUploading = false;
 
   // AI Budget Insights
   bool _isLoadingInsights = false;
@@ -367,6 +374,105 @@ class _BudgetScreenState extends State<BudgetScreen> {
     _loadBudgets();
   }
 
+  Future<void> _uploadExcelBudget() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final bytes = result.files.first.bytes;
+      if (bytes == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not read file data')),
+        );
+        return;
+      }
+
+      setState(() => _isUploading = true);
+
+      final parser = ExcelBudgetParser();
+      final rows = parser.parseExcelFile(Uint8List.fromList(bytes));
+
+      if (rows.isEmpty) {
+        if (!mounted) return;
+        setState(() => _isUploading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No budget data found in the Excel file')),
+        );
+        return;
+      }
+
+      setState(() => _isUploading = false);
+      if (!mounted) return;
+
+      // Show preview dialog
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => _ExcelPreviewDialog(
+          rows: rows,
+          month: _monthKey,
+        ),
+      );
+
+      if (confirmed != true || !mounted) return;
+
+      setState(() => _isUploading = true);
+
+      // Bulk upsert valid rows
+      final validRows = rows.where((r) => r.isValid).toList();
+      int successCount = 0;
+      final errors = <String>[];
+
+      for (final row in validRows) {
+        try {
+          await _budgetService.upsertBudget(
+            supabaseUrl: authService.supabaseUrl,
+            idToken: await authService.getIdToken(),
+            category: row.category,
+            amount: row.amount,
+            month: _monthKey,
+          );
+          successCount++;
+        } catch (e) {
+          errors.add('${_titleCase(row.category)}: $e');
+        }
+      }
+
+      if (!mounted) return;
+      setState(() => _isUploading = false);
+      await _loadBudgets();
+
+      if (!mounted) return;
+      if (errors.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully imported $successCount budget items'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Imported $successCount items. ${errors.length} failed.'),
+            backgroundColor: AppColors.warningDark,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isUploading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to process Excel file: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final summary = BudgetSummary(month: _monthKey, budgets: _budgets);
@@ -405,7 +511,19 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       ],
                     ),
                   ),
-                  if (_backendAvailable)
+                  if (_backendAvailable) ...[
+                    IconButton(
+                      onPressed: _isUploading ? null : _uploadExcelBudget,
+                      icon: _isUploading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.upload_file),
+                      tooltip: 'Upload Excel',
+                    ),
+                    const SizedBox(width: 4),
                     FilledButton.icon(
                       onPressed: () => _addOrEditBudget(),
                       icon: const Icon(Icons.add_rounded),
@@ -420,6 +538,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                         ),
                       ),
                     ),
+                  ],
                 ],
               ),
             ),
@@ -525,6 +644,29 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     ],
                   ),
                 ),
+                OutlinedButton.icon(
+                  onPressed: _isUploading ? null : _uploadExcelBudget,
+                  icon: _isUploading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.upload_file),
+                  label: Text(_isUploading ? 'Processing...' : 'Upload Excel'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: BorderSide(color: AppColors.primary),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 FilledButton.icon(
                   onPressed: () => _addOrEditBudget(),
                   icon: const Icon(Icons.add_rounded),
@@ -1871,6 +2013,231 @@ class _BudgetCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Dialog that shows a preview of parsed Excel budget rows before importing.
+class _ExcelPreviewDialog extends StatelessWidget {
+  final List<BudgetRow> rows;
+  final String month;
+
+  const _ExcelPreviewDialog({
+    required this.rows,
+    required this.month,
+  });
+
+  String _titleCase(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  @override
+  Widget build(BuildContext context) {
+    final validRows = rows.where((r) => r.isValid).toList();
+    final invalidRows = rows.where((r) => !r.isValid).toList();
+    final totalAmount =
+        validRows.fold<double>(0, (sum, r) => sum + r.amount);
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Icon(Icons.preview, color: AppColors.primary),
+          const SizedBox(width: 8),
+          const Expanded(child: Text('Excel Import Preview')),
+          Text(
+            month,
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 600,
+        height: 450,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Summary bar
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  _chip('${validRows.length} valid',
+                      AppColors.success),
+                  const SizedBox(width: 8),
+                  if (invalidRows.isNotEmpty)
+                    _chip('${invalidRows.length} invalid',
+                        AppColors.error),
+                  const Spacer(),
+                  Text(
+                    'Total: ₹${totalAmount.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Table
+            Expanded(
+              child: SingleChildScrollView(
+                child: Table(
+                  columnWidths: const {
+                    0: FixedColumnWidth(40),
+                    1: FlexColumnWidth(2),
+                    2: FlexColumnWidth(1.5),
+                    3: FixedColumnWidth(60),
+                  },
+                  border: TableBorder.all(
+                    color: AppColors.grey200,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  children: [
+                    TableRow(
+                      decoration: BoxDecoration(
+                        color: AppColors.grey200,
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(8)),
+                      ),
+                      children: const [
+                        _TableHeader('#'),
+                        _TableHeader('Category'),
+                        _TableHeader('Amount'),
+                        _TableHeader('Status'),
+                      ],
+                    ),
+                    ...rows.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final row = entry.value;
+                      return TableRow(
+                        decoration: BoxDecoration(
+                          color: row.isValid
+                              ? null
+                              : AppColors.error.withValues(alpha: 0.06),
+                        ),
+                        children: [
+                          _TableCell(
+                            Text('${idx + 1}',
+                                style: const TextStyle(fontSize: 13)),
+                          ),
+                          _TableCell(
+                            Text(_titleCase(row.category),
+                                style: const TextStyle(fontSize: 13)),
+                          ),
+                          _TableCell(
+                            Text(
+                              row.isValid
+                                  ? '₹${row.amount.toStringAsFixed(0)}'
+                                  : row.validationError ?? 'Invalid',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: row.isValid ? null : AppColors.error,
+                              ),
+                            ),
+                          ),
+                          _TableCell(
+                            Icon(
+                              row.isValid
+                                  ? Icons.check_circle
+                                  : Icons.error,
+                              color: row.isValid
+                                  ? AppColors.success
+                                  : AppColors.error,
+                              size: 18,
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+            if (invalidRows.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Invalid rows will be skipped during import.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: validRows.isEmpty
+              ? null
+              : () => Navigator.pop(context, true),
+          icon: const Icon(Icons.upload),
+          label: Text('Import ${validRows.length} Items'),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _chip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+class _TableHeader extends StatelessWidget {
+  final String text;
+  const _TableHeader(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
+}
+
+class _TableCell extends StatelessWidget {
+  final Widget child;
+  const _TableCell(this.child);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: child,
     );
   }
 }

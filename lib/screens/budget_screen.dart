@@ -421,27 +421,40 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
       if (dialogResult == null || !mounted) return;
       final selectedMonth = dialogResult['month'] as String;
+      final editedRows = dialogResult['rows'] as List<_EditableRow>;
 
       setState(() => _isUploading = true);
 
-      // Bulk upsert valid rows
-      final validRows = rows.where((r) => r.isValid).toList();
+      // Group rows by category and aggregate amounts
+      // Each unique (category) gets one upsert; subcategories go into tags
+      final categoryMap = <String, _AggregatedBudget>{};
+      for (final row in editedRows) {
+        if (!row.isValid) continue;
+        final cat = row.category;
+        categoryMap.putIfAbsent(cat, () => _AggregatedBudget());
+        categoryMap[cat]!.amount += row.amount;
+        if (row.subcategory.isNotEmpty) {
+          categoryMap[cat]!.tags.add(row.subcategory);
+        }
+      }
+
       int successCount = 0;
       final errors = <String>[];
 
-      for (final row in validRows) {
+      for (final entry in categoryMap.entries) {
         try {
+          final tags = entry.value.tags.take(15).toList();
           await _budgetService.upsertBudget(
             supabaseUrl: authService.supabaseUrl,
             idToken: await authService.getIdToken(),
-            category: row.category,
-            amount: row.amount,
+            category: entry.key,
+            amount: entry.value.amount,
             month: selectedMonth,
-            tags: row.subcategory.isNotEmpty ? [row.subcategory] : null,
+            tags: tags.isNotEmpty ? tags : null,
           );
           successCount++;
         } catch (e) {
-          errors.add('${_titleCase(row.category)}: $e');
+          errors.add('${_titleCase(entry.key)}: $e');
         }
       }
 
@@ -2019,6 +2032,39 @@ class _BudgetCard extends StatelessWidget {
   }
 }
 
+/// Helper to aggregate amounts per category during Excel import
+class _AggregatedBudget {
+  double amount = 0;
+  final List<String> tags = [];
+}
+
+/// Mutable row for the preview dialog — lets users edit the category
+class _EditableRow {
+  String category;
+  final String subcategory;
+  final double amount;
+  final bool isValid;
+  final String? validationError;
+
+  _EditableRow({
+    required this.category,
+    this.subcategory = '',
+    required this.amount,
+    this.isValid = true,
+    this.validationError,
+  });
+
+  factory _EditableRow.fromBudgetRow(BudgetRow row, String mappedCategory) {
+    return _EditableRow(
+      category: mappedCategory,
+      subcategory: row.subcategory,
+      amount: row.amount,
+      isValid: row.isValid,
+      validationError: row.validationError,
+    );
+  }
+}
+
 /// Dialog that shows a preview of parsed Excel budget rows before importing.
 class _ExcelPreviewDialog extends StatefulWidget {
   final List<BudgetRow> rows;
@@ -2036,6 +2082,48 @@ class _ExcelPreviewDialog extends StatefulWidget {
 class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
   late int _selectedYear;
   late int _selectedMonth;
+  late List<_EditableRow> _editableRows;
+
+  static const _validCategories = [
+    'food',
+    'transport',
+    'utilities',
+    'shopping',
+    'healthcare',
+    'entertainment',
+    'other',
+  ];
+
+  /// Map raw Excel category to the closest valid backend category
+  static String _mapToValidCategory(String raw) {
+    final lower = raw.toLowerCase().trim();
+    if (lower.isEmpty) return 'other';
+    if (_validCategories.contains(lower)) return lower;
+
+    const mapping = <String, List<String>>{
+      'food': ['food', 'grocery', 'groceries', 'meal', 'dining', 'provisions',
+        'kitchen', 'vegetables', 'fruits', 'milk', 'snack'],
+      'transport': ['transport', 'travel', 'fuel', 'petrol', 'commut',
+        'vehicle', 'car', 'bike', 'parking', 'auto', 'cab'],
+      'utilities': ['utility', 'utilities', 'electric', 'water', 'internet',
+        'wifi', 'phone', 'mobile', 'recharge', 'bill', 'maintenance', 'rent',
+        'housing', 'household', 'emi', 'act'],
+      'shopping': ['shopping', 'cloth', 'fashion', 'amazon', 'flipkart',
+        'online', 'gadget', 'electronics'],
+      'healthcare': ['health', 'medical', 'medicine', 'doctor', 'hospital',
+        'pharmacy', 'insurance', 'gym', 'fitness', 'dental', 'parlour'],
+      'entertainment': ['entertainment', 'movie', 'netflix', 'subscription',
+        'hobby', 'game', 'sport', 'outing', 'party', 'fun', 'leisure',
+        'class', 'classes', 'yoga', 'violin', 'cello', 'music'],
+    };
+
+    for (final entry in mapping.entries) {
+      for (final keyword in entry.value) {
+        if (lower.contains(keyword)) return entry.key;
+      }
+    }
+    return 'other';
+  }
 
   @override
   void initState() {
@@ -2043,6 +2131,11 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
     final parts = widget.initialMonth.split('-');
     _selectedYear = int.tryParse(parts[0]) ?? DateTime.now().year;
     _selectedMonth = int.tryParse(parts[1]) ?? DateTime.now().month;
+
+    // Convert BudgetRows to editable rows with mapped categories
+    _editableRows = widget.rows.map((row) {
+      return _EditableRow.fromBudgetRow(row, _mapToValidCategory(row.category));
+    }).toList();
   }
 
   String get _monthKey =>
@@ -2058,12 +2151,12 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final validRows = widget.rows.where((r) => r.isValid).toList();
-    final invalidRows = widget.rows.where((r) => !r.isValid).toList();
+    final validRows = _editableRows.where((r) => r.isValid).toList();
+    final invalidRows = _editableRows.where((r) => !r.isValid).toList();
     final totalAmount =
         validRows.fold<double>(0, (sum, r) => sum + r.amount);
     final hasSubcategories =
-        widget.rows.any((r) => r.subcategory.isNotEmpty);
+        _editableRows.any((r) => r.subcategory.isNotEmpty);
 
     return AlertDialog(
       title: Row(
@@ -2074,8 +2167,8 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
         ],
       ),
       content: SizedBox(
-        width: 700,
-        height: 520,
+        width: 750,
+        height: 540,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -2124,7 +2217,7 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             // Summary bar
             Container(
               padding: const EdgeInsets.all(12),
@@ -2149,17 +2242,22 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
+            Text(
+              'Items are grouped by category during import. You can change categories below.',
+              style: TextStyle(fontSize: 11, color: Colors.grey[500], fontStyle: FontStyle.italic),
+            ),
+            const SizedBox(height: 8),
             // Table
             Expanded(
               child: SingleChildScrollView(
                 child: Table(
                   columnWidths: {
-                    0: const FixedColumnWidth(36),
-                    1: const FlexColumnWidth(1.4),
-                    if (hasSubcategories) 2: const FlexColumnWidth(2),
-                    (hasSubcategories ? 3 : 2): const FlexColumnWidth(1.2),
-                    (hasSubcategories ? 4 : 3): const FixedColumnWidth(50),
+                    0: const FixedColumnWidth(32),
+                    1: const FlexColumnWidth(1.6),
+                    if (hasSubcategories) 2: const FlexColumnWidth(1.8),
+                    (hasSubcategories ? 3 : 2): const FlexColumnWidth(1),
+                    (hasSubcategories ? 4 : 3): const FixedColumnWidth(40),
                   },
                   border: TableBorder.all(
                     color: AppColors.grey200,
@@ -2180,7 +2278,7 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
                         const _TableHeader(''),
                       ],
                     ),
-                    ...widget.rows.asMap().entries.map((entry) {
+                    ..._editableRows.asMap().entries.map((entry) {
                       final idx = entry.key;
                       final row = entry.value;
                       return TableRow(
@@ -2192,16 +2290,28 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
                         children: [
                           _TableCell(
                             Text('${idx + 1}',
-                                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                style: const TextStyle(fontSize: 11, color: Colors.grey)),
                           ),
                           _TableCell(
-                            Text(_titleCase(row.category),
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                            DropdownButton<String>(
+                              value: row.category,
+                              underline: const SizedBox.shrink(),
+                              isDense: true,
+                              isExpanded: true,
+                              style: const TextStyle(fontSize: 12, color: Colors.black87),
+                              items: _validCategories.map((c) => DropdownMenuItem(
+                                value: c,
+                                child: Text(_titleCase(c)),
+                              )).toList(),
+                              onChanged: row.isValid ? (v) {
+                                setState(() => row.category = v!);
+                              } : null,
+                            ),
                           ),
                           if (hasSubcategories)
                             _TableCell(
                               Text(row.subcategory,
-                                  style: const TextStyle(fontSize: 13)),
+                                  style: const TextStyle(fontSize: 12)),
                             ),
                           _TableCell(
                             Text(
@@ -2209,7 +2319,7 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
                                   ? '₹${row.amount.toStringAsFixed(0)}'
                                   : row.validationError ?? 'Invalid',
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 12,
                                 color: row.isValid ? null : AppColors.error,
                               ),
                             ),
@@ -2222,7 +2332,7 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
                               color: row.isValid
                                   ? AppColors.success
                                   : AppColors.error,
-                              size: 16,
+                              size: 15,
                             ),
                           ),
                         ],
@@ -2233,11 +2343,11 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
               ),
             ),
             if (invalidRows.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 'Invalid rows will be skipped during import.',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: Colors.grey[600],
                   fontStyle: FontStyle.italic,
                 ),
@@ -2254,7 +2364,10 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
         FilledButton.icon(
           onPressed: validRows.isEmpty
               ? null
-              : () => Navigator.pop(context, {'month': _monthKey}),
+              : () => Navigator.pop(context, {
+                    'month': _monthKey,
+                    'rows': _editableRows,
+                  }),
           icon: const Icon(Icons.upload),
           label: Text('Import ${validRows.length} Items'),
           style: FilledButton.styleFrom(

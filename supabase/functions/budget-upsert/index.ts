@@ -5,8 +5,6 @@ import { verifyFirebaseToken } from '../_shared/firebase.ts'
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-const VALID_CATEGORIES = ['food', 'transport', 'utilities', 'shopping', 'healthcare', 'entertainment', 'other']
-
 interface BudgetUpsertRequest {
   category: string
   amount: number
@@ -81,8 +79,8 @@ Deno.serve(async (req: Request) => {
 
     // Validate inputs
     const normalizedCategory = (category ?? '').toLowerCase().trim()
-    if (!normalizedCategory || !VALID_CATEGORIES.includes(normalizedCategory)) {
-      return new Response(JSON.stringify({ error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}` }), {
+    if (!normalizedCategory || normalizedCategory.length > 50) {
+      return new Response(JSON.stringify({ error: 'Category is required and must be 50 characters or less' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })

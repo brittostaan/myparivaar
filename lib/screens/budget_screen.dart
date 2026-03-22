@@ -471,11 +471,51 @@ class _BudgetScreenState extends State<BudgetScreen> {
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Imported $successCount items. ${errors.length} failed.'),
-            backgroundColor: AppColors.warningDark,
+        // Show detailed error dialog
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: AppColors.warningDark),
+                const SizedBox(width: 8),
+                Text('Imported $successCount, ${errors.length} failed'),
+              ],
+            ),
+            content: SizedBox(
+              width: 500,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (successCount > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text('$successCount categories imported successfully.',
+                          style: const TextStyle(color: AppColors.success)),
+                    ),
+                  const Text('Errors:', style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  ...errors.map((e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.error_outline, size: 16, color: AppColors.error),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text(e, style: const TextStyle(fontSize: 13))),
+                      ],
+                    ),
+                  )),
+                ],
+              ),
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK'),
+              ),
+            ],
           ),
         );
       }
@@ -2293,19 +2333,12 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
                                 style: const TextStyle(fontSize: 11, color: Colors.grey)),
                           ),
                           _TableCell(
-                            DropdownButton<String>(
+                            _CategoryEditor(
                               value: row.category,
-                              underline: const SizedBox.shrink(),
-                              isDense: true,
-                              isExpanded: true,
-                              style: const TextStyle(fontSize: 12, color: Colors.black87),
-                              items: _validCategories.map((c) => DropdownMenuItem(
-                                value: c,
-                                child: Text(_titleCase(c)),
-                              )).toList(),
-                              onChanged: row.isValid ? (v) {
-                                setState(() => row.category = v!);
-                              } : null,
+                              enabled: row.isValid,
+                              onChanged: (v) {
+                                setState(() => row.category = v);
+                              },
                             ),
                           ),
                           if (hasSubcategories)
@@ -2426,6 +2459,99 @@ class _TableCell extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: child,
+    );
+  }
+}
+
+/// Editable category field with autocomplete suggestions + custom input.
+class _CategoryEditor extends StatelessWidget {
+  final String value;
+  final bool enabled;
+  final ValueChanged<String> onChanged;
+
+  const _CategoryEditor({
+    required this.value,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  static const _suggestions = [
+    'food', 'transport', 'utilities', 'shopping',
+    'healthcare', 'entertainment', 'other',
+  ];
+
+  String _titleCase(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  @override
+  Widget build(BuildContext context) {
+    return Autocomplete<String>(
+      initialValue: TextEditingValue(text: _titleCase(value)),
+      optionsBuilder: (textEditingValue) {
+        final query = textEditingValue.text.toLowerCase().trim();
+        if (query.isEmpty) return _suggestions;
+        return _suggestions
+            .where((s) => s.contains(query))
+            .toList();
+      },
+      displayStringForOption: (s) => _titleCase(s),
+      fieldViewBuilder: (context, controller, focusNode, onSubmit) {
+        return SizedBox(
+          height: 30,
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            enabled: enabled,
+            style: const TextStyle(fontSize: 12),
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(color: AppColors.grey200),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(color: AppColors.grey200),
+              ),
+            ),
+            onSubmitted: (_) {
+              final text = controller.text.toLowerCase().trim();
+              if (text.isNotEmpty) onChanged(text);
+            },
+          ),
+        );
+      },
+      onSelected: (selection) {
+        onChanged(selection.toLowerCase().trim());
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200, maxWidth: 200),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final option = options.elementAt(index);
+                  return InkWell(
+                    onTap: () => onSelected(option),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Text(_titleCase(option), style: const TextStyle(fontSize: 13)),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

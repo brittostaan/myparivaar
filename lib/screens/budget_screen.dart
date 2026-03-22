@@ -425,36 +425,32 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
       setState(() => _isUploading = true);
 
-      // Group rows by category and aggregate amounts
-      // Each unique (category) gets one upsert; subcategories go into tags
-      final categoryMap = <String, _AggregatedBudget>{};
-      for (final row in editedRows) {
-        if (!row.isValid) continue;
-        final cat = row.category;
-        categoryMap.putIfAbsent(cat, () => _AggregatedBudget());
-        categoryMap[cat]!.amount += row.amount;
-        if (row.subcategory.isNotEmpty) {
-          categoryMap[cat]!.tags.add(row.subcategory);
-        }
-      }
-
+      // Import each row individually
+      // Use "category - subcategory" as the budget category to keep items separate
+      final validRows = editedRows.where((r) => r.isValid).toList();
       int successCount = 0;
       final errors = <String>[];
 
-      for (final entry in categoryMap.entries) {
+      for (final row in validRows) {
         try {
-          final tags = entry.value.tags.take(15).toList();
+          // Build a unique category: if there's a subcategory, combine them
+          final budgetCategory = row.subcategory.isNotEmpty
+              ? '${row.category} - ${row.subcategory}'.toLowerCase().trim()
+              : row.category.toLowerCase().trim();
+
           await _budgetService.upsertBudget(
             supabaseUrl: authService.supabaseUrl,
             idToken: await authService.getIdToken(),
-            category: entry.key,
-            amount: entry.value.amount,
+            category: budgetCategory,
+            amount: row.amount,
             month: selectedMonth,
-            tags: tags.isNotEmpty ? tags : null,
           );
           successCount++;
         } catch (e) {
-          errors.add('${_titleCase(entry.key)}: $e');
+          final label = row.subcategory.isNotEmpty
+              ? '${row.category} - ${row.subcategory}'
+              : row.category;
+          errors.add('${_titleCase(label)}: $e');
         }
       }
 

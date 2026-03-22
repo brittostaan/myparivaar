@@ -410,16 +410,17 @@ class _BudgetScreenState extends State<BudgetScreen> {
       setState(() => _isUploading = false);
       if (!mounted) return;
 
-      // Show preview dialog
-      final confirmed = await showDialog<bool>(
+      // Show preview dialog with month/year picker
+      final dialogResult = await showDialog<Map<String, dynamic>>(
         context: context,
         builder: (context) => _ExcelPreviewDialog(
           rows: rows,
-          month: _monthKey,
+          initialMonth: _monthKey,
         ),
       );
 
-      if (confirmed != true || !mounted) return;
+      if (dialogResult == null || !mounted) return;
+      final selectedMonth = dialogResult['month'] as String;
 
       setState(() => _isUploading = true);
 
@@ -435,7 +436,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
             idToken: await authService.getIdToken(),
             category: row.category,
             amount: row.amount,
-            month: _monthKey,
+            month: selectedMonth,
+            tags: row.subcategory.isNotEmpty ? [row.subcategory] : null,
           );
           successCount++;
         } catch (e) {
@@ -2018,24 +2020,50 @@ class _BudgetCard extends StatelessWidget {
 }
 
 /// Dialog that shows a preview of parsed Excel budget rows before importing.
-class _ExcelPreviewDialog extends StatelessWidget {
+class _ExcelPreviewDialog extends StatefulWidget {
   final List<BudgetRow> rows;
-  final String month;
+  final String initialMonth;
 
   const _ExcelPreviewDialog({
     required this.rows,
-    required this.month,
+    required this.initialMonth,
   });
+
+  @override
+  State<_ExcelPreviewDialog> createState() => _ExcelPreviewDialogState();
+}
+
+class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
+  late int _selectedYear;
+  late int _selectedMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    final parts = widget.initialMonth.split('-');
+    _selectedYear = int.tryParse(parts[0]) ?? DateTime.now().year;
+    _selectedMonth = int.tryParse(parts[1]) ?? DateTime.now().month;
+  }
+
+  String get _monthKey =>
+      '$_selectedYear-${_selectedMonth.toString().padLeft(2, '0')}';
+
+  static const _monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
 
   String _titleCase(String s) =>
       s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 
   @override
   Widget build(BuildContext context) {
-    final validRows = rows.where((r) => r.isValid).toList();
-    final invalidRows = rows.where((r) => !r.isValid).toList();
+    final validRows = widget.rows.where((r) => r.isValid).toList();
+    final invalidRows = widget.rows.where((r) => !r.isValid).toList();
     final totalAmount =
         validRows.fold<double>(0, (sum, r) => sum + r.amount);
+    final hasSubcategories =
+        widget.rows.any((r) => r.subcategory.isNotEmpty);
 
     return AlertDialog(
       title: Row(
@@ -2043,18 +2071,60 @@ class _ExcelPreviewDialog extends StatelessWidget {
           const Icon(Icons.preview, color: AppColors.primary),
           const SizedBox(width: 8),
           const Expanded(child: Text('Excel Import Preview')),
-          Text(
-            month,
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-          ),
         ],
       ),
       content: SizedBox(
-        width: 600,
-        height: 450,
+        width: 700,
+        height: 520,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Month/Year picker row
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.grey200,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_month, size: 18, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  const Text('Import to:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  const SizedBox(width: 12),
+                  DropdownButton<int>(
+                    value: _selectedMonth,
+                    underline: const SizedBox.shrink(),
+                    isDense: true,
+                    items: List.generate(12, (i) => DropdownMenuItem(
+                      value: i + 1,
+                      child: Text(_monthNames[i], style: const TextStyle(fontSize: 13)),
+                    )),
+                    onChanged: (v) => setState(() => _selectedMonth = v!),
+                  ),
+                  const SizedBox(width: 8),
+                  DropdownButton<int>(
+                    value: _selectedYear,
+                    underline: const SizedBox.shrink(),
+                    isDense: true,
+                    items: List.generate(5, (i) {
+                      final year = DateTime.now().year - 2 + i;
+                      return DropdownMenuItem(
+                        value: year,
+                        child: Text('$year', style: const TextStyle(fontSize: 13)),
+                      );
+                    }),
+                    onChanged: (v) => setState(() => _selectedYear = v!),
+                  ),
+                  const Spacer(),
+                  Text(
+                    _monthKey,
+                    style: TextStyle(fontSize: 13, color: Colors.grey[500], fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
             // Summary bar
             Container(
               padding: const EdgeInsets.all(12),
@@ -2064,12 +2134,10 @@ class _ExcelPreviewDialog extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  _chip('${validRows.length} valid',
-                      AppColors.success),
+                  _chip('${validRows.length} valid', AppColors.success),
                   const SizedBox(width: 8),
                   if (invalidRows.isNotEmpty)
-                    _chip('${invalidRows.length} invalid',
-                        AppColors.error),
+                    _chip('${invalidRows.length} invalid', AppColors.error),
                   const Spacer(),
                   Text(
                     'Total: ₹${totalAmount.toStringAsFixed(0)}',
@@ -2081,16 +2149,17 @@ class _ExcelPreviewDialog extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             // Table
             Expanded(
               child: SingleChildScrollView(
                 child: Table(
-                  columnWidths: const {
-                    0: FixedColumnWidth(40),
-                    1: FlexColumnWidth(2),
-                    2: FlexColumnWidth(1.5),
-                    3: FixedColumnWidth(60),
+                  columnWidths: {
+                    0: const FixedColumnWidth(36),
+                    1: const FlexColumnWidth(1.4),
+                    if (hasSubcategories) 2: const FlexColumnWidth(2),
+                    (hasSubcategories ? 3 : 2): const FlexColumnWidth(1.2),
+                    (hasSubcategories ? 4 : 3): const FixedColumnWidth(50),
                   },
                   border: TableBorder.all(
                     color: AppColors.grey200,
@@ -2103,14 +2172,15 @@ class _ExcelPreviewDialog extends StatelessWidget {
                         borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(8)),
                       ),
-                      children: const [
-                        _TableHeader('#'),
-                        _TableHeader('Category'),
-                        _TableHeader('Amount'),
-                        _TableHeader('Status'),
+                      children: [
+                        const _TableHeader('#'),
+                        const _TableHeader('Category'),
+                        if (hasSubcategories) const _TableHeader('Item'),
+                        const _TableHeader('Amount'),
+                        const _TableHeader(''),
                       ],
                     ),
-                    ...rows.asMap().entries.map((entry) {
+                    ...widget.rows.asMap().entries.map((entry) {
                       final idx = entry.key;
                       final row = entry.value;
                       return TableRow(
@@ -2122,12 +2192,17 @@ class _ExcelPreviewDialog extends StatelessWidget {
                         children: [
                           _TableCell(
                             Text('${idx + 1}',
-                                style: const TextStyle(fontSize: 13)),
+                                style: const TextStyle(fontSize: 12, color: Colors.grey)),
                           ),
                           _TableCell(
                             Text(_titleCase(row.category),
-                                style: const TextStyle(fontSize: 13)),
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                           ),
+                          if (hasSubcategories)
+                            _TableCell(
+                              Text(row.subcategory,
+                                  style: const TextStyle(fontSize: 13)),
+                            ),
                           _TableCell(
                             Text(
                               row.isValid
@@ -2147,7 +2222,7 @@ class _ExcelPreviewDialog extends StatelessWidget {
                               color: row.isValid
                                   ? AppColors.success
                                   : AppColors.error,
-                              size: 18,
+                              size: 16,
                             ),
                           ),
                         ],
@@ -2173,13 +2248,13 @@ class _ExcelPreviewDialog extends StatelessWidget {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context, false),
+          onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
         FilledButton.icon(
           onPressed: validRows.isEmpty
               ? null
-              : () => Navigator.pop(context, true),
+              : () => Navigator.pop(context, {'month': _monthKey}),
           icon: const Icon(Icons.upload),
           label: Text('Import ${validRows.length} Items'),
           style: FilledButton.styleFrom(

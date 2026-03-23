@@ -194,9 +194,19 @@ Deno.serve(async (req: Request) => {
     )
 
   } catch (error) {
-    console.error('email-connectUrl error:', error)
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('email-connectUrl error:', {
+      message: errorMsg,
+      stack: error instanceof Error ? error.stack : undefined,
+      errorType: typeof error,
+    });
+    
+    // Return real error message to help client diagnose
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ 
+        error: errorMsg || 'Internal server error',
+        details: 'See function logs for more information'
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

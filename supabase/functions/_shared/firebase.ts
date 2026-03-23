@@ -12,6 +12,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 export interface FirebaseClaims {
   uid: string;
   phone_number: string | undefined;
+  email: string | undefined;
 }
 
 /**
@@ -34,5 +35,6 @@ export async function verifyFirebaseToken(
   return {
     uid: user.id,
     phone_number: user.phone ?? undefined,
+    email: user.email ?? undefined,
   };
 }

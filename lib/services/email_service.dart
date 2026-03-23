@@ -1,6 +1,25 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+String _extractErrorMessage(http.Response response, String fallback) {
+  try {
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map<String, dynamic>) {
+      final msg = decoded['error'] ?? decoded['message'] ?? decoded['msg'] ?? decoded['details'];
+      if (msg is String && msg.trim().isNotEmpty) {
+        return msg.trim();
+      }
+    }
+  } catch (_) {
+    // Ignore parse errors and fall back below.
+  }
+
+  if (response.body.trim().isNotEmpty) {
+    return '$fallback (HTTP ${response.statusCode})';
+  }
+  return fallback;
+}
+
 class EmailAccount {
   final String id;
   final String emailAddress;
@@ -66,8 +85,9 @@ class EmailService {
     );
 
     if (response.statusCode != 200) {
-      final error = jsonDecode(response.body);
-      throw Exception(error['error'] ?? 'Failed to get email accounts');
+      throw Exception(
+        _extractErrorMessage(response, 'Failed to get email accounts'),
+      );
     }
 
     final List<dynamic> data = jsonDecode(response.body);
@@ -95,8 +115,9 @@ class EmailService {
     );
 
     if (response.statusCode != 200) {
-      final error = jsonDecode(response.body);
-      throw Exception(error['error'] ?? 'Failed to get connect URL');
+      throw Exception(
+        _extractErrorMessage(response, 'Failed to get connect URL'),
+      );
     }
 
     final data = jsonDecode(response.body);
@@ -122,8 +143,9 @@ class EmailService {
     );
 
     if (response.statusCode != 200) {
-      final error = jsonDecode(response.body);
-      throw Exception(error['error'] ?? 'Failed to disconnect account');
+      throw Exception(
+        _extractErrorMessage(response, 'Failed to disconnect account'),
+      );
     }
   }
 
@@ -145,8 +167,9 @@ class EmailService {
     );
 
     if (response.statusCode != 200) {
-      final error = jsonDecode(response.body);
-      throw Exception(error['error'] ?? 'Failed to sync emails');
+      throw Exception(
+        _extractErrorMessage(response, 'Failed to sync emails'),
+      );
     }
 
     return jsonDecode(response.body);

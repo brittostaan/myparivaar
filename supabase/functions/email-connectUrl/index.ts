@@ -60,16 +60,41 @@ Deno.serve(async (req: Request) => {
       db: { schema: "app" },
     })
 
-    // Get user's household
-    const { data: userData, error: userError } = await supabase
+    // Get user's household. Primary lookup by firebase_uid, fallback by email
+    // for legacy users created before firebase_uid mapping stabilization.
+    let { data: userData, error: userError } = await supabase
       .from('users')
-      .select('household_id, is_active')
+      .select('id, household_id, is_active, firebase_uid, email')
       .eq('firebase_uid', decodedToken.uid)
       .eq('is_active', true)
-      .single()
+      .maybeSingle()
+
+    if ((!userData || !userData.household_id) && decodedToken.email) {
+      const fallback = await supabase
+        .from('users')
+        .select('id, household_id, is_active, firebase_uid, email')
+        .eq('email', decodedToken.email)
+        .eq('is_active', true)
+        .maybeSingle()
+
+      if (!fallback.error && fallback.data?.household_id) {
+        userData = fallback.data
+        userError = null
+
+        // Self-heal firebase_uid mapping for future requests.
+        if (userData.firebase_uid !== decodedToken.uid) {
+          await supabase
+            .from('users')
+            .update({ firebase_uid: decodedToken.uid })
+            .eq('id', userData.id)
+        }
+      }
+    }
 
     if (userError || !userData?.household_id) {
-      return new Response(JSON.stringify({ error: 'User not found or not active' }), {
+      return new Response(JSON.stringify({
+        error: 'User profile not linked to an active household. Please sign out/in and retry.',
+      }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })

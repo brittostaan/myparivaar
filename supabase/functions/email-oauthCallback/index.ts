@@ -162,6 +162,16 @@ Deno.serve(async (req: Request) => {
       ? new Date(Date.now() + (tokenResponse.expires_in * 1000)).toISOString()
       : null
 
+    // Resolve email: Google returns `email`, Microsoft Graph returns `mail` or `userPrincipalName`
+    const emailAddress = oauthState.provider === 'gmail'
+      ? userInfo.email
+      : (userInfo.mail || userInfo.userPrincipalName)
+
+    if (!emailAddress) {
+      console.error('Could not resolve email from userInfo:', JSON.stringify(userInfo))
+      throw new Error('Could not determine email address from provider')
+    }
+
     // Store email account in database
     const { error: insertError } = await supabasePublic
       .from('email_accounts')
@@ -169,7 +179,7 @@ Deno.serve(async (req: Request) => {
         household_id: oauthState.household_id,
         user_id: appUser.id,
         provider: oauthState.provider,
-        email_address: userInfo.email,
+        email_address: emailAddress,
         access_token: tokenResponse.access_token,
         refresh_token: tokenResponse.refresh_token || null,
         token_expires_at: expiresAt,
@@ -199,7 +209,7 @@ Deno.serve(async (req: Request) => {
       <body>
         <div class="success">
           <h1>✓ Email Account Connected</h1>
-          <p><strong>${userInfo.email}</strong> has been connected successfully!</p>
+          <p><strong>${emailAddress}</strong> has been connected successfully!</p>
         </div>
         <div class="info">
           <p>You can now close this window and return to the myParivaar app.</p>

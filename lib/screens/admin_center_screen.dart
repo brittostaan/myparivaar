@@ -86,6 +86,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
   bool _emailIntegrationLoaded = false;
   String? _emailIntegrationError;
   Map<String, dynamic>? _emailIntegrationSummary;
+  Map<String, dynamic>? _inboxInsightsData;
   List<Map<String, dynamic>> _oauthProviders = [];
 
   @override
@@ -190,6 +191,14 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
       if (mounted) setState(() => _oauthProviders = providers);
     } catch (_) {
       // OAuth provider loading failure is non-blocking
+    }
+
+    // Load inbox insights separately
+    try {
+      final insights = await _adminService.fetchEmailInboxInsights();
+      if (mounted) setState(() => _inboxInsightsData = insights);
+    } catch (_) {
+      // Inbox insights loading failure is non-blocking
     }
   }
 
@@ -3625,6 +3634,9 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
           // ── OAuth Provider Configuration ─────────────────────────────────
           _buildOAuthProviderConfigSection(),
 
+          // ── Email Inbox Insights ─────────────────────────────────────────
+          _buildEmailInboxInsights(),
+
           AdminEmailIntegrationPanel(
             adminService: _adminService,
             accounts: _emailIntegrationAccounts,
@@ -4066,6 +4078,175 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
         );
       }
     }
+  }
+
+  // ── Email Inbox Insights Section ──────────────────────────────────────────
+
+  Widget _buildEmailInboxInsights() {
+    final data = _inboxInsightsData;
+    if (data == null) return const SizedBox.shrink();
+
+    final insights = data['insights'] as Map<String, dynamic>? ?? {};
+    final accounts = (data['accounts'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+
+    Color healthColor(String? health) {
+      switch (health) {
+        case 'healthy': return const Color(0xFF16A34A);
+        case 'stale': return const Color(0xFFF59E0B);
+        case 'critical': return Colors.red;
+        default: return Colors.grey;
+      }
+    }
+
+    Color tokenColor(String? status) {
+      switch (status) {
+        case 'valid': return const Color(0xFF16A34A);
+        case 'expiring_soon': return const Color(0xFFF59E0B);
+        case 'expired': return Colors.red;
+        default: return Colors.grey;
+      }
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.insights, size: 20),
+                const SizedBox(width: 8),
+                const Text(
+                  'Email Inbox Insights',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.refresh, size: 18),
+                  tooltip: 'Refresh Insights',
+                  onPressed: () async {
+                    try {
+                      final result = await _adminService.fetchEmailInboxInsights();
+                      if (mounted) setState(() => _inboxInsightsData = result);
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Failed to refresh insights: $e')),
+                        );
+                      }
+                    }
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Summary cards row
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _InsightChip(
+                  label: 'Needs Attention',
+                  value: '${insights['needs_attention'] ?? 0}',
+                  color: (insights['needs_attention'] ?? 0) > 0 ? Colors.red : Colors.grey,
+                ),
+                _InsightChip(
+                  label: 'Healthy',
+                  value: '${insights['healthy_accounts'] ?? 0}',
+                  color: const Color(0xFF16A34A),
+                ),
+                _InsightChip(
+                  label: 'Stale',
+                  value: '${insights['stale_accounts'] ?? 0}',
+                  color: const Color(0xFFF59E0B),
+                ),
+                _InsightChip(
+                  label: 'Never Synced',
+                  value: '${insights['never_synced'] ?? 0}',
+                  color: Colors.grey,
+                ),
+                _InsightChip(
+                  label: 'Expired Tokens',
+                  value: '${insights['expired_tokens'] ?? 0}',
+                  color: (insights['expired_tokens'] ?? 0) > 0 ? Colors.red : Colors.grey,
+                ),
+                _InsightChip(
+                  label: 'Expiring Soon',
+                  value: '${insights['expiring_soon_tokens'] ?? 0}',
+                  color: (insights['expiring_soon_tokens'] ?? 0) > 0 ? const Color(0xFFF59E0B) : Colors.grey,
+                ),
+              ],
+            ),
+
+            if (accounts.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              const Text(
+                'Per-Account Health',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  headingRowHeight: 36,
+                  dataRowMinHeight: 36,
+                  dataRowMaxHeight: 44,
+                  columnSpacing: 16,
+                  columns: const [
+                    DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                    DataColumn(label: Text('Provider', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                    DataColumn(label: Text('Sync Health', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                    DataColumn(label: Text('Token Status', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                    DataColumn(label: Text('Last Sync', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                    DataColumn(label: Text('Filters', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                    DataColumn(label: Text('Scope', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                  ],
+                  rows: accounts.map((acct) {
+                    final syncHealth = acct['sync_health'] as String? ?? 'unknown';
+                    final tokenStatus = acct['token_status'] as String? ?? 'unknown';
+                    final syncAgeHours = acct['sync_age_hours'] as num?;
+                    final lastSyncLabel = syncAgeHours == null
+                        ? 'Never'
+                        : syncAgeHours < 1
+                            ? '< 1h ago'
+                            : '${syncAgeHours.toStringAsFixed(0)}h ago';
+
+                    return DataRow(cells: [
+                      DataCell(Text(acct['email_address'] ?? '—', style: const TextStyle(fontSize: 12))),
+                      DataCell(Text((acct['provider'] ?? '—').toString().toUpperCase(), style: const TextStyle(fontSize: 12))),
+                      DataCell(Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: healthColor(syncHealth).withAlpha(30),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(syncHealth, style: TextStyle(fontSize: 11, color: healthColor(syncHealth), fontWeight: FontWeight.w600)),
+                      )),
+                      DataCell(Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: tokenColor(tokenStatus).withAlpha(30),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(tokenStatus, style: TextStyle(fontSize: 11, color: tokenColor(tokenStatus), fontWeight: FontWeight.w600)),
+                      )),
+                      DataCell(Text(lastSyncLabel, style: const TextStyle(fontSize: 12))),
+                      DataCell(Text('${acct['filter_count'] ?? 0}', style: const TextStyle(fontSize: 12))),
+                      DataCell(Text(acct['screening_scope'] ?? '—', style: const TextStyle(fontSize: 12))),
+                    ]);
+                  }).toList(),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   // ── AI Administration Tab ──────────────────────────────────────────────────
@@ -4753,6 +4934,47 @@ class _StatCard extends StatelessWidget {
               fontSize: 12,
               color: AppColors.grey600,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InsightChip extends StatelessWidget {
+  const _InsightChip({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withAlpha(20),
+        border: Border.all(color: color.withAlpha(60)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: AppColors.grey600),
           ),
         ],
       ),

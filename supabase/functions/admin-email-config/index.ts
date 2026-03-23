@@ -302,6 +302,112 @@ Deno.serve(async (req: Request) => {
       return json({ account: updated })
     }
 
+    if (action === 'inbox_insights') {
+      // Fetch all accounts with token/sync metadata
+      let insightsQuery = supabasePublic
+        .from('email_accounts')
+        .select('id, household_id, email_address, provider, is_active, access_token, token_expires_at, last_synced_at, created_at, updated_at, screening_sender_filters, screening_keyword_filters, screening_scope_unit, screening_scope_value')
+        .order('created_at', { ascending: false })
+
+      if (!isSuperAdmin && actor.household_id != null) {
+        insightsQuery = insightsQuery.eq('household_id', actor.household_id)
+      }
+
+      const { data: allAccounts, error: insightsError } = await insightsQuery
+      if (insightsError) {
+        console.error('admin-email-config inbox_insights error:', insightsError)
+        return json({ error: 'Failed to load inbox insights' }, 500)
+      }
+
+      const now = Date.now()
+      const DAY_MS = 86400_000
+      let healthyCount = 0
+      let staleCount = 0
+      let neverSyncedCount = 0
+      let expiredTokenCount = 0
+      let expiringSoonCount = 0
+      let totalSyncAgeMs = 0
+      let syncedAccountCount = 0
+
+      const accounts = (allAccounts ?? []).map((row: any) => {
+        const lastSynced = row.last_synced_at ? new Date(row.last_synced_at).getTime() : null
+        const tokenExpiry = row.token_expires_at ? new Date(row.token_expires_at).getTime() : null
+
+        // Sync health
+        let syncHealth: 'healthy' | 'stale' | 'critical' | 'never' = 'never'
+        let syncAgeMs: number | null = null
+        if (lastSynced) {
+          syncAgeMs = now - lastSynced
+          syncedAccountCount++
+          totalSyncAgeMs += syncAgeMs
+          if (syncAgeMs < DAY_MS) {
+            syncHealth = 'healthy'
+            healthyCount++
+          } else if (syncAgeMs < 7 * DAY_MS) {
+            syncHealth = 'stale'
+            staleCount++
+          } else {
+            syncHealth = 'critical'
+            staleCount++
+          }
+        } else {
+          neverSyncedCount++
+        }
+
+        // Token health
+        let tokenStatus: 'valid' | 'expiring_soon' | 'expired' | 'unknown' = 'unknown'
+        let tokenDaysRemaining: number | null = null
+        if (tokenExpiry) {
+          const remaining = tokenExpiry - now
+          tokenDaysRemaining = Math.floor(remaining / DAY_MS)
+          if (remaining <= 0) {
+            tokenStatus = 'expired'
+            expiredTokenCount++
+          } else if (remaining < 7 * DAY_MS) {
+            tokenStatus = 'expiring_soon'
+            expiringSoonCount++
+          } else {
+            tokenStatus = 'valid'
+          }
+        } else if (row.access_token) {
+          tokenStatus = 'valid' // has token but no expiry tracked
+        }
+
+        return {
+          id: row.id,
+          household_id: row.household_id,
+          email_address: row.email_address,
+          provider: row.provider,
+          is_active: row.is_active,
+          last_synced_at: row.last_synced_at,
+          token_expires_at: row.token_expires_at,
+          has_access_token: !!row.access_token,
+          sync_health: syncHealth,
+          sync_age_hours: syncAgeMs != null ? Math.floor(syncAgeMs / 3600_000) : null,
+          token_status: tokenStatus,
+          token_days_remaining: tokenDaysRemaining,
+          filter_count: (row.screening_sender_filters?.length ?? 0) + (row.screening_keyword_filters?.length ?? 0),
+          screening_scope: `${row.screening_scope_value ?? 7} ${row.screening_scope_unit ?? 'days'}`,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+        }
+      })
+
+      return json({
+        insights: {
+          total_accounts: accounts.length,
+          healthy_accounts: healthyCount,
+          stale_accounts: staleCount,
+          never_synced: neverSyncedCount,
+          expired_tokens: expiredTokenCount,
+          expiring_soon_tokens: expiringSoonCount,
+          needs_attention: staleCount + neverSyncedCount + expiredTokenCount,
+          average_sync_age_hours: syncedAccountCount > 0 ? Math.floor(totalSyncAgeMs / syncedAccountCount / 3600_000) : null,
+        },
+        accounts,
+      })
+    }
+
     return json({ error: `Unknown action: ${action}` }, 400)
   } catch (thrown) {
     if (thrown instanceof Response) return thrown

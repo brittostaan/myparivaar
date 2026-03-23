@@ -1445,6 +1445,14 @@ class AdminService extends ChangeNotifier {
     }
   }
 
+  /// Fetch inbox health insights for all connected email accounts.
+  Future<Map<String, dynamic>> fetchEmailInboxInsights() async {
+    final data = await _post('admin-email-config', {
+      'action': 'inbox_insights',
+    });
+    return data;
+  }
+
   // ── Internal methods ───────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> _post(

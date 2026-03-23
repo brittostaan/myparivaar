@@ -3688,7 +3688,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
             spacing: 16,
             runSpacing: 16,
             children: [
-              _buildProviderCard(
+              _buildOAuthProviderCard(
                 provider: 'google',
                 title: 'Google (Gmail)',
                 icon: Icons.mail_outline,
@@ -3696,7 +3696,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                 isConfigured: hasGoogle,
                 config: hasGoogle ? googleConfig.first : null,
               ),
-              _buildProviderCard(
+              _buildOAuthProviderCard(
                 provider: 'microsoft',
                 title: 'Microsoft (Outlook)',
                 icon: Icons.outbox_outlined,
@@ -3711,7 +3711,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
     );
   }
 
-  Widget _buildProviderCard({
+  Widget _buildOAuthProviderCard({
     required String provider,
     required String title,
     required IconData icon,
@@ -3726,7 +3726,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(
-            color: isConfigured ? color.withValues(alpha: 0.3) : Colors.grey.shade300,
+            color: isConfigured ? color.withOpacity(0.3) : Colors.grey.shade300,
           ),
         ),
         child: Padding(
@@ -3740,7 +3740,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.1),
+                      color: color.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(icon, color: color, size: 22),
@@ -4258,7 +4258,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Icon(icon, color: color, size: 24),

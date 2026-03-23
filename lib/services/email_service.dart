@@ -181,4 +181,107 @@ class EmailService {
 
     return jsonDecode(response.body);
   }
+
+  // ── Inbox Scanning ─────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> listFolders({
+    required String accountId,
+    required String supabaseUrl,
+    required String? idToken,
+  }) async {
+    if (idToken == null) throw Exception('Not authenticated');
+
+    final response = await http.post(
+      Uri.parse('$supabaseUrl/functions/v1/email-scanInbox'),
+      headers: {
+        'apikey': _supabaseAnonKey(),
+        'Authorization': 'Bearer $idToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'action': 'list_folders',
+        'email_account_id': accountId,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        _extractErrorMessage(response, 'Failed to list folders'),
+      );
+    }
+
+    final data = jsonDecode(response.body);
+    return (data['folders'] as List<dynamic>?)
+            ?.map((f) => Map<String, dynamic>.from(f as Map))
+            .toList() ??
+        [];
+  }
+
+  Future<Map<String, dynamic>> scanInbox({
+    required String accountId,
+    required String supabaseUrl,
+    required String? idToken,
+    List<String>? folderIds,
+    bool useAi = true,
+    int daysBack = 7,
+  }) async {
+    if (idToken == null) throw Exception('Not authenticated');
+
+    final response = await http.post(
+      Uri.parse('$supabaseUrl/functions/v1/email-scanInbox'),
+      headers: {
+        'apikey': _supabaseAnonKey(),
+        'Authorization': 'Bearer $idToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'action': 'scan',
+        'email_account_id': accountId,
+        if (folderIds != null && folderIds.isNotEmpty) 'folder_ids': folderIds,
+        'use_ai': useAi,
+        'days_back': daysBack,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        _extractErrorMessage(response, 'Failed to scan inbox'),
+      );
+    }
+
+    return jsonDecode(response.body);
+  }
+
+  Future<List<Map<String, dynamic>>> getScanHistory({
+    required String accountId,
+    required String supabaseUrl,
+    required String? idToken,
+  }) async {
+    if (idToken == null) throw Exception('Not authenticated');
+
+    final response = await http.post(
+      Uri.parse('$supabaseUrl/functions/v1/email-scanInbox'),
+      headers: {
+        'apikey': _supabaseAnonKey(),
+        'Authorization': 'Bearer $idToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'action': 'scan_history',
+        'email_account_id': accountId,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        _extractErrorMessage(response, 'Failed to fetch scan history'),
+      );
+    }
+
+    final data = jsonDecode(response.body);
+    return (data['scans'] as List<dynamic>?)
+            ?.map((s) => Map<String, dynamic>.from(s as Map))
+            .toList() ??
+        [];
+  }
 }

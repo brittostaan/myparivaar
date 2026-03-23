@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { verifyFirebaseToken } from '../_shared/firebase.ts'
+import { getOAuthCredentials } from '../_shared/oauth.ts'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -122,7 +123,7 @@ Deno.serve(async (req: Request) => {
     // Process each email account
     for (const account of emailAccounts) {
       try {
-        const result = await syncEmailAccount(account, days_back, supabase)
+        const result = await syncEmailAccount(account, days_back, supabase, supabasePublic)
         syncResults.push({
           email: account.email_address,
           provider: account.provider,
@@ -166,7 +167,65 @@ Deno.serve(async (req: Request) => {
   }
 })
 
-async function syncEmailAccount(account: any, daysBack: number, supabase: any) {
+async function refreshAccessToken(account: any, supabasePublic: any): Promise<string> {
+  const provider = account.provider === 'gmail' ? 'google' : 'microsoft'
+  const creds = await getOAuthCredentials(provider as 'google' | 'microsoft')
+  if (!creds) throw new Error(`OAuth credentials not configured for ${provider}`)
+  if (!account.refresh_token) throw new Error('No refresh token available — user must re-authenticate')
+
+  let tokenUrl: string
+  const params: Record<string, string> = {
+    client_id: creds.clientId,
+    client_secret: creds.clientSecret,
+    refresh_token: account.refresh_token,
+    grant_type: 'refresh_token',
+  }
+
+  if (provider === 'google') {
+    tokenUrl = 'https://oauth2.googleapis.com/token'
+  } else {
+    tokenUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
+    params.scope = 'https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/User.Read offline_access'
+  }
+
+  const resp = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(params),
+  })
+  const data = await resp.json()
+
+  if (!data.access_token) {
+    console.error('[refreshToken] Failed:', data.error, data.error_description)
+    throw new Error(`Token refresh failed: ${data.error ?? 'unknown'}`)
+  }
+
+  const expiresAt = data.expires_in
+    ? new Date(Date.now() + data.expires_in * 1000).toISOString()
+    : null
+
+  // Persist new token
+  await supabasePublic
+    .from('email_accounts')
+    .update({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token || account.refresh_token,
+      token_expires_at: expiresAt,
+    })
+    .eq('id', account.id)
+
+  console.log(`[refreshToken] Refreshed token for ${account.email_address}`)
+  return data.access_token
+}
+
+async function syncEmailAccount(account: any, daysBack: number, supabase: any, supabasePublic: any) {
+  // Refresh token if expired or expiring within 5 minutes
+  const expiresAt = account.token_expires_at ? new Date(account.token_expires_at) : null
+  if (expiresAt && expiresAt.getTime() - Date.now() < 5 * 60 * 1000) {
+    const newToken = await refreshAccessToken(account, supabasePublic)
+    account.access_token = newToken
+  }
+
   const effectiveDaysBack = resolveAccountScopeDays(account, daysBack)
   const cutoffDate = new Date()
   cutoffDate.setDate(cutoffDate.getDate() - effectiveDaysBack)
@@ -201,6 +260,12 @@ async function syncEmailAccount(account: any, daysBack: number, supabase: any) {
     })
   }
 
+  // Update last_synced_at
+  await supabasePublic
+    .from('email_accounts')
+    .update({ last_synced_at: new Date().toISOString() })
+    .eq('id', account.id)
+
   return {
     emailsProcessed: emails.length,
     transactionsFound: parsedTransactions.length
@@ -208,10 +273,6 @@ async function syncEmailAccount(account: any, daysBack: number, supabase: any) {
 }
 
 async function fetchGmailMessages(account: any, cutoffDate: Date) {
-  // Refresh token if needed
-  if (account.token_expires_at && new Date(account.token_expires_at) <= new Date()) {
-    // TODO: Implement token refresh
-  }
 
   const queryParts: string[] = [
     `after:${Math.floor(cutoffDate.getTime() / 1000)}`,

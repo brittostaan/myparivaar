@@ -1502,7 +1502,8 @@ class AdminService extends ChangeNotifier {
       throw const AdminException('Admin access denied. Insufficient permissions.');
     }
 
-    final errorMsg = data['error'] as String? ?? 'Request failed (${response.statusCode}).';
+    final errorMsg = (data['error'] ?? data['message'] ?? data['msg'] ?? data['details']) as String?
+        ?? 'Request failed (${response.statusCode}).';
     debugPrint('❌ Error: $errorMsg');
     throw AdminException(errorMsg);
   }

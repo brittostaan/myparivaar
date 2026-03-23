@@ -165,17 +165,14 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
           includeInactive: true,
         ),
         _adminService.fetchAdminEmailDashboardSummary(),
-        _adminService.fetchOAuthProviders(),
       ]);
 
       final result = results[0] as List<AdminEmailIntegrationAccount>;
       final summary = results[1] as Map<String, dynamic>;
-      final providers = results[2] as List<Map<String, dynamic>>;
       if (!mounted) return;
       setState(() {
         _emailIntegrationAccounts = result;
         _emailIntegrationSummary = summary;
-        _oauthProviders = providers;
         _emailIntegrationLoaded = true;
         _emailIntegrationLoading = false;
       });
@@ -185,6 +182,14 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
         _emailIntegrationLoading = false;
         _emailIntegrationError = e.toString();
       });
+    }
+
+    // Load OAuth providers separately so a failure doesn't block the tab
+    try {
+      final providers = await _adminService.fetchOAuthProviders();
+      if (mounted) setState(() => _oauthProviders = providers);
+    } catch (_) {
+      // OAuth provider loading failure is non-blocking
     }
   }
 

@@ -433,8 +433,8 @@ async function runScan(
         }
       }
 
-      // Record scanned email
-      await supabasePublic.from('email_scanned_emails').insert({
+      // Record scanned email (ignore duplicate constraint violations)
+      const { error: scannedInsertErr } = await supabasePublic.from('email_scanned_emails').insert({
         email_account_id: account.id,
         scan_result_id: scanId,
         provider_message_id: providerId,
@@ -445,7 +445,10 @@ async function runScan(
         has_transaction: hasTx,
         transaction_id: txId,
         ai_classified: aiClassified,
-      }).catch(() => {}) // ignore duplicate constraint violations
+      })
+      if (scannedInsertErr) {
+        console.warn(`[scanInbox] Insert scanned email failed (likely dup):`, scannedInsertErr.message)
+      }
 
       if (hasTx) folderTxCount++
       totalEmails++

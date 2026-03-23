@@ -55,6 +55,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
       if (mounted) {
         setState(() {
           _error = e.toString();
+          _emailAccounts = [];
           _isLoading = false;
         });
       }
@@ -344,29 +345,48 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(AppIcons.error, size: 64, color: AppColors.error),
-            const SizedBox(height: 16),
-            Text('Error loading email accounts', style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            Text(_error!, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadEmailAccounts,
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
-    }
-
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
+        if (_error != null) ...[
+          Card(
+            color: AppColors.warningLight,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(AppIcons.warning, color: AppColors.warningDark),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Could not load connected email accounts.',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'You can still connect a new email account below and retry account sync later.',
+                          style: TextStyle(color: AppColors.grey700),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: _loadEmailAccounts,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
         // Information card
         Card(
           child: Padding(

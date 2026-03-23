@@ -629,6 +629,25 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               ],
             ),
             const SizedBox(height: 22),
+            // Pending review banner
+            if (_pendingEmailExpenses.isNotEmpty) ...[              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.pending_actions, color: Colors.amber, size: 22),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${_pendingEmailExpenses.length} email transaction(s) pending your review',
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                ]),
+              ),
+              const SizedBox(height: 16),
+            ],
             Container(
               decoration: BoxDecoration(
                 color: isDark ? AppColors.surfaceDark : Colors.white,
@@ -758,6 +777,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   Widget _buildWebTransactionRow(Expense expense, bool isDark) {
     final isIncome = expense.category.toLowerCase() == 'income' ||
         expense.category.toLowerCase() == 'salary';
+    final isPending = expense.source == 'email' && !expense.isApproved;
     final bgColor = AppColors.getCategoryColor(expense.category);
     final iconColor = AppColors.getCategoryIconColor(expense.category);
     final d = expense.date;
@@ -768,7 +788,10 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       onTap: () => _editExpense(expense),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(border: Border(top: rowBorder)),
+        decoration: BoxDecoration(
+          border: Border(top: rowBorder),
+          color: isPending ? Colors.amber.withOpacity(0.04) : null,
+        ),
         child: Row(children: [
           Container(
             width: 48,
@@ -814,6 +837,18 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   const SizedBox(width: 4),
                   Text(_paymentMethodLabel(expense.source),
                       style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                  if (isPending) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text('\u23F3 Pending Approval',
+                          style: TextStyle(fontSize: 10, color: Colors.amber, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
                 ]),
               ],
             ),
@@ -831,6 +866,27 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               const SizedBox(height: 4),
               Text(dateStr,
                   style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+              if (isPending) ...[
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _approveRejectButton(
+                      icon: Icons.check_circle_outline,
+                      label: 'Approve',
+                      color: AppColors.success,
+                      onTap: () => _approveExpense(expense),
+                    ),
+                    const SizedBox(width: 8),
+                    _approveRejectButton(
+                      icon: Icons.cancel_outlined,
+                      label: 'Reject',
+                      color: AppColors.error,
+                      onTap: () => _rejectExpense(expense),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ]),
@@ -1307,6 +1363,9 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     }).toList();
   }
 
+  List<Expense> get _pendingEmailExpenses =>
+      _filteredExpenses.where((e) => e.source == 'email' && !e.isApproved).toList();
+
   double get _monthlySpendTotal {
     final now = DateTime.now();
     return _expenses
@@ -1361,6 +1420,97 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       'Dec'
     ];
     return abbrs[(month - 1).clamp(0, 11)];
+  }
+
+  Widget _approveRejectButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _approveExpense(Expense expense) async {
+    try {
+      final auth = Provider.of<AuthService>(context, listen: false);
+      await _expenseService.approveTransaction(
+        expenseId: expense.id,
+        supabaseUrl: auth.supabaseUrl,
+        idToken: await auth.getIdToken(),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Transaction approved')),
+        );
+      }
+      _loadExpenses();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _rejectExpense(Expense expense) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reject Transaction'),
+        content: Text('Reject "${expense.description}"? This will mark it as rejected.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Reject'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      final auth = Provider.of<AuthService>(context, listen: false);
+      await _expenseService.rejectTransaction(
+        expenseId: expense.id,
+        supabaseUrl: auth.supabaseUrl,
+        idToken: await auth.getIdToken(),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Transaction rejected')),
+        );
+      }
+      _loadExpenses();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 
   Widget _webTabChip({

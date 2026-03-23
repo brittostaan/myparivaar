@@ -3,6 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/expense.dart';
 
+String _supabaseAnonKey() =>
+    const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpbXFha2ZqcnlwdHloeG1yanNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NDQ3NzQsImV4cCI6MjA4ODQyMDc3NH0.SIySX0aILaLTp08K-TurhhS4dMWl0VqKzgKp3PPFlM0');
+
 class ExpenseException implements Exception {
   final String message;
   final int? statusCode;
@@ -248,9 +251,11 @@ class ExpenseService {
         headers: {
           'Authorization': 'Bearer $idToken',
           'Content-Type': 'application/json',
+          'apikey': _supabaseAnonKey(),
         },
         body: jsonEncode({
           'expense_id': expenseId,
+          'action': 'approve',
         }),
       );
 
@@ -263,6 +268,38 @@ class ExpenseService {
     } catch (e) {
       if (e is ExpenseException) rethrow;
       throw ExpenseException('Network error: Unable to approve transaction');
+    }
+  }
+
+  /// Reject email-sourced transactions
+  Future<void> rejectTransaction({
+    required String expenseId,
+    required String supabaseUrl,
+    required String idToken,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$supabaseUrl/functions/v1/expense-approve'),
+        headers: {
+          'Authorization': 'Bearer $idToken',
+          'Content-Type': 'application/json',
+          'apikey': _supabaseAnonKey(),
+        },
+        body: jsonEncode({
+          'expense_id': expenseId,
+          'action': 'reject',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return;
+      } else {
+        final error = jsonDecode(response.body);
+        throw ExpenseException(error['error'] ?? 'Failed to reject transaction');
+      }
+    } catch (e) {
+      if (e is ExpenseException) rethrow;
+      throw ExpenseException('Network error: Unable to reject transaction');
     }
   }
 }

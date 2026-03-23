@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+String _supabaseAnonKey() =>
+    const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpbXFha2ZqcnlwdHloeG1yanNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NDQ3NzQsImV4cCI6MjA4ODQyMDc3NH0.SIySX0aILaLTp08K-TurhhS4dMWl0VqKzgKp3PPFlM0');
+
 String _extractErrorMessage(http.Response response, String fallback) {
   try {
     final decoded = jsonDecode(response.body);
@@ -78,6 +81,7 @@ class EmailService {
     final response = await http.post(
       Uri.parse('$supabaseUrl/functions/v1/email-accounts'),
       headers: {
+        'apikey': _supabaseAnonKey(),
         'Authorization': 'Bearer $idToken',
         'Content-Type': 'application/json',
       },
@@ -106,6 +110,7 @@ class EmailService {
     final response = await http.post(
       Uri.parse('$supabaseUrl/functions/v1/email-connectUrl'),
       headers: {
+        'apikey': _supabaseAnonKey(),
         'Authorization': 'Bearer $idToken',
         'Content-Type': 'application/json',
       },
@@ -136,6 +141,7 @@ class EmailService {
     final response = await http.post(
       Uri.parse('$supabaseUrl/functions/v1/email-accounts'),
       headers: {
+        'apikey': _supabaseAnonKey(),
         'Authorization': 'Bearer $idToken',
         'Content-Type': 'application/json',
       },
@@ -160,6 +166,7 @@ class EmailService {
     final response = await http.post(
       Uri.parse('$supabaseUrl/functions/v1/email-syncNow'),
       headers: {
+        'apikey': _supabaseAnonKey(),
         'Authorization': 'Bearer $idToken',
         'Content-Type': 'application/json',
       },

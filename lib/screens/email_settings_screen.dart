@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../services/email_service.dart';
 import '../services/ai_service.dart';
@@ -67,21 +68,8 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
     final authService = Provider.of<AuthService>(context, listen: false);
 
     try {
-      // Show loading dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Connecting to your email account...'),
-            ],
-          ),
-        ),
-      );
+      // Show loading indicator
+      setState(() => _isLoading = true);
 
       final authUrl = await _emailService.getEmailConnectUrl(
         provider: provider,
@@ -90,72 +78,34 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
       );
 
       if (!mounted) return;
+      setState(() => _isLoading = false);
 
-      // Close loading dialog
-      Navigator.pop(context);
-
-      // Show instructions dialog
-      if (mounted) {
-        await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('Connect ${provider.toUpperCase()} Account'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('To connect your ${provider.toUpperCase()} account:'),
-                const SizedBox(height: 8),
-                const Text('1. Tap "Open Browser" below'),
-                const Text('2. Sign in to your email account'),
-                const Text('3. Grant permission to read your emails'),
-                const Text('4. Return to the app when done'),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.warningLight,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: AppColors.warningLight),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(AppIcons.info, color: AppColors.warning, size: 16),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'We only read emails to detect transactions. Your emails remain private.',
-                          style: TextStyle(fontSize: 12, color: AppColors.warning),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+      // Open OAuth URL directly in a new browser tab
+      final uri = Uri.parse(authUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+        // Show a snackbar telling user to complete the flow and refresh
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Complete the sign-in in the new tab, then tap Refresh below.'),
+              duration: const Duration(seconds: 10),
+              action: SnackBarAction(
+                label: 'Refresh',
+                onPressed: _loadEmailAccounts,
+              ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  await _openEmailAuthUrl(authUrl);
-                },
-                child: const Text('Open Browser'),
-              ),
-            ],
-          ),
-        );
+          );
+        }
+      } else {
+        // Fallback: show URL in a dialog if launch fails
+        if (mounted) {
+          _showFallbackUrlDialog(authUrl);
+        }
       }
     } catch (e) {
-      // Close loading dialog if still open
-      if (mounted && Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
-      
       if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error connecting email: $e')),
         );
@@ -163,46 +113,42 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
     }
   }
 
-  Future<void> _openEmailAuthUrl(String authUrl) async {
-    // Note: In a real app, you'd use url_launcher package to open the URL
-    // For MVP, we'll show a dialog with the URL
-    if (mounted) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Open in Browser'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Please open this URL in your browser:'),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.grey100,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: SelectableText(
-                  authUrl,
-                  style: const TextStyle(fontSize: 12),
-                ),
+  void _showFallbackUrlDialog(String authUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Open in Browser'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Could not open browser automatically. Please copy and open this URL:'),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.grey100,
+                borderRadius: BorderRadius.circular(4),
               ),
-              const SizedBox(height: 16),
-              const Text('After completing the flow, return to refresh this page.'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _loadEmailAccounts(); // Refresh the list
-              },
-              child: const Text('Done'),
+              child: SelectableText(
+                authUrl,
+                style: const TextStyle(fontSize: 12),
+              ),
             ),
+            const SizedBox(height: 16),
+            const Text('After completing the flow, return to refresh this page.'),
           ],
         ),
-      );
-    }
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _loadEmailAccounts();
+            },
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _parseEmailContent() async {
@@ -423,13 +369,45 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
 
         // Connected accounts section
         if (_emailAccounts.isNotEmpty) ...[
-          Text(
-            'Connected Accounts',
-            style: Theme.of(context).textTheme.titleLarge,
+          Row(
+            children: [
+              Text(
+                'Connected Accounts',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: _loadEmailAccounts,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Refresh'),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           ..._emailAccounts.map((account) => _buildEmailAccountItem(account)),
           const SizedBox(height: 24),
+        ],
+
+        if (_emailAccounts.isEmpty && _error == null) ...[
+          Card(
+            color: AppColors.grey100,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.grey.shade600, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'No email accounts connected yet. Connect one below to start detecting transactions automatically.',
+                      style: TextStyle(color: Colors.grey.shade700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
 
         // Add account section
@@ -606,35 +584,85 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
   }
 
   Widget _buildEmailAccountItem(EmailAccount account) {
+    final isGmail = account.provider == 'gmail';
     return Card(
       child: ListTile(
         leading: Container(
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: account.provider == 'gmail' 
-                ? AppColors.errorLight
-                : AppColors.infoLight,
+            color: isGmail ? AppColors.errorLight : AppColors.infoLight,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             AppIcons.email,
-            color: account.provider == 'gmail' 
-                ? AppColors.errorDark
-                : AppColors.infoDark,
+            color: isGmail ? AppColors.errorDark : AppColors.infoDark,
           ),
         ),
-        title: Text(account.emailAddress),
+        title: Text(
+          account.emailAddress,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(account.provider.toUpperCase()),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isGmail ? const Color(0xFFFEE2E2) : const Color(0xFFDBEAFE),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    isGmail ? 'Gmail' : 'Outlook',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isGmail ? AppColors.errorDark : AppColors.infoDark,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: account.isActive
+                        ? const Color(0xFFDCFCE7)
+                        : const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        account.isActive ? Icons.check_circle : Icons.warning_amber,
+                        size: 12,
+                        color: account.isActive
+                            ? const Color(0xFF16A34A)
+                            : const Color(0xFFD97706),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        account.isActive ? 'Active' : 'Inactive',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: account.isActive
+                              ? const Color(0xFF16A34A)
+                              : const Color(0xFFD97706),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
             Text(
               'Connected ${_formatDate(account.createdAt)}',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
             ),
           ],
         ),

@@ -31,6 +31,7 @@ dependencies:
 
   # Material icons (conventional Flutter default)
   cupertino_icons: ^1.0.8
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

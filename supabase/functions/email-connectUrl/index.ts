@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { verifyFirebaseToken } from '../_shared/firebase.ts'
+import { getOAuthCredentials } from '../_shared/oauth.ts'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -115,18 +116,19 @@ Deno.serve(async (req: Request) => {
     }
 
     // Generate OAuth URLs
-    const defaultRedirectUri = redirect_uri || `${supabaseUrl}/functions/v1/email-oauthCallback`
     let authUrl: string
     let scopes: string[]
 
     if (provider === 'gmail') {
-      const clientId = Deno.env.get('GOOGLE_CLIENT_ID')
-      if (!clientId) {
-        return new Response(JSON.stringify({ error: 'Gmail OAuth not configured' }), {
+      const creds = await getOAuthCredentials('google')
+      if (!creds) {
+        return new Response(JSON.stringify({ error: 'Gmail OAuth not configured. Admin must set up Google credentials in Admin Center → Email Admin.' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
+      const clientId = creds.clientId
+      const defaultRedirectUri = creds.redirectUri || redirect_uri || `${supabaseUrl}/functions/v1/email-oauthCallback`
 
       scopes = [
         'https://www.googleapis.com/auth/gmail.readonly',
@@ -150,13 +152,15 @@ Deno.serve(async (req: Request) => {
       authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
       
     } else { // outlook
-      const clientId = Deno.env.get('MICROSOFT_CLIENT_ID')
-      if (!clientId) {
-        return new Response(JSON.stringify({ error: 'Outlook OAuth not configured' }), {
+      const creds = await getOAuthCredentials('microsoft')
+      if (!creds) {
+        return new Response(JSON.stringify({ error: 'Outlook OAuth not configured. Admin must set up Microsoft credentials in Admin Center → Email Admin.' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
+      const clientId = creds.clientId
+      const defaultRedirectUri = creds.redirectUri || redirect_uri || `${supabaseUrl}/functions/v1/email-oauthCallback`
 
       scopes = [
         'https://graph.microsoft.com/Mail.Read',

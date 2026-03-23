@@ -86,6 +86,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
   bool _emailIntegrationLoaded = false;
   String? _emailIntegrationError;
   Map<String, dynamic>? _emailIntegrationSummary;
+  List<Map<String, dynamic>> _oauthProviders = [];
 
   @override
   void initState() {
@@ -164,14 +165,17 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
           includeInactive: true,
         ),
         _adminService.fetchAdminEmailDashboardSummary(),
+        _adminService.fetchOAuthProviders(),
       ]);
 
       final result = results[0] as List<AdminEmailIntegrationAccount>;
       final summary = results[1] as Map<String, dynamic>;
+      final providers = results[2] as List<Map<String, dynamic>>;
       if (!mounted) return;
       setState(() {
         _emailIntegrationAccounts = result;
         _emailIntegrationSummary = summary;
+        _oauthProviders = providers;
         _emailIntegrationLoaded = true;
         _emailIntegrationLoading = false;
       });
@@ -3612,6 +3616,10 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
               ],
             ),
           ),
+
+          // ── OAuth Provider Configuration ─────────────────────────────────
+          _buildOAuthProviderConfigSection(),
+
           AdminEmailIntegrationPanel(
             adminService: _adminService,
             accounts: _emailIntegrationAccounts,
@@ -3627,6 +3635,432 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
         ],
       ),
     );
+  }
+
+  // ── OAuth Provider Configuration Section ──────────────────────────────────
+
+  Widget _buildOAuthProviderConfigSection() {
+    final googleConfig = _oauthProviders
+        .where((p) => p['provider'] == 'google')
+        .toList();
+    final microsoftConfig = _oauthProviders
+        .where((p) => p['provider'] == 'microsoft')
+        .toList();
+
+    final hasGoogle = googleConfig.isNotEmpty;
+    final hasMicrosoft = microsoftConfig.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.vpn_key, size: 22),
+              const SizedBox(width: 8),
+              const Text(
+                'OAuth Provider Configuration',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () async {
+                  try {
+                    final providers = await _adminService.fetchOAuthProviders();
+                    if (mounted) {
+                      setState(() => _oauthProviders = providers);
+                    }
+                  } catch (_) {}
+                },
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Refresh'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Configure Google and Microsoft OAuth credentials to enable email inbox connections for users.',
+            style: TextStyle(color: AppColors.grey600, fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 16,
+            runSpacing: 16,
+            children: [
+              _buildProviderCard(
+                provider: 'google',
+                title: 'Google (Gmail)',
+                icon: Icons.mail_outline,
+                color: const Color(0xFFDB4437),
+                isConfigured: hasGoogle,
+                config: hasGoogle ? googleConfig.first : null,
+              ),
+              _buildProviderCard(
+                provider: 'microsoft',
+                title: 'Microsoft (Outlook)',
+                icon: Icons.outbox_outlined,
+                color: const Color(0xFF2563EB),
+                isConfigured: hasMicrosoft,
+                config: hasMicrosoft ? microsoftConfig.first : null,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProviderCard({
+    required String provider,
+    required String title,
+    required IconData icon,
+    required Color color,
+    required bool isConfigured,
+    Map<String, dynamic>? config,
+  }) {
+    return SizedBox(
+      width: 420,
+      child: Card(
+        elevation: 1,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: isConfigured ? color.withValues(alpha: 0.3) : Colors.grey.shade300,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, color: color, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isConfigured ? Colors.green : Colors.orange,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              isConfigured ? 'Connected' : 'Not Configured',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isConfigured ? Colors.green.shade700 : Colors.orange.shade700,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (isConfigured)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                      tooltip: 'Remove credentials',
+                      onPressed: () => _confirmDeleteProvider(provider, title),
+                    ),
+                ],
+              ),
+              if (isConfigured && config != null) ...[
+                const Divider(height: 24),
+                _buildConfigDetail('Client ID', config['client_id_masked'] ?? '****'),
+                const SizedBox(height: 4),
+                _buildConfigDetail('Secret', '••••••••'),
+                const SizedBox(height: 4),
+                _buildConfigDetail('Updated', _formatConfigDate(config['updated_at'])),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showTestProviderResult(provider),
+                        icon: const Icon(Icons.check_circle_outline, size: 16),
+                        label: const Text('Test'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () => _showOAuthConfigDialog(provider, title, config),
+                        icon: const Icon(Icons.edit, size: 16),
+                        label: const Text('Update'),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => _showOAuthConfigDialog(provider, title, null),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Configure'),
+                    style: FilledButton.styleFrom(backgroundColor: color),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConfigDetail(String label, String value) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 80,
+          child: Text(label, style: const TextStyle(fontSize: 12, color: AppColors.grey600)),
+        ),
+        Expanded(
+          child: Text(value, style: const TextStyle(fontSize: 12, fontFamily: 'monospace')),
+        ),
+      ],
+    );
+  }
+
+  String _formatConfigDate(dynamic dateStr) {
+    if (dateStr == null) return 'N/A';
+    try {
+      final dt = DateTime.parse(dateStr.toString());
+      return '${dt.day}/${dt.month}/${dt.year} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return dateStr.toString();
+    }
+  }
+
+  void _showOAuthConfigDialog(String provider, String title, Map<String, dynamic>? existing) {
+    final clientIdController = TextEditingController();
+    final clientSecretController = TextEditingController();
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(existing != null ? 'Update $title Credentials' : 'Configure $title'),
+          content: SizedBox(
+            width: 480,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  provider == 'google'
+                      ? 'Enter your Google Cloud OAuth 2.0 credentials.\nGet them from Google Cloud Console → APIs & Services → Credentials.'
+                      : 'Enter your Azure App Registration credentials.\nGet them from Azure Portal → App Registrations.',
+                  style: const TextStyle(fontSize: 13, color: AppColors.grey600),
+                ),
+                const SizedBox(height: 8),
+                SelectableText(
+                  'Redirect URI: https://qimqakfjryptyhxmrjsj.supabase.co/functions/v1/email-oauthCallback',
+                  style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: AppColors.grey600),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: clientIdController,
+                  decoration: InputDecoration(
+                    labelText: 'Client ID',
+                    hintText: provider == 'google'
+                        ? 'xxxx.apps.googleusercontent.com'
+                        : 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: clientSecretController,
+                  decoration: const InputDecoration(
+                    labelText: 'Client Secret',
+                    hintText: 'Paste secret value here',
+                    border: OutlineInputBorder(),
+                  ),
+                  obscureText: true,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      final clientId = clientIdController.text.trim();
+                      final clientSecret = clientSecretController.text.trim();
+                      if (clientId.isEmpty || clientSecret.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Both Client ID and Client Secret are required')),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => isSaving = true);
+                      try {
+                        await _adminService.upsertOAuthProvider(
+                          provider: provider,
+                          clientId: clientId,
+                          clientSecret: clientSecret,
+                        );
+                        if (mounted) {
+                          setState(() {
+                            _oauthProviders = _adminService.oauthProviders;
+                          });
+                        }
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('$title credentials saved successfully')),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => isSaving = false);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: $e')),
+                          );
+                        }
+                      }
+                    },
+              child: isSaving
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text(existing != null ? 'Update' : 'Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteProvider(String provider, String title) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Remove $title Credentials?'),
+        content: Text(
+          'This will disconnect $title OAuth integration. '
+          'Existing connected email accounts will stop syncing until credentials are reconfigured.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await _adminService.deleteOAuthProvider(provider);
+                if (mounted) {
+                  setState(() => _oauthProviders = _adminService.oauthProviders);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('$title credentials removed')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showTestProviderResult(String provider) async {
+    try {
+      final result = await _adminService.testOAuthProvider(provider);
+      final status = result['status'] ?? 'unknown';
+      final message = result['message'] ?? 'No details';
+      final checks = result['checks'] as Map<String, dynamic>?;
+
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                status == 'valid' ? Icons.check_circle : Icons.warning,
+                color: status == 'valid' ? Colors.green : Colors.orange,
+              ),
+              const SizedBox(width: 8),
+              Text('Test Result: ${status == 'valid' ? 'Passed' : 'Issues Found'}'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(message),
+              if (checks != null) ...[
+                const SizedBox(height: 12),
+                ...checks.entries.map((e) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      Icon(
+                        e.value == true ? Icons.check : Icons.close,
+                        size: 16,
+                        color: e.value == true ? Colors.green : Colors.red,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(e.key.replaceAll('_', ' ')),
+                    ],
+                  ),
+                )),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Test failed: $e')),
+        );
+      }
+    }
   }
 
   // ── AI Administration Tab ──────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
+import { getOAuthCredentials } from '../_shared/oauth.ts'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -83,11 +84,10 @@ Deno.serve(async (req: Request) => {
     let userInfo: any
 
     if (oauthState.provider === 'gmail') {
-      const clientId = Deno.env.get('GOOGLE_CLIENT_ID')
-      const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET')
+      const creds = await getOAuthCredentials('google')
       const redirectUri = `${supabaseUrl}/functions/v1/email-oauthCallback`
 
-      if (!clientId || !clientSecret) {
+      if (!creds) {
         throw new Error('Gmail OAuth credentials not configured')
       }
 
@@ -96,11 +96,11 @@ Deno.serve(async (req: Request) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
+          client_id: creds.clientId,
+          client_secret: creds.clientSecret,
           code,
           grant_type: 'authorization_code',
-          redirect_uri: redirectUri,
+          redirect_uri: creds.redirectUri || redirectUri,
         }),
       })
 
@@ -118,11 +118,10 @@ Deno.serve(async (req: Request) => {
       userInfo = await userInfoReq.json()
       
     } else { // outlook
-      const clientId = Deno.env.get('MICROSOFT_CLIENT_ID')
-      const clientSecret = Deno.env.get('MICROSOFT_CLIENT_SECRET')
+      const creds = await getOAuthCredentials('microsoft')
       const redirectUri = `${supabaseUrl}/functions/v1/email-oauthCallback`
 
-      if (!clientId || !clientSecret) {
+      if (!creds) {
         throw new Error('Outlook OAuth credentials not configured')
       }
 
@@ -131,11 +130,11 @@ Deno.serve(async (req: Request) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
+          client_id: creds.clientId,
+          client_secret: creds.clientSecret,
           code,
           grant_type: 'authorization_code',
-          redirect_uri: redirectUri,
+          redirect_uri: creds.redirectUri || redirectUri,
           scope: 'https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/User.Read offline_access',
         }),
       })

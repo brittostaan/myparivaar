@@ -1262,7 +1262,88 @@ class AdminService extends ChangeNotifier {
     }
   }
 
-  // ── Phase 7: Email Integration Screening ──────────────────────────────────
+  // ── Phase 7a: OAuth Provider Configuration ────────────────────────────────
+
+  List<Map<String, dynamic>> _oauthProviders = [];
+  List<Map<String, dynamic>> get oauthProviders => _oauthProviders;
+
+  Future<List<Map<String, dynamic>>> fetchOAuthProviders() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _post('admin-oauth-config', {
+        'action': 'list_providers',
+      });
+      _oauthProviders =
+          (data['providers'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      notifyListeners();
+      return _oauthProviders;
+    } catch (e) {
+      _setError('Failed to fetch OAuth providers: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<Map<String, dynamic>> upsertOAuthProvider({
+    required String provider,
+    required String clientId,
+    required String clientSecret,
+    bool isActive = true,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _post('admin-oauth-config', {
+        'action': 'upsert_provider',
+        'provider': provider,
+        'client_id': clientId,
+        'client_secret': clientSecret,
+        'is_active': isActive,
+      });
+      // Refresh the list after save
+      await fetchOAuthProviders();
+      return data;
+    } catch (e) {
+      _setError('Failed to save OAuth provider: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> deleteOAuthProvider(String provider) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _post('admin-oauth-config', {
+        'action': 'delete_provider',
+        'provider': provider,
+      });
+      await fetchOAuthProviders();
+    } catch (e) {
+      _setError('Failed to delete OAuth provider: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<Map<String, dynamic>> testOAuthProvider(String provider) async {
+    try {
+      final data = await _post('admin-oauth-config', {
+        'action': 'test_provider',
+        'provider': provider,
+      });
+      return data;
+    } catch (e) {
+      _setError('Failed to test OAuth provider: $e');
+      rethrow;
+    }
+  }
+
+  // ── Phase 7b: Email Integration Screening ─────────────────────────────────
 
   List<AdminEmailIntegrationAccount> _adminEmailIntegrationAccounts = [];
     Map<String, dynamic>? _adminEmailDashboardSummary;

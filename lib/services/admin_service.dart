@@ -1262,6 +1262,108 @@ class AdminService extends ChangeNotifier {
     }
   }
 
+  // ── Phase 7: Email Integration Screening ──────────────────────────────────
+
+  List<AdminEmailIntegrationAccount> _adminEmailIntegrationAccounts = [];
+    Map<String, dynamic>? _adminEmailDashboardSummary;
+
+  List<AdminEmailIntegrationAccount> get adminEmailIntegrationAccounts =>
+      _adminEmailIntegrationAccounts;
+    Map<String, dynamic>? get adminEmailDashboardSummary =>
+      _adminEmailDashboardSummary;
+
+  Future<List<AdminEmailIntegrationAccount>> fetchAdminEmailIntegrationAccounts({
+    String? query,
+    String? provider,
+    bool includeInactive = true,
+    int limit = 150,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _post('admin-email-config', {
+        'action': 'list_accounts',
+        if (query != null && query.trim().isNotEmpty) 'query': query.trim(),
+        if (provider != null && provider.trim().isNotEmpty) 'provider': provider.trim().toLowerCase(),
+        'include_inactive': includeInactive,
+        'limit': limit,
+      });
+
+      final rows = data['accounts'] as List? ?? [];
+      _adminEmailIntegrationAccounts = rows
+          .map((row) => AdminEmailIntegrationAccount.fromJson(row as Map<String, dynamic>))
+          .toList();
+      notifyListeners();
+      return _adminEmailIntegrationAccounts;
+    } catch (e) {
+      _setError('Failed to fetch email integration accounts: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<AdminEmailIntegrationAccount> updateAdminEmailScreening({
+    required String accountId,
+    required List<String> screeningSenderFilters,
+    required List<String> screeningKeywordFilters,
+    required String screeningScopeUnit,
+    required int screeningScopeValue,
+    required bool isActive,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _post('admin-email-config', {
+        'action': 'update_screening',
+        'account_id': accountId,
+        'screening_sender_filters': screeningSenderFilters,
+        'screening_keyword_filters': screeningKeywordFilters,
+        'screening_scope_unit': screeningScopeUnit,
+        'screening_scope_value': screeningScopeValue,
+        'is_active': isActive,
+      });
+
+      final updated = AdminEmailIntegrationAccount.fromJson(
+        data['account'] as Map<String, dynamic>,
+      );
+
+      final index = _adminEmailIntegrationAccounts.indexWhere((row) => row.id == accountId);
+      if (index >= 0) {
+        _adminEmailIntegrationAccounts[index] = updated;
+      } else {
+        _adminEmailIntegrationAccounts.insert(0, updated);
+      }
+
+      notifyListeners();
+      return updated;
+    } catch (e) {
+      _setError('Failed to update email screening settings: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchAdminEmailDashboardSummary() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _post('admin-email-config', {
+        'action': 'dashboard_summary',
+      });
+      final summary = data['summary'] as Map<String, dynamic>? ?? {};
+      _adminEmailDashboardSummary = summary;
+      notifyListeners();
+      return summary;
+    } catch (e) {
+      _setError('Failed to fetch email administration summary: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // ── Internal methods ───────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> _post(

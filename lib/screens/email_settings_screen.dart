@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/email_service.dart';
 import '../services/ai_service.dart';
-import '../widgets/app_header.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
 
@@ -308,9 +307,25 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const AppHeader(
-              title: 'Email Settings',
-              avatarIcon: AppIcons.email,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              child: Row(
+                children: const [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: Color(0xFFE0F2FE),
+                    child: Icon(AppIcons.email, size: 16, color: Color(0xFF0284C7)),
+                  ),
+                  SizedBox(width: 10),
+                  Text(
+                    'Email Settings',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
             ),
             Expanded(
               child: RefreshIndicator(

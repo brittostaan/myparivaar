@@ -6,6 +6,7 @@ import '../services/admin_service.dart';
 import '../models/admin_permissions.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../widgets/admin_email_integration_panel.dart';
 import '../widgets/admin_household_detail_tabs.dart';
 import '../widgets/app_header.dart';
 
@@ -79,6 +80,13 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
   bool _analyticsLoaded = false;
   String? _analyticsError;
 
+  // Email Integration tab state
+  List<AdminEmailIntegrationAccount> _emailIntegrationAccounts = [];
+  bool _emailIntegrationLoading = false;
+  bool _emailIntegrationLoaded = false;
+  String? _emailIntegrationError;
+  Map<String, dynamic>? _emailIntegrationSummary;
+
   @override
   void initState() {
     super.initState();
@@ -137,6 +145,42 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
 
     if (index == 6 && !_analyticsLoaded && !_analyticsLoading) {
       await _loadAnalytics();
+    }
+
+    if (index == 11 && !_emailIntegrationLoaded && !_emailIntegrationLoading) {
+      await _loadEmailIntegrationAccounts();
+    }
+  }
+
+  Future<void> _loadEmailIntegrationAccounts() async {
+    setState(() {
+      _emailIntegrationLoading = true;
+      _emailIntegrationError = null;
+    });
+
+    try {
+      final results = await Future.wait([
+        _adminService.fetchAdminEmailIntegrationAccounts(
+          includeInactive: true,
+        ),
+        _adminService.fetchAdminEmailDashboardSummary(),
+      ]);
+
+      final result = results[0] as List<AdminEmailIntegrationAccount>;
+      final summary = results[1] as Map<String, dynamic>;
+      if (!mounted) return;
+      setState(() {
+        _emailIntegrationAccounts = result;
+        _emailIntegrationSummary = summary;
+        _emailIntegrationLoaded = true;
+        _emailIntegrationLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _emailIntegrationLoading = false;
+        _emailIntegrationError = e.toString();
+      });
     }
   }
 
@@ -687,6 +731,12 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                                 isSelected: _selectedTabIndex == 10,
                                 onTap: () => _selectTab(10),
                               ),
+                              _NavItem(
+                                label: 'Email Admin',
+                                icon: Icons.email_outlined,
+                                isSelected: _selectedTabIndex == 11,
+                                onTap: () => _selectTab(11),
+                              ),
                             ],
                           ],
                         ),
@@ -733,6 +783,8 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
         return _buildApprovalsTab();
       case 10:
         return _buildAITab();
+      case 11:
+        return _buildEmailIntegrationTab();
       default:
         return _buildPlaceholder('Unknown', 'Unknown section');
     }
@@ -3446,6 +3498,136 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
 
   String _capitalize(String s) =>
       s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  Widget _buildEmailIntegrationTab() {
+    final summary = _emailIntegrationSummary ?? const {};
+    final providerCounts = summary['provider_counts'] as Map<String, dynamic>? ?? const {};
+    final emailTx = summary['email_transactions'] as Map<String, dynamic>? ?? const {};
+
+    String _countValue(String key) => '${summary[key] ?? 0}';
+    String _providerValue(String key) => '${providerCounts[key] ?? 0}';
+    String _emailTxValue(String key) => '${emailTx[key] ?? 0}';
+
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Email Administration',
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Connection status and ingestion analytics for household email integrations.',
+                  style: TextStyle(color: AppColors.grey600),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    SizedBox(
+                      width: 220,
+                      child: _StatCard(
+                        label: 'Connected Accounts',
+                        value: _countValue('total_connected_accounts'),
+                        icon: Icons.alternate_email,
+                        color: const Color(0xFF0EA5E9),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 220,
+                      child: _StatCard(
+                        label: 'Active Connections',
+                        value: _countValue('active_connections'),
+                        icon: Icons.link,
+                        color: const Color(0xFF10B981),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 220,
+                      child: _StatCard(
+                        label: 'Gmail Accounts',
+                        value: _providerValue('gmail'),
+                        icon: Icons.mail_outline,
+                        color: const Color(0xFFDB4437),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 220,
+                      child: _StatCard(
+                        label: 'Outlook Accounts',
+                        value: _providerValue('outlook'),
+                        icon: Icons.outbox_outlined,
+                        color: const Color(0xFF2563EB),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 220,
+                      child: _StatCard(
+                        label: 'Email Transactions Identified',
+                        value: _countValue('emails_identified'),
+                        icon: Icons.analytics_outlined,
+                        color: const Color(0xFF7C3AED),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 220,
+                      child: _StatCard(
+                        label: 'AI Classification Requests (Month)',
+                        value: _countValue('ai_classification_requests_current_month'),
+                        icon: Icons.auto_awesome,
+                        color: const Color(0xFFF59E0B),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 220,
+                      child: _StatCard(
+                        label: 'Email Tx Pending',
+                        value: _emailTxValue('pending'),
+                        icon: Icons.hourglass_top,
+                        color: const Color(0xFFF59E0B),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 220,
+                      child: _StatCard(
+                        label: 'Email Tx Approved',
+                        value: _emailTxValue('approved'),
+                        icon: Icons.check_circle_outline,
+                        color: const Color(0xFF16A34A),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Token-level usage for email classification is not yet persisted; request counts are shown instead.',
+                  style: TextStyle(fontSize: 12, color: AppColors.grey600),
+                ),
+              ],
+            ),
+          ),
+          AdminEmailIntegrationPanel(
+            adminService: _adminService,
+            accounts: _emailIntegrationAccounts,
+            isLoading: _emailIntegrationLoading,
+            error: _emailIntegrationError,
+            onRefresh: () async {
+              setState(() {
+                _emailIntegrationLoaded = false;
+              });
+              await _loadEmailIntegrationAccounts();
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   // ── AI Administration Tab ──────────────────────────────────────────────────
 

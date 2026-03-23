@@ -980,3 +980,66 @@ class AITaskAssignment {
     );
   }
 }
+
+/// Admin-level configuration view for connected email inboxes.
+class AdminEmailIntegrationAccount {
+  const AdminEmailIntegrationAccount({
+    required this.id,
+    required this.householdId,
+    required this.emailAddress,
+    required this.provider,
+    required this.isActive,
+    required this.screeningSenderFilters,
+    required this.screeningKeywordFilters,
+    required this.screeningScopeUnit,
+    required this.screeningScopeValue,
+    this.lastSyncedAt,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  final String id;
+  final String householdId;
+  final String emailAddress;
+  final String provider;
+  final bool isActive;
+  final List<String> screeningSenderFilters;
+  final List<String> screeningKeywordFilters;
+  final String screeningScopeUnit;
+  final int screeningScopeValue;
+  final DateTime? lastSyncedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  bool get isOutlook => provider.toLowerCase() == 'outlook';
+  bool get isGmail => provider.toLowerCase() == 'gmail';
+
+  factory AdminEmailIntegrationAccount.fromJson(Map<String, dynamic> json) {
+    List<String> parseStringList(dynamic value) {
+      final raw = value as List? ?? const [];
+      return raw.map((entry) => entry.toString()).toList();
+    }
+
+    int parseInt(dynamic value, int fallback) {
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '') ?? fallback;
+    }
+
+    return AdminEmailIntegrationAccount(
+      id: json['id'] as String? ?? '',
+      householdId: json['household_id'] as String? ?? '',
+      emailAddress: json['email_address'] as String? ?? '',
+      provider: json['provider'] as String? ?? 'gmail',
+      isActive: json['is_active'] as bool? ?? true,
+      screeningSenderFilters: parseStringList(json['screening_sender_filters']),
+      screeningKeywordFilters: parseStringList(json['screening_keyword_filters']),
+      screeningScopeUnit: json['screening_scope_unit'] as String? ?? 'days',
+      screeningScopeValue: parseInt(json['screening_scope_value'], 7),
+      lastSyncedAt: json['last_synced_at'] != null
+          ? DateTime.tryParse(json['last_synced_at'] as String)
+          : null,
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
+}

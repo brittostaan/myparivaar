@@ -167,8 +167,9 @@ Deno.serve(async (req: Request) => {
 })
 
 async function syncEmailAccount(account: any, daysBack: number, supabase: any) {
+  const effectiveDaysBack = resolveAccountScopeDays(account, daysBack)
   const cutoffDate = new Date()
-  cutoffDate.setDate(cutoffDate.getDate() - daysBack)
+  cutoffDate.setDate(cutoffDate.getDate() - effectiveDaysBack)
 
   let emails = []
   
@@ -212,7 +213,25 @@ async function fetchGmailMessages(account: any, cutoffDate: Date) {
     // TODO: Implement token refresh
   }
 
-  const query = `after:${Math.floor(cutoffDate.getTime() / 1000)} (from:bank OR from:paytm OR from:gpay OR from:phonepe OR subject:transaction OR subject:payment OR subject:debit OR subject:credit)`
+  const queryParts: string[] = [
+    `after:${Math.floor(cutoffDate.getTime() / 1000)}`,
+  ]
+
+  const senderFilters: string[] = normalizeStringArray(account.screening_sender_filters)
+  if (senderFilters.length > 0) {
+    queryParts.push(`(${senderFilters.map((sender) => `from:${sender}`).join(' OR ')})`)
+  } else {
+    queryParts.push('(from:bank OR from:paytm OR from:gpay OR from:phonepe)')
+  }
+
+  const keywordFilters: string[] = normalizeStringArray(account.screening_keyword_filters)
+  if (keywordFilters.length > 0) {
+    queryParts.push(`(${keywordFilters.map((keyword) => `subject:${keyword}`).join(' OR ')})`)
+  } else {
+    queryParts.push('(subject:transaction OR subject:payment OR subject:debit OR subject:credit)')
+  }
+
+  const query = queryParts.join(' ')
   
   const response = await fetch(
     `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}`,
@@ -250,7 +269,49 @@ async function fetchOutlookMessages(account: any, cutoffDate: Date) {
   )
 
   const data = await response.json()
-  return data.value || []
+  const messages = data.value || []
+
+  const senderFilters = normalizeStringArray(account.screening_sender_filters)
+  const keywordFilters = normalizeStringArray(account.screening_keyword_filters)
+
+  if (senderFilters.length === 0 && keywordFilters.length === 0) {
+    return messages
+  }
+
+  return messages.filter((message: any) => {
+    const senderEmail = String(message?.from?.emailAddress?.address ?? '').toLowerCase()
+    const subject = String(message?.subject ?? '').toLowerCase()
+    const preview = String(message?.bodyPreview ?? '').toLowerCase()
+    const haystack = `${subject} ${preview}`
+
+    const senderOk = senderFilters.length === 0 || senderFilters.includes(senderEmail)
+    const keywordOk = keywordFilters.length === 0 || keywordFilters.some((keyword) => haystack.includes(keyword))
+    return senderOk && keywordOk
+  })
+}
+
+function normalizeStringArray(input: unknown): string[] {
+  if (!Array.isArray(input)) {
+    return []
+  }
+
+  return [...new Set(
+    input
+      .map((entry) => String(entry ?? '').trim().toLowerCase())
+      .filter((entry) => entry.length > 0),
+  )]
+}
+
+function resolveAccountScopeDays(account: any, defaultDaysBack: number): number {
+  const unit = String(account?.screening_scope_unit ?? 'days').toLowerCase()
+  const valueRaw = Number(account?.screening_scope_value)
+  const value = Number.isFinite(valueRaw) ? Math.max(1, Math.floor(valueRaw)) : defaultDaysBack
+
+  if (unit === 'months') {
+    return Math.min(365, value * 30)
+  }
+
+  return Math.min(365, value)
 }
 
 function parseEmailForTransaction(email: any): ParsedTransaction | null {

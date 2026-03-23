@@ -387,6 +387,12 @@ class _NavigationShellState extends State<NavigationShell> {
         connected: true,
       ),
       _WebSidebarItem(
+        label: 'Email Settings',
+        icon: Icons.mark_email_read_outlined,
+        route: '/email-settings',
+        connected: true,
+      ),
+      _WebSidebarItem(
         label: 'Settings',
         icon: Icons.settings_outlined,
         route: '/user-settings',

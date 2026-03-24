@@ -113,10 +113,11 @@ String _captureInitialPath() {
 String _routeFromEndpoint() {
   final candidate = _capturedInitialPath;
 
-  if (_authenticatedRoutes.contains(candidate) || _publicRoutes.contains(candidate)) {
+  if (_authenticatedRoutes.contains(candidate)) {
     return candidate;
   }
-  // Root URL with no hash fragment → landing page
+  // Never return public routes (like /login) for post-auth navigation
+  // Root URL with no hash fragment → landing page (only used for public routing)
   if (candidate == '/' || candidate.isEmpty) return '/';
   return '/home';
 }

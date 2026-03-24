@@ -77,6 +77,12 @@ const Set<String> _authenticatedRoutes = {
   '/csv-import',
 };
 
+const Set<String> _publicRoutes = {
+  '/privacy',
+  '/terms',
+  '/login',
+};
+
 String _routeFromEndpoint() {
   final uri = Uri.base;
   final path = uri.path.isEmpty ? '/' : uri.path;
@@ -90,7 +96,7 @@ String _routeFromEndpoint() {
     candidate = candidate.substring(0, candidate.length - 1);
   }
 
-  if (_authenticatedRoutes.contains(candidate)) {
+  if (_authenticatedRoutes.contains(candidate) || _publicRoutes.contains(candidate)) {
     return candidate;
   }
   return '/home';
@@ -585,6 +591,14 @@ class _AppRouterState extends State<_AppRouter> {
   }
 
   Future<void> _restoreSession() async {
+    // Check for public routes first — no auth needed
+    final targetRoute = _routeFromEndpoint();
+    if (_publicRoutes.contains(targetRoute)) {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed(targetRoute);
+      return;
+    }
+
     final auth = context.read<AuthService>();
     AuthStatus? status;
     try {

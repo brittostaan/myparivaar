@@ -458,7 +458,6 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
       itemBuilder: (_, i) {
         final user = _users![i];
         return ListTile(
-          onTap: widget.onUserTap != null ? () => widget.onUserTap!(user) : null,
           leading: CircleAvatar(
             backgroundColor: user.isActive
                 ? const Color(0xFFDCFCE7)
@@ -491,8 +490,17 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
                     ? const Color(0xFF047857)
                     : const Color(0xFFB91C1C),
               ),
-              if (widget.onUserTap != null) ...[                const SizedBox(width: 4),
-                const Icon(Icons.chevron_right, size: 20, color: AppColors.grey600),
+              if (widget.onUserTap != null) ...[
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: () => widget.onUserTap!(user),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('Manage', style: TextStyle(fontSize: 12)),
+                ),
               ],
             ],
           ),

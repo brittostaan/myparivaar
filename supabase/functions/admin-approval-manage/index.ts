@@ -130,6 +130,132 @@ function parseStatus(value: unknown): ApprovalStatus | undefined {
   return undefined
 }
 
+async function executeApprovedAction(
+  supabase: AdminContext['supabase'],
+  approval: ApprovalRequestRow,
+  approverUserId: string,
+  ipAddress: string | null,
+  userAgent: string | null,
+): Promise<Record<string, unknown>> {
+  const payload = approval.request_payload ?? {}
+
+  if (approval.action_type === 'assign_staff_role') {
+    const email = payload.email as string | undefined
+    const staffRole = payload.staff_role as string | undefined ?? 'support_staff'
+    const initialScope = payload.initial_scope as string | undefined ?? 'global'
+
+    if (!email) {
+      return { error: 'Missing email in request payload' }
+    }
+
+    const { data: user, error: lookupErr } = await supabase
+      .from('users')
+      .select('id, email, staff_role, staff_scope, admin_permissions, role')
+      .eq('email', email)
+      .is('deleted_at', null)
+      .maybeSingle()
+
+    if (lookupErr || !user) {
+      return { error: `User not found: ${email}` }
+    }
+
+    const updatePayload: Record<string, unknown> = {
+      staff_role: staffRole,
+      staff_scope: initialScope,
+      admin_permissions: user.admin_permissions ?? {},
+    }
+    if (staffRole === 'super_admin') {
+      updatePayload.role = 'super_admin'
+    }
+
+    const { error: updateErr } = await supabase
+      .from('users')
+      .update(updatePayload)
+      .eq('id', user.id)
+
+    if (updateErr) {
+      return { error: `Failed to update user: ${updateErr.message}` }
+    }
+
+    await writeAuditLog(supabase, {
+      adminUserId: approverUserId,
+      action: 'create',
+      resourceType: 'user',
+      resourceId: user.id,
+      oldValues: { staff_role: user.staff_role, staff_scope: user.staff_scope },
+      newValues: { staff_role: staffRole, staff_scope: initialScope },
+      description: `Auto-executed: Granted ${staffRole} access to ${email}`,
+      ipAddress,
+      userAgent,
+    })
+
+    return { executed: true, action: 'assign_staff_role', email, staff_role: staffRole }
+  }
+
+  if (approval.action_type === 'revoke_staff_role') {
+    const staffUserId = payload.staff_user_id as string | undefined
+    if (!staffUserId) {
+      return { error: 'Missing staff_user_id in request payload' }
+    }
+
+    const { error: updateErr } = await supabase
+      .from('users')
+      .update({ staff_role: null, staff_scope: null, admin_permissions: {} })
+      .eq('id', staffUserId)
+
+    if (updateErr) {
+      return { error: `Failed to revoke staff: ${updateErr.message}` }
+    }
+
+    await writeAuditLog(supabase, {
+      adminUserId: approverUserId,
+      action: 'delete',
+      resourceType: 'user',
+      resourceId: staffUserId,
+      oldValues: { staff_role: payload.staff_role, email: payload.email },
+      newValues: { staff_role: null, staff_scope: null },
+      description: `Auto-executed: Revoked staff access from ${payload.email ?? staffUserId}`,
+      ipAddress,
+      userAgent,
+    })
+
+    return { executed: true, action: 'revoke_staff_role', staff_user_id: staffUserId }
+  }
+
+  if (approval.action_type === 'change_staff_scope') {
+    const staffUserId = payload.staff_user_id as string | undefined
+    const newScope = payload.new_scope as string | undefined
+    if (!staffUserId || !newScope) {
+      return { error: 'Missing staff_user_id or new_scope in request payload' }
+    }
+
+    const { error: updateErr } = await supabase
+      .from('users')
+      .update({ staff_scope: newScope })
+      .eq('id', staffUserId)
+
+    if (updateErr) {
+      return { error: `Failed to update scope: ${updateErr.message}` }
+    }
+
+    await writeAuditLog(supabase, {
+      adminUserId: approverUserId,
+      action: 'update',
+      resourceType: 'user',
+      resourceId: staffUserId,
+      oldValues: { email: payload.email },
+      newValues: { staff_scope: newScope },
+      description: `Auto-executed: Changed scope for ${payload.email ?? staffUserId} to ${newScope}`,
+      ipAddress,
+      userAgent,
+    })
+
+    return { executed: true, action: 'change_staff_scope', staff_user_id: staffUserId, new_scope: newScope }
+  }
+
+  return { skipped: true, reason: `No auto-execution handler for action_type: ${approval.action_type}` }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders })
@@ -280,7 +406,18 @@ Deno.serve(async (req: Request) => {
         userAgent,
       })
 
-      return json({ approval_request: enriched[0] })
+      // Auto-execute the approved action
+      let executionResult: Record<string, unknown> | null = null
+      if (nextStatus === 'approved') {
+        try {
+          executionResult = await executeApprovedAction(supabase, approval, actor.id, ipAddress, userAgent)
+        } catch (execErr) {
+          console.error('admin-approval-manage auto-execute error:', execErr)
+          executionResult = { execution_error: execErr instanceof Error ? execErr.message : String(execErr) }
+        }
+      }
+
+      return json({ approval_request: enriched[0], execution: executionResult })
     }
 
     return json({ error: 'Unsupported action' }, 400)

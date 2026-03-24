@@ -396,6 +396,13 @@ class AdminService extends ChangeNotifier {
         if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
       });
 
+      // Dual-approval: request created but action not yet executed
+      if (data['requires_approval'] == true) {
+        throw AdminException(
+          data['message'] as String? ?? 'Approval request submitted. A second super admin must approve.',
+        );
+      }
+
       final staff = AdminStaff.fromJson(data['staff'] as Map<String, dynamic>);
       return staff;
     } catch (e) {

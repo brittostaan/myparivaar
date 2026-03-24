@@ -153,6 +153,40 @@ Deno.serve(async (req: Request) => {
     const ipAddress = pickClientIp(req)
     const userAgent = req.headers.get('user-agent')
 
+    if (action === 'create') {
+      requireAdminPermissions(context, [ADMIN_PERMISSIONS.manageHouseholds])
+
+      const name = typeof body.name === 'string' ? body.name.trim() : ''
+      if (!name || name.length > 50) {
+        return json({ error: 'name is required (1-50 characters)' }, 400)
+      }
+
+      const { data: household, error: insertError } = await supabase
+        .from('households')
+        .insert({ name })
+        .select('id, name, plan, suspended, created_at, updated_at')
+        .single()
+
+      if (insertError) {
+        console.error('admin-households create error:', insertError)
+        return json({ error: 'Failed to create household' }, 500)
+      }
+
+      await writeAuditLog(supabase, {
+        adminUserId: actor.id,
+        action: 'create',
+        resourceType: 'household',
+        resourceId: household.id,
+        oldValues: null,
+        newValues: { name },
+        description: `Created household "${name}"`,
+        ipAddress,
+        userAgent,
+      })
+
+      return json({ household }, 201)
+    }
+
     if (action === 'list') {
       requireAdminPermissions(context, [ADMIN_PERMISSIONS.viewHouseholds])
 

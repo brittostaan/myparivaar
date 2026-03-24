@@ -18,6 +18,7 @@ class AdminHouseholdDetailTabs extends StatefulWidget {
     required this.onSaveNotes,
     required this.onChangePlan,
     required this.onToggleFeatureOverride,
+    this.onUserTap,
   });
 
   final AdminHouseholdDetail household;
@@ -30,6 +31,7 @@ class AdminHouseholdDetailTabs extends StatefulWidget {
   final void Function(String householdId, String planName) onChangePlan;
   final void Function(String householdId, String flagId, bool isEnabled)
       onToggleFeatureOverride;
+  final void Function(AdminUser user)? onUserTap;
 
   @override
   State<AdminHouseholdDetailTabs> createState() =>
@@ -456,6 +458,7 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
       itemBuilder: (_, i) {
         final user = _users![i];
         return ListTile(
+          onTap: widget.onUserTap != null ? () => widget.onUserTap!(user) : null,
           leading: CircleAvatar(
             backgroundColor: user.isActive
                 ? const Color(0xFFDCFCE7)
@@ -479,11 +482,19 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
               ),
             ],
           ),
-          trailing: _StatusChip(
-            label: user.isActive ? 'Active' : 'Disabled',
-            color: user.isActive
-                ? const Color(0xFF047857)
-                : const Color(0xFFB91C1C),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _StatusChip(
+                label: user.isActive ? 'Active' : 'Disabled',
+                color: user.isActive
+                    ? const Color(0xFF047857)
+                    : const Color(0xFFB91C1C),
+              ),
+              if (widget.onUserTap != null) ...[                const SizedBox(width: 4),
+                const Icon(Icons.chevron_right, size: 20, color: AppColors.grey600),
+              ],
+            ],
           ),
           isThreeLine: true,
         );

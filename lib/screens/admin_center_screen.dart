@@ -876,6 +876,13 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                 },
               ),
               const SizedBox(width: 12),
+              if (canManageHouseholds)
+                FilledButton.icon(
+                  onPressed: _householdsLoading ? null : _showCreateHouseholdDialog,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Household'),
+                ),
+              const SizedBox(width: 8),
               FilledButton.icon(
                 onPressed: _householdsLoading ? null : _loadHouseholds,
                 icon: const Icon(Icons.refresh),
@@ -992,8 +999,83 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
         onSaveNotes: _saveHouseholdNotes,
         onChangePlan: _changeHouseholdPlan,
         onToggleFeatureOverride: _toggleHouseholdFeatureOverride,
+        onUserTap: canManageHouseholds ? _showUserManageDialog : null,
       ),
     );
+  }
+
+  Future<void> _showCreateHouseholdDialog() async {
+    final nameCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Create Household'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Household Name',
+                  hintText: 'e.g. Sharma Family',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Name is required';
+                  if (v.trim().length > 50) return 'Max 50 characters';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Creates a new household with no members. You can add users to it afterwards.',
+                style: TextStyle(fontSize: 12, color: AppColors.grey600),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() == true) {
+                Navigator.of(ctx).pop(true);
+              }
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final name = nameCtrl.text.trim();
+    nameCtrl.dispose();
+
+    try {
+      await _adminService.createHousehold(name: name);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Household "$name" created successfully.'),
+          backgroundColor: const Color(0xFF047857),
+        ),
+      );
+      await _loadHouseholds();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed: $e')),
+      );
+    }
   }
 
   Future<void> _changeHouseholdPlan(String householdId, String planName) async {

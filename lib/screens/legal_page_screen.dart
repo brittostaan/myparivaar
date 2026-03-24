@@ -32,77 +32,166 @@ class LegalPageScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final width = MediaQuery.of(context).size.width;
+    final isMobile = width < 800;
+
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0F1923) : const Color(0xFFF8FAFC),
       body: SelectionArea(
         child: SingleChildScrollView(
-          child: Center(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 800),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header
-                  Row(
+          child: Column(
+            children: [
+              _buildNavBar(context, isMobile),
+              Center(
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      IconButton(
-                        onPressed: () {
-                          if (Navigator.canPop(context)) {
-                            Navigator.pop(context);
-                          } else {
-                            Navigator.pushReplacementNamed(context, '/login');
-                          }
-                        },
-                        icon: const Icon(Icons.arrow_back_rounded),
-                        tooltip: 'Back',
-                      ),
-                      const SizedBox(width: 8),
+                      // Title
                       Text(
-                        'myParivaar',
+                        title,
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 32,
                           fontWeight: FontWeight.bold,
                           color: isDark ? Colors.white : const Color(0xFF1A2332),
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Last updated: $lastUpdated',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Sections
+                      ...sections.map((section) => _buildSection(section, isDark)),
+
+                      const SizedBox(height: 48),
+                      const Divider(),
+                      const SizedBox(height: 16),
+                      Text(
+                        '© 2026 myParivaar. All rights reserved.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 32),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-                  // Title
-                  Text(
-                    title,
+  // ── Navigation Bar ──────────────────────────────────────────────────────
+
+  Widget _buildNavBar(BuildContext context, bool isMobile) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 20 : 60,
+        vertical: 16,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Logo – clickable → home
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () => Navigator.pushNamed(context, '/'),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2563EB),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.account_balance_wallet_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'myParivaar',
                     style: TextStyle(
-                      fontSize: 32,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : const Color(0xFF1A2332),
+                      color: Color(0xFF1A2332),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Last updated: $lastUpdated',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[500],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Sections
-                  ...sections.map((section) => _buildSection(section, isDark)),
-
-                  const SizedBox(height: 48),
-                  const Divider(),
-                  const SizedBox(height: 16),
-                  Text(
-                    '© 2026 myParivaar. All rights reserved.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
                 ],
               ),
             ),
           ),
+          const Spacer(),
+          if (!isMobile) ...[
+            _navLink(context, 'Features', '/'),
+            const SizedBox(width: 28),
+            _navLink(context, 'How it Works', '/'),
+            const SizedBox(width: 28),
+            _navLink(context, 'Privacy', '/privacy'),
+            const SizedBox(width: 28),
+          ],
+          OutlinedButton(
+            onPressed: () => Navigator.pushNamed(context, '/login'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF2563EB),
+              side: const BorderSide(color: Color(0xFF2563EB)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Sign In'),
+          ),
+          const SizedBox(width: 10),
+          FilledButton(
+            onPressed: () => Navigator.pushNamed(context, '/login'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Get Started'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _navLink(BuildContext context, String label, String route) {
+    return InkWell(
+      onTap: () => Navigator.pushNamed(context, route),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 14,
+          color: Colors.grey[700],
+          fontWeight: FontWeight.w500,
         ),
       ),
     );

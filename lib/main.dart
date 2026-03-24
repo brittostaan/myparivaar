@@ -30,6 +30,7 @@ import 'screens/profile_screen.dart';
 import 'screens/legal_page_screen.dart';
 import 'screens/landing_page_screen.dart';
 import 'screens/idea_board_screen.dart';
+import 'screens/subscription_screen.dart';
 import 'services/admin_service.dart';
 import 'services/auth_service.dart';
 import 'services/family_service.dart';
@@ -79,6 +80,7 @@ const Set<String> _authenticatedRoutes = {
   '/family',
   '/csv-import',
   '/ideaboard',
+  '/subscription',
 };
 
 const Set<String> _publicRoutes = {
@@ -487,6 +489,15 @@ class MyParivaaarApp extends StatelessWidget {
           builder: (_) => NavigationShell(
             currentRoute: routeName,
             child: const UserSettingsScreen(),
+          ),
+        );
+
+      case '/subscription':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: SubscriptionScreen(supabaseUrl: _kSupabaseUrl),
           ),
         );
 

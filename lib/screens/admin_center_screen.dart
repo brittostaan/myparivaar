@@ -89,6 +89,12 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
   Map<String, dynamic>? _inboxInsightsData;
   List<Map<String, dynamic>> _oauthProviders = [];
 
+  // Payment Gateways tab state
+  List<Map<String, dynamic>> _paymentGatewaysList = [];
+  bool _paymentGatewaysLoading = false;
+  bool _paymentGatewaysLoaded = false;
+  String? _paymentGatewaysError;
+
   @override
   void initState() {
     super.initState();
@@ -151,6 +157,10 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
 
     if (index == 11 && !_emailIntegrationLoaded && !_emailIntegrationLoading) {
       await _loadEmailIntegrationAccounts();
+    }
+
+    if (index == 12 && !_paymentGatewaysLoaded && !_paymentGatewaysLoading) {
+      await _loadPaymentGateways();
     }
   }
 
@@ -812,6 +822,8 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
         return _buildAITab();
       case 11:
         return _buildEmailIntegrationTab();
+      case 12:
+        return _buildPaymentGatewaysTab();
       default:
         return _buildPlaceholder('Unknown', 'Unknown section');
     }
@@ -4830,6 +4842,545 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
       default:
         return AppColors.grey600;
     }
+  }
+
+  // ── Payment Gateways Tab ────────────────────────────────────────────────
+
+  Future<void> _loadPaymentGateways() async {
+    setState(() {
+      _paymentGatewaysLoading = true;
+      _paymentGatewaysError = null;
+    });
+    try {
+      final gateways = await _adminService.fetchPaymentGateways();
+      if (mounted) {
+        setState(() {
+          _paymentGatewaysList = gateways;
+          _paymentGatewaysLoaded = true;
+          _paymentGatewaysLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _paymentGatewaysError = e.toString();
+          _paymentGatewaysLoading = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildPaymentGatewaysTab() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Payment Gateways',
+                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Configure payment gateway credentials for subscription billing.',
+                      style: TextStyle(fontSize: 14, color: AppColors.grey600),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: _paymentGatewaysLoading ? null : _loadPaymentGateways,
+                tooltip: 'Refresh',
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          if (_paymentGatewaysLoading && _paymentGatewaysList.isEmpty)
+            const Center(child: Padding(
+              padding: EdgeInsets.all(48),
+              child: CircularProgressIndicator(),
+            ))
+          else if (_paymentGatewaysError != null && _paymentGatewaysList.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(48),
+                child: Column(
+                  children: [
+                    Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+                    const SizedBox(height: 12),
+                    Text(_paymentGatewaysError!, style: const TextStyle(color: AppColors.grey600)),
+                    const SizedBox(height: 12),
+                    OutlinedButton(onPressed: _loadPaymentGateways, child: const Text('Retry')),
+                  ],
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: SingleChildScrollView(
+                child: _buildGatewayCards(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGatewayCards() {
+    const gateways = [
+      {'key': 'stripe', 'name': 'Stripe', 'icon': Icons.credit_card_rounded, 'color': Color(0xFF635BFF)},
+      {'key': 'razorpay', 'name': 'Razorpay', 'icon': Icons.account_balance_rounded, 'color': Color(0xFF0066FF)},
+      {'key': 'phonepe', 'name': 'PhonePe', 'icon': Icons.phone_android_rounded, 'color': Color(0xFF5F259F)},
+    ];
+
+    return Wrap(
+      spacing: 16,
+      runSpacing: 16,
+      children: gateways.map((gw) {
+        final key = gw['key'] as String;
+        final name = gw['name'] as String;
+        final icon = gw['icon'] as IconData;
+        final color = gw['color'] as Color;
+
+        final config = _paymentGatewaysList.cast<Map<String, dynamic>?>().firstWhere(
+          (c) => c?['gateway'] == key,
+          orElse: () => null,
+        );
+
+        final isConfigured = config != null;
+        final isActive = config?['is_active'] == true;
+        final isTestMode = config?['is_test_mode'] == true;
+
+        return SizedBox(
+          width: 360,
+          child: Card(
+            elevation: 1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: isActive ? color.withOpacity(0.3) : Colors.grey[300]!,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(icon, color: color, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: isConfigured
+                                        ? (isActive ? Colors.green[50] : Colors.orange[50])
+                                        : Colors.grey[100],
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    isConfigured
+                                        ? (isActive ? 'Active' : 'Inactive')
+                                        : 'Not Configured',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: isConfigured
+                                          ? (isActive ? Colors.green[700] : Colors.orange[700])
+                                          : Colors.grey[600],
+                                    ),
+                                  ),
+                                ),
+                                if (isConfigured && isTestMode) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber[50],
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'Test Mode',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.amber[800],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (isConfigured)
+                        Switch(
+                          value: isActive,
+                          onChanged: (val) async {
+                            try {
+                              await _adminService.togglePaymentGateway(key, val);
+                              await _loadPaymentGateways();
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red),
+                                );
+                              }
+                            }
+                          },
+                          activeColor: color,
+                        ),
+                    ],
+                  ),
+                  if (isConfigured) ...[
+                    const SizedBox(height: 16),
+                    const Divider(height: 1),
+                    const SizedBox(height: 12),
+                    _gwDetailRow('API Key', config['api_key_masked'] ?? '••••••••'),
+                    _gwDetailRow('Secret', '••••••••'),
+                    if (config['updated_at'] != null)
+                      _gwDetailRow('Updated', _formatDate(config['updated_at'])),
+                  ],
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showGatewayConfigDialog(key, name, color, config),
+                          icon: Icon(isConfigured ? Icons.edit : Icons.add, size: 16),
+                          label: Text(isConfigured ? 'Edit' : 'Configure'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: color,
+                            side: BorderSide(color: color.withOpacity(0.5)),
+                          ),
+                        ),
+                      ),
+                      if (isConfigured) ...[
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            try {
+                              final result = await _adminService.testPaymentGateway(key);
+                              if (mounted) {
+                                final status = result['status'] ?? 'unknown';
+                                final msg = result['message'] ?? '';
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('$name: $status — $msg'),
+                                    backgroundColor: status == 'valid' ? Colors.green : Colors.orange,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Test failed: $e'), backgroundColor: Colors.red),
+                                );
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.play_arrow, size: 16),
+                          label: const Text('Test'),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: Icon(Icons.delete_outline, color: Colors.red[400], size: 20),
+                          tooltip: 'Remove',
+                          onPressed: () => _confirmDeleteGateway(key, name),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _gwDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(label, style: const TextStyle(fontSize: 12, color: AppColors.grey600)),
+          ),
+          Expanded(
+            child: Text(value, style: const TextStyle(fontSize: 13, fontFamily: 'monospace')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(String iso) {
+    try {
+      final d = DateTime.parse(iso);
+      return '${d.day}/${d.month}/${d.year}';
+    } catch (_) {
+      return iso;
+    }
+  }
+
+  void _showGatewayConfigDialog(
+    String gateway,
+    String displayName,
+    Color color,
+    Map<String, dynamic>? existing,
+  ) {
+    final apiKeyCtrl = TextEditingController();
+    final apiSecretCtrl = TextEditingController();
+    final webhookSecretCtrl = TextEditingController();
+    bool isTestMode = existing?['is_test_mode'] ?? true;
+    bool isActive = existing?['is_active'] ?? true;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.payment, color: color),
+              const SizedBox(width: 8),
+              Text('Configure $displayName'),
+            ],
+          ),
+          content: SizedBox(
+            width: 480,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (existing != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, size: 16, color: Colors.blue[700]),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Current key: ${existing['api_key_masked'] ?? '••••'}\nLeave fields empty to keep existing values.',
+                                style: TextStyle(fontSize: 12, color: Colors.blue[700]),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  TextField(
+                    controller: apiKeyCtrl,
+                    decoration: InputDecoration(
+                      labelText: gateway == 'phonepe' ? 'Merchant ID' : 'API Key',
+                      hintText: existing != null ? 'Leave empty to keep current' : 'Enter API key',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.key, size: 18),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: apiSecretCtrl,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: gateway == 'phonepe' ? 'Salt Key' : 'API Secret',
+                      hintText: existing != null ? 'Leave empty to keep current' : 'Enter API secret',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock_outline, size: 18),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: webhookSecretCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Webhook Secret (optional)',
+                      hintText: 'For verifying webhook signatures',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.webhook, size: 18),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SwitchListTile(
+                    title: const Text('Test Mode'),
+                    subtitle: const Text('Use sandbox/test credentials'),
+                    value: isTestMode,
+                    onChanged: (v) => setDialogState(() => isTestMode = v),
+                    activeColor: Colors.amber,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  SwitchListTile(
+                    title: const Text('Active'),
+                    subtitle: const Text('Enable this gateway for payments'),
+                    value: isActive,
+                    onChanged: (v) => setDialogState(() => isActive = v),
+                    activeColor: Colors.green,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              onPressed: () async {
+                final key = apiKeyCtrl.text.trim();
+                final secret = apiSecretCtrl.text.trim();
+
+                if (existing == null && (key.isEmpty || secret.isEmpty)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('API Key and Secret are required for new configuration'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                if (key.isEmpty && secret.isEmpty && existing != null) {
+                  // Only updating toggles
+                  try {
+                    await _adminService.togglePaymentGateway(gateway, isActive);
+                    await _loadPaymentGateways();
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red),
+                      );
+                    }
+                  }
+                  return;
+                }
+
+                // Need both key and secret for upsert
+                if (key.isEmpty || secret.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Both API Key and Secret are required when changing credentials'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                try {
+                  await _adminService.upsertPaymentGateway(
+                    gateway: gateway,
+                    apiKey: key,
+                    apiSecret: secret,
+                    webhookSecret: webhookSecretCtrl.text.trim().isNotEmpty
+                        ? webhookSecretCtrl.text.trim()
+                        : null,
+                    isActive: isActive,
+                    isTestMode: isTestMode,
+                  );
+                  await _loadPaymentGateways();
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('$displayName configuration saved'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to save: $e'), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              },
+              icon: const Icon(Icons.save, size: 18),
+              label: const Text('Save'),
+              style: FilledButton.styleFrom(backgroundColor: color),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteGateway(String gateway, String displayName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove Gateway'),
+        content: Text('Are you sure you want to remove $displayName configuration? '
+            'This will delete the API credentials permanently.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await _adminService.deletePaymentGateway(gateway);
+                await _loadPaymentGateways();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('$displayName configuration removed'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
   }
 }
 

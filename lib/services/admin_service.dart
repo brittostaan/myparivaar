@@ -1343,6 +1343,109 @@ class AdminService extends ChangeNotifier {
     }
   }
 
+  // ── Payment Gateway Configuration ─────────────────────────────────────────
+
+  List<Map<String, dynamic>> _paymentGateways = [];
+  List<Map<String, dynamic>> get paymentGateways => _paymentGateways;
+
+  Future<List<Map<String, dynamic>>> fetchPaymentGateways() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _post('admin-payment-gateway', {
+        'action': 'list_gateways',
+      });
+      _paymentGateways =
+          (data['gateways'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      notifyListeners();
+      return _paymentGateways;
+    } catch (e) {
+      _setError('Failed to fetch payment gateways: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<Map<String, dynamic>> upsertPaymentGateway({
+    required String gateway,
+    required String apiKey,
+    required String apiSecret,
+    String? webhookSecret,
+    bool isActive = true,
+    bool isTestMode = true,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _post('admin-payment-gateway', {
+        'action': 'upsert_gateway',
+        'gateway': gateway,
+        'api_key': apiKey,
+        'api_secret': apiSecret,
+        if (webhookSecret != null) 'webhook_secret': webhookSecret,
+        'is_active': isActive,
+        'is_test_mode': isTestMode,
+      });
+      await fetchPaymentGateways();
+      return data;
+    } catch (e) {
+      _setError('Failed to save payment gateway: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> deletePaymentGateway(String gateway) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _post('admin-payment-gateway', {
+        'action': 'delete_gateway',
+        'gateway': gateway,
+      });
+      await fetchPaymentGateways();
+    } catch (e) {
+      _setError('Failed to delete payment gateway: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<Map<String, dynamic>> togglePaymentGateway(String gateway, bool isActive) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _post('admin-payment-gateway', {
+        'action': 'toggle_gateway',
+        'gateway': gateway,
+        'is_active': isActive,
+      });
+      await fetchPaymentGateways();
+      return data;
+    } catch (e) {
+      _setError('Failed to toggle payment gateway: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<Map<String, dynamic>> testPaymentGateway(String gateway) async {
+    try {
+      final data = await _post('admin-payment-gateway', {
+        'action': 'test_gateway',
+        'gateway': gateway,
+      });
+      return data;
+    } catch (e) {
+      _setError('Failed to test payment gateway: $e');
+      rethrow;
+    }
+  }
+
   // ── Phase 7b: Email Integration Screening ─────────────────────────────────
 
   List<AdminEmailIntegrationAccount> _adminEmailIntegrationAccounts = [];

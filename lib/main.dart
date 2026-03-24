@@ -27,6 +27,7 @@ import 'screens/financial_simulator_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/legal_page_screen.dart';
+import 'screens/landing_page_screen.dart';
 import 'services/admin_service.dart';
 import 'services/auth_service.dart';
 import 'services/family_service.dart';
@@ -78,6 +79,7 @@ const Set<String> _authenticatedRoutes = {
 };
 
 const Set<String> _publicRoutes = {
+  '/',
   '/privacy',
   '/terms',
   '/login',
@@ -99,6 +101,8 @@ String _routeFromEndpoint() {
   if (_authenticatedRoutes.contains(candidate) || _publicRoutes.contains(candidate)) {
     return candidate;
   }
+  // Root URL with no hash fragment → landing page
+  if (candidate == '/' || candidate.isEmpty) return '/';
   return '/home';
 }
 
@@ -551,6 +555,12 @@ class MyParivaaarApp extends StatelessWidget {
             );
           },
           transitionDuration: const Duration(milliseconds: 300),
+        );
+
+      case '/':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => const LandingPageScreen(),
         );
 
       case '/privacy':

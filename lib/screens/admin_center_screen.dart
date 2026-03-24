@@ -1006,62 +1006,135 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
 
   Future<void> _showCreateHouseholdDialog() async {
     final nameCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    final displayNameCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    bool obscurePassword = true;
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Create Household'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Household Name',
-                  hintText: 'e.g. Sharma Family',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Name is required';
-                  if (v.trim().length > 50) return 'Max 50 characters';
-                  return null;
-                },
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Create Household'),
+          content: Form(
+            key: formKey,
+            child: SizedBox(
+              width: 400,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Household Name *',
+                      hintText: 'e.g. Sharma Family',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Name is required';
+                      if (v.trim().length > 50) return 'Max 50 characters';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Household Admin Account',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: displayNameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Display Name',
+                      hintText: 'e.g. Rahul Sharma',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: emailCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Admin Email *',
+                      hintText: 'admin@example.com',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Email is required';
+                      final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+                      if (!emailRegex.hasMatch(v.trim())) return 'Enter a valid email';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: passwordCtrl,
+                    obscureText: obscurePassword,
+                    decoration: InputDecoration(
+                      labelText: 'Password *',
+                      hintText: 'Min 6 characters',
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: Icon(obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility),
+                        onPressed: () => setDialogState(
+                            () => obscurePassword = !obscurePassword),
+                      ),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Password is required';
+                      if (v.length < 6) return 'Min 6 characters';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Creates a new household with an admin user who can log in with the email and password above.',
+                    style: TextStyle(fontSize: 12, color: AppColors.grey600),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Creates a new household with no members. You can add users to it afterwards.',
-                style: TextStyle(fontSize: 12, color: AppColors.grey600),
-              ),
-            ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() == true) {
+                  Navigator.of(ctx).pop(true);
+                }
+              },
+              child: const Text('Create'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (formKey.currentState?.validate() == true) {
-                Navigator.of(ctx).pop(true);
-              }
-            },
-            child: const Text('Create'),
-          ),
-        ],
       ),
     );
 
     if (confirmed != true) return;
 
     final name = nameCtrl.text.trim();
+    final email = emailCtrl.text.trim();
+    final password = passwordCtrl.text;
+    final displayName = displayNameCtrl.text.trim();
     nameCtrl.dispose();
+    emailCtrl.dispose();
+    passwordCtrl.dispose();
+    displayNameCtrl.dispose();
 
     try {
-      await _adminService.createHousehold(name: name);
+      await _adminService.createHousehold(
+        name: name,
+        email: email,
+        password: password,
+        displayName: displayName.isNotEmpty ? displayName : null,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

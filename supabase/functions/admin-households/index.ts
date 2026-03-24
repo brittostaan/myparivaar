@@ -161,15 +161,66 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'name is required (1-50 characters)' }, 400)
       }
 
+      const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return json({ error: 'A valid email is required for the household admin' }, 400)
+      }
+
+      const password = typeof body.password === 'string' ? body.password : ''
+      if (password.length < 6) {
+        return json({ error: 'Password must be at least 6 characters' }, 400)
+      }
+
+      const displayName = typeof body.display_name === 'string' ? body.display_name.trim() : ''
+
+      // 1. Create Supabase auth user
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+      })
+
+      if (authError) {
+        console.error('admin-households create auth user error:', authError)
+        const msg = authError.message?.includes('already been registered')
+          ? 'A user with this email already exists'
+          : 'Failed to create auth user'
+        return json({ error: msg }, 400)
+      }
+
+      const authUserId = authData.user.id
+
+      // 2. Create household
       const { data: household, error: insertError } = await supabase
         .from('households')
-        .insert({ name })
+        .insert({ name, admin_firebase_uid: authUserId })
         .select('id, name, plan, suspended, created_at, updated_at')
         .single()
 
       if (insertError) {
-        console.error('admin-households create error:', insertError)
+        console.error('admin-households create household error:', insertError)
+        // Rollback: delete auth user
+        await supabase.auth.admin.deleteUser(authUserId)
         return json({ error: 'Failed to create household' }, 500)
+      }
+
+      // 3. Create user record linked to the household
+      const { error: userError } = await supabase
+        .from('users')
+        .insert({
+          firebase_uid: authUserId,
+          email,
+          household_id: household.id,
+          role: 'admin',
+          ...(displayName ? { display_name: displayName } : {}),
+        })
+
+      if (userError) {
+        console.error('admin-households create user record error:', userError)
+        // Rollback: delete household and auth user
+        await supabase.from('households').delete().eq('id', household.id)
+        await supabase.auth.admin.deleteUser(authUserId)
+        return json({ error: 'Failed to create user record' }, 500)
       }
 
       await writeAuditLog(supabase, {
@@ -178,8 +229,8 @@ Deno.serve(async (req: Request) => {
         resourceType: 'household',
         resourceId: household.id,
         oldValues: null,
-        newValues: { name },
-        description: `Created household "${name}"`,
+        newValues: { name, admin_email: email },
+        description: `Created household "${name}" with admin ${email}`,
         ipAddress,
         userAgent,
       })

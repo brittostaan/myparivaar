@@ -505,7 +505,12 @@ class AdminService extends ChangeNotifier {
   }
 
   /// Create a new household from admin center.
-  Future<void> createHousehold({required String name}) async {
+  Future<void> createHousehold({
+    required String name,
+    required String email,
+    required String password,
+    String? displayName,
+  }) async {
     _setLoading(true);
     _setError(null);
 
@@ -513,6 +518,10 @@ class AdminService extends ChangeNotifier {
       await _post('admin-households', {
         'action': 'create',
         'name': name.trim(),
+        'email': email.trim(),
+        'password': password,
+        if (displayName != null && displayName.trim().isNotEmpty)
+          'display_name': displayName.trim(),
       });
     } catch (e) {
       _setError('Failed to create household: $e');

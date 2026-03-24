@@ -181,7 +181,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final status = _subscription!['status'] ?? 'unknown';
     final gateway = _subscription!['gateway'] ?? '';
     final periodEnd = _subscription!['current_period_end'];
-    final planName = _currentPlan?['name'] ?? 'Unknown Plan';
+    final planName = _currentPlan?['display_name'] ?? _currentPlan?['name'] ?? 'Unknown Plan';
     final priceMonthly = _currentPlan?['price_monthly'];
 
     Color statusColor;
@@ -329,10 +329,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Widget _buildPlanCard(Map<String, dynamic> plan, bool isCurrentPlan) {
-    final name = plan['name'] ?? '';
+    final displayName = plan['display_name'] ?? plan['name'] ?? '';
     final priceMonthly = plan['price_monthly'] ?? 0;
-    final features = plan['features'] as List? ?? [];
-    final maxMembers = plan['max_members'];
+    final maxMembers = plan['max_family_members'];
+    final description = plan['description'] as String?;
+
+    // Build feature list from boolean flags
+    final features = <String>[];
+    if (maxMembers != null) features.add('Up to $maxMembers family members');
+    if (plan['ai_chat_queries'] != null) features.add('${plan['ai_chat_queries']} AI queries/month');
+    if (plan['ai_weekly_summaries'] != null) features.add('${plan['ai_weekly_summaries']} weekly summaries');
+    if (plan['csv_import_enabled'] == true) features.add('CSV import');
+    if (plan['email_ingestion_enabled'] == true) features.add('Email transaction scanning');
+    if (plan['voice_features_enabled'] == true) features.add('Voice expense entry');
 
     return Card(
       elevation: isCurrentPlan ? 2 : 0,
@@ -362,9 +371,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 ),
               ),
             Text(
-              name,
+              displayName,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
+            if (description != null && description.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(description, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            ],
             const SizedBox(height: 8),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -380,10 +393,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 ),
               ],
             ),
-            if (maxMembers != null) ...[
-              const SizedBox(height: 8),
-              Text('Up to $maxMembers family members', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-            ],
+
             const SizedBox(height: 12),
             const Divider(),
             const SizedBox(height: 8),
@@ -534,7 +544,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Subscribing to ${plan['name']} — ₹${plan['price_monthly']}/month',
+                  'Subscribing to ${plan['display_name'] ?? plan['name']} — ₹${plan['price_monthly']}/month',
                   style: const TextStyle(fontSize: 14),
                 ),
                 const SizedBox(height: 20),

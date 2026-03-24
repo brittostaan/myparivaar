@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
     if (action === 'get_plans') {
       const { data: plans, error } = await supabase
         .from('plans')
-        .select('id, name, price_monthly, price_yearly, features, is_active, max_members, max_accounts, ai_queries_per_month')
+        .select('id, name, display_name, description, price_monthly, price_yearly, currency, max_family_members, ai_weekly_summaries, ai_chat_queries, csv_import_enabled, email_ingestion_enabled, voice_features_enabled, is_active')
         .eq('is_active', true)
         .order('price_monthly')
 
@@ -132,7 +132,7 @@ Deno.serve(async (req: Request) => {
       if (sub?.plan_id) {
         const { data: planData } = await supabase
           .from('plans')
-          .select('id, name, price_monthly, price_yearly, features, max_members, max_accounts, ai_queries_per_month')
+          .select('id, name, display_name, description, price_monthly, price_yearly, currency, max_family_members, ai_chat_queries')
           .eq('id', sub.plan_id)
           .maybeSingle()
         plan = planData
@@ -158,7 +158,7 @@ Deno.serve(async (req: Request) => {
       // Verify plan exists
       const { data: plan } = await supabase
         .from('plans')
-        .select('id, name, price_monthly')
+        .select('id, name, display_name, price_monthly')
         .eq('id', planId)
         .eq('is_active', true)
         .maybeSingle()
@@ -221,7 +221,7 @@ Deno.serve(async (req: Request) => {
           amount_cents: plan.price_monthly * 100,
           currency: 'INR',
           status: 'succeeded',
-          description: `Subscription to ${plan.name}`,
+          description: `Subscription to ${plan.display_name || plan.name}`,
         })
 
       if (payErr) console.error('payment_history insert error:', payErr)

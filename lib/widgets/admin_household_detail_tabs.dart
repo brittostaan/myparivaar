@@ -55,6 +55,10 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
   String? _aiSettingsError;
   bool _aiSettingsSaving = false;
 
+  List<Map<String, dynamic>>? _loginHistory;
+  bool _loginHistoryLoading = false;
+  String? _loginHistoryError;
+
   bool _usersLoading = false;
   bool _subscriptionsLoading = false;
   bool _featuresLoading = false;
@@ -97,11 +101,13 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
       _plans = null;
       _aiSettings = null;
       _aiUsage = null;
+      _loginHistory = null;
       _usersError = null;
       _subscriptionsError = null;
       _featuresError = null;
       _auditError = null;
       _aiSettingsError = null;
+      _loginHistoryError = null;
       _lastLoadedHouseholdId = null;
       if (_tabController.index != 0) {
         _tabController.animateTo(0);
@@ -137,7 +143,8 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
       case 3: // Features
         if (_featureFlags == null && !_featuresLoading) _loadFeatures(hid);
         break;
-      case 4: // Analytics — uses overview data from household detail
+      case 4: // Analytics — load login history
+        if (_loginHistory == null && !_loginHistoryLoading) _loadLoginHistory(hid);
         break;
       case 5: // Audit Logs
         if (_auditLogs == null && !_auditLoading) _loadAuditLogs(hid);
@@ -264,6 +271,21 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
       if (mounted) setState(() => _auditError = '$e');
     } finally {
       if (mounted) setState(() => _auditLoading = false);
+    }
+  }
+
+  Future<void> _loadLoginHistory(String hid) async {
+    setState(() {
+      _loginHistoryLoading = true;
+      _loginHistoryError = null;
+    });
+    try {
+      final history = await widget.adminService.fetchLoginHistory(hid);
+      if (mounted) setState(() => _loginHistory = history);
+    } catch (e) {
+      if (mounted) setState(() => _loginHistoryError = '$e');
+    } finally {
+      if (mounted) setState(() => _loginHistoryLoading = false);
     }
   }
 
@@ -761,9 +783,68 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
           else
             const Text('No subscription data available. Switch to Subscription tab to load.',
                 style: TextStyle(color: AppColors.grey600, fontSize: 13)),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              const Text('User Login History',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              const Spacer(),
+              if (_loginHistory != null)
+                IconButton(
+                  icon: const Icon(Icons.refresh, size: 18),
+                  tooltip: 'Refresh',
+                  onPressed: () => _loadLoginHistory(widget.household.id),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (_loginHistoryLoading)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else if (_loginHistoryError != null)
+            Text(_loginHistoryError!,
+                style: const TextStyle(color: Color(0xFFB91C1C), fontSize: 13))
+          else if (_loginHistory != null && _loginHistory!.isNotEmpty)
+            ..._loginHistory!.map((entry) {
+              final userName = entry['user_display_name'] as String? ??
+                  entry['user_email'] as String? ??
+                  'Unknown';
+              final createdAt = DateTime.tryParse(
+                  entry['created_at'] as String? ?? '');
+              final ip = entry['ip_address'] as String?;
+              final ua = entry['user_agent'] as String? ?? '';
+              final browser = _parseBrowser(ua);
+              return ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.login, size: 20,
+                    color: Color(0xFF047857)),
+                title: Text(userName),
+                subtitle: Text(
+                  '${createdAt != null ? _formatDateTime(createdAt) : "Unknown time"}'
+                  '${ip != null ? " • $ip" : ""}'
+                  '${browser.isNotEmpty ? " • $browser" : ""}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              );
+            })
+          else if (_loginHistory != null)
+            const Text('No login history recorded yet.',
+                style: TextStyle(color: AppColors.grey600, fontSize: 13)),
         ],
       ),
     );
+  }
+
+  String _parseBrowser(String ua) {
+    if (ua.isEmpty) return '';
+    if (ua.contains('Edg/')) return 'Edge';
+    if (ua.contains('Chrome/') && !ua.contains('Edg/')) return 'Chrome';
+    if (ua.contains('Firefox/')) return 'Firefox';
+    if (ua.contains('Safari/') && !ua.contains('Chrome/')) return 'Safari';
+    return '';
   }
 
   Widget _buildStatGrid(List<_StatItem> items) {

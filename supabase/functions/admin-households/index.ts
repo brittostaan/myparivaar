@@ -319,6 +319,67 @@ Deno.serve(async (req: Request) => {
       })
     }
 
+    if (action === 'login_history') {
+      requireAdminPermissions(context, [ADMIN_PERMISSIONS.viewHouseholds])
+
+      const householdId = typeof body.household_id === 'string' ? body.household_id.trim() : ''
+      if (!householdId) {
+        return json({ error: 'household_id is required' }, 400)
+      }
+
+      if (!canAccessHousehold(scope, householdId)) {
+        return json({ error: 'Forbidden for this household scope' }, 403)
+      }
+
+      const limit = parseLimit(body.limit, 50)
+
+      // Get user IDs belonging to this household
+      const { data: householdUsers, error: usersErr } = await supabase
+        .from('users')
+        .select('id, display_name, email')
+        .eq('household_id', householdId)
+        .is('deleted_at', null)
+
+      if (usersErr) {
+        console.error('admin-households login_history users error:', usersErr)
+        return json({ error: 'Failed to fetch household users' }, 500)
+      }
+
+      const userIds = (householdUsers ?? []).map((u: { id: string }) => u.id)
+      if (userIds.length === 0) {
+        return json({ login_history: [] })
+      }
+
+      // Build a map of user_id → display info
+      const userMap = new Map<string, { display_name: string | null; email: string | null }>()
+      for (const u of householdUsers ?? []) {
+        userMap.set(u.id, { display_name: u.display_name, email: u.email })
+      }
+
+      const { data: logs, error: logsErr } = await supabase
+        .from('login_history')
+        .select('id, user_id, ip_address, user_agent, created_at')
+        .in('user_id', userIds)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+
+      if (logsErr) {
+        console.error('admin-households login_history error:', logsErr)
+        return json({ error: 'Failed to fetch login history' }, 500)
+      }
+
+      const enriched = (logs ?? []).map((log: { id: string; user_id: string; ip_address: string | null; user_agent: string | null; created_at: string }) => {
+        const user = userMap.get(log.user_id)
+        return {
+          ...log,
+          user_display_name: user?.display_name ?? null,
+          user_email: user?.email ?? null,
+        }
+      })
+
+      return json({ login_history: enriched })
+    }
+
     if (action === 'suspend' || action === 'reactivate') {
       requireAdminPermissions(context, [ADMIN_PERMISSIONS.manageHouseholds])
 

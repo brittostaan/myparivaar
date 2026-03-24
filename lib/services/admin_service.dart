@@ -531,6 +531,17 @@ class AdminService extends ChangeNotifier {
     }
   }
 
+  /// Fetch login history for a household's users.
+  Future<List<Map<String, dynamic>>> fetchLoginHistory(String householdId) async {
+    final data = await _post('admin-households', {
+      'action': 'login_history',
+      'household_id': householdId,
+      'limit': 50,
+    });
+    final list = data['login_history'] as List? ?? [];
+    return list.cast<Map<String, dynamic>>();
+  }
+
   Future<AdminHouseholdDetail> fetchHouseholdDetail(String householdId) async {
     _setLoading(true);
     _setError(null);

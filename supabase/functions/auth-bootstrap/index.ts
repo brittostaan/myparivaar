@@ -149,6 +149,21 @@ Deno.serve(async (req: Request) => {
         household = hh;
       }
 
+      // Record login history (best-effort, don't block response)
+      const forwarded = req.headers.get("x-forwarded-for");
+      const ipAddress = forwarded ? forwarded.split(",")[0]?.trim() : null;
+      const userAgent = req.headers.get("user-agent");
+      supabase
+        .from("login_history")
+        .insert({
+          user_id: existingUser.id,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+        })
+        .then(({ error: logErr }) => {
+          if (logErr) console.error("login_history insert error:", logErr);
+        });
+
       return json({ user: existingUser, household }, 200);
     }
 

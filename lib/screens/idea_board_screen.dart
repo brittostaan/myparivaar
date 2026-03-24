@@ -76,6 +76,15 @@ class _IdeaBoardScreenState extends State<IdeaBoardScreen> {
   String _tagFilter = 'all';
   String _viewMode = 'board'; // 'board' or 'list'
 
+  /// All known tags: predefined + any custom ones from existing ideas.
+  List<String> get _allTags {
+    final custom = _ideas
+        .map((i) => (i['feature_tag'] as String?) ?? 'general')
+        .where((t) => !_featureTags.contains(t))
+        .toSet();
+    return [..._featureTags, ...custom];
+  }
+
   @override
   void initState() {
     super.initState();
@@ -267,7 +276,7 @@ class _IdeaBoardScreenState extends State<IdeaBoardScreen> {
           // Tag filter
           _buildDropdown(
             value: _tagFilter,
-            items: ['all', ..._featureTags],
+            items: ['all', ..._allTags],
             labelBuilder: (v) => v == 'all' ? 'All Tags' : '#$v',
             onChanged: (v) => setState(() => _tagFilter = v),
           ),
@@ -618,6 +627,60 @@ class _IdeaBoardScreenState extends State<IdeaBoardScreen> {
     );
   }
 
+  // ── Tag Field (Autocomplete with free-text) ──────────────────────────
+
+  Widget _buildTagField(String currentTag, ValueChanged<String> onChanged) {
+    return Autocomplete<String>(
+      initialValue: TextEditingValue(text: currentTag),
+      optionsBuilder: (textEditingValue) {
+        final query = textEditingValue.text.toLowerCase().trim();
+        if (query.isEmpty) return _allTags;
+        return _allTags.where((t) => t.toLowerCase().contains(query));
+      },
+      fieldViewBuilder: (ctx, controller, focusNode, onSubmitted) {
+        return TextField(
+          controller: controller,
+          focusNode: focusNode,
+          decoration: const InputDecoration(
+            labelText: 'Feature Tag',
+            hintText: 'Select or type a custom tag',
+            border: OutlineInputBorder(),
+            isDense: true,
+            prefixText: '#',
+          ),
+          onChanged: (v) => onChanged(v.trim().isEmpty ? 'general' : v.trim()),
+          onSubmitted: (_) => onSubmitted(),
+        );
+      },
+      onSelected: (value) => onChanged(value),
+      optionsViewBuilder: (ctx, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200, maxWidth: 300),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (_, i) {
+                  final option = options.elementAt(i);
+                  return ListTile(
+                    dense: true,
+                    title: Text('#$option', style: const TextStyle(fontSize: 13)),
+                    onTap: () => onSelected(option),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   // ── Create Dialog ───────────────────────────────────────────────────────
 
   void _showCreateDialog() {
@@ -665,45 +728,28 @@ class _IdeaBoardScreenState extends State<IdeaBoardScreen> {
                     maxLines: 4,
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: tag,
-                          decoration: const InputDecoration(
-                            labelText: 'Feature Tag',
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          items: _featureTags.map((t) => DropdownMenuItem(value: t, child: Text('#$t'))).toList(),
-                          onChanged: (v) => setDlg(() => tag = v!),
+                  _buildTagField(tag, (v) => setDlg(() => tag = v)),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: priority,
+                    decoration: const InputDecoration(
+                      labelText: 'Priority',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: _priorityMeta.entries.map((e) {
+                      return DropdownMenuItem(
+                        value: e.key,
+                        child: Row(
+                          children: [
+                            Icon(e.value.icon, color: e.value.color, size: 16),
+                            const SizedBox(width: 6),
+                            Text(e.value.label),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: priority,
-                          decoration: const InputDecoration(
-                            labelText: 'Priority',
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          items: _priorityMeta.entries.map((e) {
-                            return DropdownMenuItem(
-                              value: e.key,
-                              child: Row(
-                                children: [
-                                  Icon(e.value.icon, color: e.value.color, size: 16),
-                                  const SizedBox(width: 6),
-                                  Text(e.value.label),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (v) => setDlg(() => priority = v!),
-                        ),
-                      ),
-                    ],
+                      );
+                    }).toList(),
+                    onChanged: (v) => setDlg(() => priority = v!),
                   ),
                 ],
               ),
@@ -1037,45 +1083,28 @@ class _IdeaBoardScreenState extends State<IdeaBoardScreen> {
                     maxLines: 4,
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: tag,
-                          decoration: const InputDecoration(
-                            labelText: 'Feature Tag',
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          items: _featureTags.map((t) => DropdownMenuItem(value: t, child: Text('#$t'))).toList(),
-                          onChanged: (v) => setDlg(() => tag = v!),
+                  _buildTagField(tag, (v) => setDlg(() => tag = v)),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: priority,
+                    decoration: const InputDecoration(
+                      labelText: 'Priority',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: _priorityMeta.entries.map((e) {
+                      return DropdownMenuItem(
+                        value: e.key,
+                        child: Row(
+                          children: [
+                            Icon(e.value.icon, color: e.value.color, size: 16),
+                            const SizedBox(width: 6),
+                            Text(e.value.label),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: priority,
-                          decoration: const InputDecoration(
-                            labelText: 'Priority',
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          items: _priorityMeta.entries.map((e) {
-                            return DropdownMenuItem(
-                              value: e.key,
-                              child: Row(
-                                children: [
-                                  Icon(e.value.icon, color: e.value.color, size: 16),
-                                  const SizedBox(width: 6),
-                                  Text(e.value.label),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (v) => setDlg(() => priority = v!),
-                        ),
-                      ),
-                    ],
+                      );
+                    }).toList(),
+                    onChanged: (v) => setDlg(() => priority = v!),
                   ),
                 ],
               ),

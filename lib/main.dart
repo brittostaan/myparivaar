@@ -28,6 +28,7 @@ import 'screens/dashboard_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/legal_page_screen.dart';
 import 'screens/landing_page_screen.dart';
+import 'screens/idea_board_screen.dart';
 import 'services/admin_service.dart';
 import 'services/auth_service.dart';
 import 'services/family_service.dart';
@@ -76,6 +77,7 @@ const Set<String> _authenticatedRoutes = {
   '/profile',
   '/family',
   '/csv-import',
+  '/ideaboard',
 };
 
 const Set<String> _publicRoutes = {
@@ -475,6 +477,12 @@ class MyParivaaarApp extends StatelessWidget {
         return MaterialPageRoute(
           settings: settings,
           builder: (_) => const AdminCenterScreen(),
+        );
+
+      case '/ideaboard':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => const IdeaBoardScreen(supabaseUrl: _kSupabaseUrl),
         );
 
       case '/more':

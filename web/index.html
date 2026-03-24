@@ -55,6 +55,23 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <!-- Crawlable links for Google verification — visible until Flutter loads -->
+  <div id="preload-links" style="text-align:center;padding:40px;font-family:sans-serif;color:#475569">
+    <p style="font-size:13px">
+      <a href="/privacy" style="color:#2563EB">Privacy Policy</a> &middot;
+      <a href="/terms" style="color:#2563EB">Terms of Service</a>
+    </p>
+  </div>
+
   <script src="flutter_bootstrap.js" async></script>
+
+  <!-- Fallback for JS-disabled crawlers -->
+  <noscript>
+    <div style="text-align:center;padding:40px;font-family:sans-serif">
+      <h1>myParivaar</h1>
+      <p>AI-powered family finance management for Indian households.</p>
+      <p><a href="/privacy">Privacy Policy</a> | <a href="/terms">Terms of Service</a></p>
+    </div>
+  </noscript>
 </body>
 </html>

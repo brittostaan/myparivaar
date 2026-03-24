@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -167,6 +168,7 @@ class ViewModeProvider extends ChangeNotifier {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  usePathUrlStrategy(); // Clean URLs: /privacy instead of /#/privacy
 
   // Validate config before initialising Supabase. On failure, show a
   // human-readable error screen instead of crashing before runApp().

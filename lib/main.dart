@@ -26,6 +26,7 @@ import 'screens/anomaly_detection_screen.dart';
 import 'screens/financial_simulator_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/legal_page_screen.dart';
 import 'services/admin_service.dart';
 import 'services/auth_service.dart';
 import 'services/family_service.dart';
@@ -544,6 +545,18 @@ class MyParivaaarApp extends StatelessWidget {
             );
           },
           transitionDuration: const Duration(milliseconds: 300),
+        );
+
+      case '/privacy':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => LegalPageScreen.privacy(),
+        );
+
+      case '/terms':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => LegalPageScreen.terms(),
         );
 
       default:

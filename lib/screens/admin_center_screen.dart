@@ -3555,6 +3555,45 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
 
   Widget _buildApprovalRow(AdminApprovalRequest req) {
     final statusColor = _approvalStatusColor(req.status);
+    final payload = req.requestPayload;
+    final targetEmail = payload['email'] as String?;
+    final targetRole = payload['staff_role'] as String?;
+    final targetScope = payload['initial_scope'] as String?;
+    final newScope = payload['new_scope'] as String?;
+
+    String _roleLabel(String role) {
+      switch (role) {
+        case 'super_admin': return 'Super Admin';
+        case 'admin': return 'Admin';
+        case 'support_staff': return 'Support Staff';
+        case 'customer_service': return 'Customer Service';
+        case 'reader': return 'Reader';
+        case 'billing_service': return 'Billing Service';
+        default: return role;
+      }
+    }
+
+    // Build a human-readable summary of what this request does
+    String summary;
+    switch (req.actionType) {
+      case 'assign_staff_role':
+        final role = targetRole != null ? _roleLabel(targetRole) : 'staff';
+        summary = 'Promote ${targetEmail ?? 'unknown user'} to $role';
+        if (targetScope != null && targetScope != 'global') {
+          summary += ' (scope: $targetScope)';
+        }
+        break;
+      case 'revoke_staff_role':
+        summary = 'Revoke staff access from ${targetEmail ?? 'unknown user'}';
+        break;
+      case 'change_staff_scope':
+        summary = 'Change scope for ${targetEmail ?? 'unknown user'}';
+        if (newScope != null) summary += ' to $newScope';
+        break;
+      default:
+        summary = _formatActionType(req.actionType);
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
       child: Row(
@@ -3578,7 +3617,19 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                   _formatActionType(req.actionType),
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    summary,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                ),
+                const SizedBox(height: 4),
                 Text(
                   'Requested by: ${req.requestedByEmail}',
                   style: const TextStyle(fontSize: 12, color: AppColors.grey600),
@@ -3647,13 +3698,27 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
     required bool approve,
   }) async {
     final action = approve ? 'Approve' : 'Reject';
+    final payload = req.requestPayload;
+    final targetEmail = payload['email'] as String?;
+    final targetRole = payload['staff_role'] as String?;
+
+    String detailText;
+    if (req.actionType == 'assign_staff_role' && targetEmail != null) {
+      final roleLabel = targetRole != null
+          ? targetRole.replaceAll('_', ' ').split(' ').map((w) => w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1)}').join(' ')
+          : 'staff';
+      detailText = '$action promoting $targetEmail to $roleLabel?\n\nSubmitted by ${req.requestedByEmail}.';
+    } else if (req.actionType == 'revoke_staff_role' && targetEmail != null) {
+      detailText = '$action revoking staff access from $targetEmail?\n\nSubmitted by ${req.requestedByEmail}.';
+    } else {
+      detailText = '$action "${_formatActionType(req.actionType)}" submitted by ${req.requestedByEmail}?';
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('$action Request'),
-        content: Text(
-          '$action "${_formatActionType(req.actionType)}" submitted by ${req.requestedByEmail}?',
-        ),
+        content: Text(detailText),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),

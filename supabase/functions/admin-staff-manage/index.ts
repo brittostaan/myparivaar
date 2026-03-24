@@ -125,6 +125,7 @@ Deno.serve(async (req: Request) => {
         approvalRequestId,
         requestPayload: {
           email,
+          staff_role: staffRole,
           initial_scope: initialScope,
           action,
         },
@@ -216,6 +217,8 @@ Deno.serve(async (req: Request) => {
         approvalRequestId,
         requestPayload: {
           staff_user_id: staffUserId,
+          email: existingUser.email,
+          staff_role: existingUser.staff_role,
           action,
         },
       })
@@ -297,6 +300,8 @@ Deno.serve(async (req: Request) => {
         approvalRequestId,
         requestPayload: {
           staff_user_id: staffUserId,
+          email: existingUser.email,
+          staff_role: existingUser.staff_role,
           new_scope: newScope,
           action,
         },

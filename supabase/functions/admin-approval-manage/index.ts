@@ -213,7 +213,23 @@ Deno.serve(async (req: Request) => {
       }
 
       if (approval.requested_by_user_id === actor.id) {
-        return json({ error: 'Requester cannot approve or reject their own request' }, 403)
+        // Allow self-approval only when there's no other super admin available
+        const { data: otherSuperAdmins, error: saError } = await supabase
+          .from('users')
+          .select('id')
+          .or('role.eq.super_admin,staff_role.eq.super_admin')
+          .neq('id', actor.id)
+          .is('deleted_at', null)
+          .limit(1)
+
+        if (saError) {
+          console.error('admin-approval-manage super admin count error:', saError)
+        }
+
+        if (otherSuperAdmins && otherSuperAdmins.length > 0) {
+          return json({ error: 'You cannot approve your own request. Another super admin must approve it.' }, 403)
+        }
+        // Only one super admin exists — allow self-approval
       }
 
       const nextStatus: ApprovalStatus = action === 'approve' ? 'approved' : 'rejected'

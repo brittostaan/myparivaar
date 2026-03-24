@@ -1610,7 +1610,8 @@ class AdminService extends ChangeNotifier {
 
     if (response.statusCode == 403) {
       debugPrint('❌ Forbidden: Admin access denied');
-      throw const AdminException('Admin access denied. Insufficient permissions.');
+      final serverMsg = (data['error'] ?? data['message']) as String?;
+      throw AdminException(serverMsg ?? 'Admin access denied. Insufficient permissions.');
     }
 
     final errorMsg = (data['error'] ?? data['message'] ?? data['msg'] ?? data['details']) as String?

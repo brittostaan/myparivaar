@@ -88,11 +88,17 @@ const Set<String> _publicRoutes = {
   '/login',
 };
 
-String _routeFromEndpoint() {
+/// Captured once at startup so that _AppRouter can determine the original
+/// URL even after Flutter's Navigator may have updated the browser address
+/// bar to the [initialRoute] value.
+late final String _capturedInitialPath;
+
+String _captureInitialPath() {
   final uri = Uri.base;
   final path = uri.path.isEmpty ? '/' : uri.path;
   String candidate = path;
 
+  // Legacy hash-based deep links (e.g. /#/privacy)
   if ((candidate == '/' || candidate.isEmpty) && uri.fragment.startsWith('/')) {
     candidate = '/${uri.fragment.substring(1).split('?').first}';
   }
@@ -101,12 +107,27 @@ String _routeFromEndpoint() {
     candidate = candidate.substring(0, candidate.length - 1);
   }
 
+  return candidate;
+}
+
+String _routeFromEndpoint() {
+  final candidate = _capturedInitialPath;
+
   if (_authenticatedRoutes.contains(candidate) || _publicRoutes.contains(candidate)) {
     return candidate;
   }
   // Root URL with no hash fragment → landing page
   if (candidate == '/' || candidate.isEmpty) return '/';
   return '/home';
+}
+
+/// Returns the initial route for MaterialApp.
+/// Public routes are served directly (no splash/auth guard).
+/// Everything else goes through [_AppRouter] for session restore.
+String _computeInitialRoute() {
+  final candidate = _capturedInitialPath;
+  if (_publicRoutes.contains(candidate)) return candidate;
+  return '/_init';
 }
 
 // ── View Mode (Responsive Design) ────────────────────────────────────────────
@@ -169,6 +190,7 @@ class ViewModeProvider extends ChangeNotifier {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   usePathUrlStrategy(); // Clean URLs: /privacy instead of /#/privacy
+  _capturedInitialPath = _captureInitialPath(); // snapshot before Navigator touches the URL
 
   // Validate config before initialising Supabase. On failure, show a
   // human-readable error screen instead of crashing before runApp().
@@ -256,7 +278,7 @@ class MyParivaaarApp extends StatelessWidget {
             );
           },
           home: null,
-          initialRoute: '/_init',
+          initialRoute: _computeInitialRoute(),
           onGenerateRoute: _onGenerateRoute,
         );
       },

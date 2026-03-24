@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -48,11 +49,29 @@ class AuthService extends ChangeNotifier {
   final String _supabaseUrl;
   final SupabaseClient _supabase;
   final http.Client _http;
+  StreamSubscription<AuthState>? _authSubscription;
 
   // ── In-memory state ────────────────────────────────────────────────────────
   AppUser? _currentUser;
   Household? _currentHousehold;
   bool _isLoading = false;
+
+  /// Start listening to auth state changes from Supabase.
+  /// Call once after the service is created.
+  void listenToAuthChanges() {
+    _authSubscription?.cancel();
+    _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+      debugPrint('[AuthService] onAuthStateChange: $event');
+
+      if (event == AuthChangeEvent.signedOut) {
+        _currentUser = null;
+        _currentHousehold = null;
+        notifyListeners();
+      }
+      // tokenRefreshed — session stays alive, no action needed.
+    });
+  }
 
   // ── Public read-only state ─────────────────────────────────────────────────
   AppUser? get currentUser => _currentUser;
@@ -197,7 +216,24 @@ class AuthService extends ChangeNotifier {
   /// Returns [AuthStatus.ready], [AuthStatus.needsHousehold], or null if the
   /// user has no active Supabase session.
   Future<AuthStatus?> refreshSession() async {
-    final session = _supabase.auth.currentSession;
+    // On web, Supabase may still be recovering the session from localStorage.
+    // Wait briefly for the initial session if currentSession is null.
+    var session = _supabase.auth.currentSession;
+    if (session == null) {
+      try {
+        final authState = await _supabase.auth.onAuthStateChange
+            .firstWhere(
+              (s) => s.event == AuthChangeEvent.initialSession ||
+                     s.event == AuthChangeEvent.signedIn ||
+                     s.event == AuthChangeEvent.tokenRefreshed,
+            )
+            .timeout(const Duration(seconds: 3));
+        session = authState.session;
+      } on TimeoutException {
+        // No session recovered within 3s — user is not logged in.
+        debugPrint('[AuthService] No session recovered from storage.');
+      }
+    }
     if (session == null) return null;
 
     _setLoading(true);
@@ -240,6 +276,12 @@ class AuthService extends ChangeNotifier {
     _currentUser = null;
     _currentHousehold = null;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
   }
 
   // ── Profile update ─────────────────────────────────────────────────────────

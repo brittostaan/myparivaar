@@ -231,7 +231,8 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
-            create: (_) => AuthService(supabaseUrl: _kSupabaseUrl)),
+            create: (_) => AuthService(supabaseUrl: _kSupabaseUrl)
+              ..listenToAuthChanges()),
         ChangeNotifierProvider(
           create: (context) => AdminService(
             supabaseUrl: _kSupabaseUrl,

@@ -627,57 +627,19 @@ class _IdeaBoardScreenState extends State<IdeaBoardScreen> {
     );
   }
 
-  // ── Tag Field (Autocomplete with free-text) ──────────────────────────
+  // ── Tag Field (Dropdown + custom option) ─────────────────────────────
 
   Widget _buildTagField(String currentTag, ValueChanged<String> onChanged) {
-    return Autocomplete<String>(
-      initialValue: TextEditingValue(text: currentTag),
-      optionsBuilder: (textEditingValue) {
-        final query = textEditingValue.text.toLowerCase().trim();
-        if (query.isEmpty) return _allTags;
-        return _allTags.where((t) => t.toLowerCase().contains(query));
-      },
-      fieldViewBuilder: (ctx, controller, focusNode, onSubmitted) {
-        return TextField(
-          controller: controller,
-          focusNode: focusNode,
-          decoration: const InputDecoration(
-            labelText: 'Feature Tag',
-            hintText: 'Select or type a custom tag',
-            border: OutlineInputBorder(),
-            isDense: true,
-            prefixText: '#',
-          ),
-          onChanged: (v) => onChanged(v.trim().isEmpty ? 'general' : v.trim()),
-          onSubmitted: (_) => onSubmitted(),
-        );
-      },
-      onSelected: (value) => onChanged(value),
-      optionsViewBuilder: (ctx, onSelected, options) {
-        return Align(
-          alignment: Alignment.topLeft,
-          child: Material(
-            elevation: 4,
-            borderRadius: BorderRadius.circular(8),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 200, maxWidth: 300),
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: options.length,
-                itemBuilder: (_, i) {
-                  final option = options.elementAt(i);
-                  return ListTile(
-                    dense: true,
-                    title: Text('#$option', style: const TextStyle(fontSize: 13)),
-                    onTap: () => onSelected(option),
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-      },
+    final isCustom = !_featureTags.contains(currentTag) && currentTag != '_custom_';
+    // If the current tag is a known one, use it in dropdown; otherwise show custom input
+    final dropdownValue = isCustom ? '_custom_' : currentTag;
+
+    return _TagFieldWidget(
+      allTags: _allTags,
+      initialTag: currentTag,
+      initialDropdownValue: dropdownValue,
+      isInitiallyCustom: isCustom,
+      onChanged: onChanged,
     );
   }
 
@@ -1129,6 +1091,111 @@ class _IdeaBoardScreenState extends State<IdeaBoardScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Tag Field Widget (Dropdown + Custom) ──────────────────────────────────────
+
+class _TagFieldWidget extends StatefulWidget {
+  final List<String> allTags;
+  final String initialTag;
+  final String initialDropdownValue;
+  final bool isInitiallyCustom;
+  final ValueChanged<String> onChanged;
+
+  const _TagFieldWidget({
+    required this.allTags,
+    required this.initialTag,
+    required this.initialDropdownValue,
+    required this.isInitiallyCustom,
+    required this.onChanged,
+  });
+
+  @override
+  State<_TagFieldWidget> createState() => _TagFieldWidgetState();
+}
+
+class _TagFieldWidgetState extends State<_TagFieldWidget> {
+  late String _dropdownValue;
+  late bool _showCustom;
+  late TextEditingController _customCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _dropdownValue = widget.initialDropdownValue;
+    _showCustom = widget.isInitiallyCustom;
+    _customCtrl = TextEditingController(
+      text: widget.isInitiallyCustom ? widget.initialTag : '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _customCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        DropdownButtonFormField<String>(
+          value: _dropdownValue,
+          decoration: const InputDecoration(
+            labelText: 'Feature Tag',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+          items: [
+            ...widget.allTags.map((t) => DropdownMenuItem(
+              value: t,
+              child: Text('#$t'),
+            )),
+            const DropdownMenuItem(
+              value: '_custom_',
+              child: Row(
+                children: [
+                  Icon(Icons.add_circle_outline, size: 16, color: Color(0xFF2563EB)),
+                  SizedBox(width: 6),
+                  Text('Custom tag…', style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
+          ],
+          onChanged: (v) {
+            if (v == null) return;
+            setState(() {
+              _dropdownValue = v;
+              _showCustom = v == '_custom_';
+            });
+            if (v != '_custom_') {
+              widget.onChanged(v);
+            }
+          },
+        ),
+        if (_showCustom) ...[
+          const SizedBox(height: 10),
+          TextField(
+            controller: _customCtrl,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Custom Tag',
+              hintText: 'e.g. onboarding, mobile, performance',
+              border: OutlineInputBorder(),
+              isDense: true,
+              prefixText: '#',
+            ),
+            onChanged: (v) {
+              final tag = v.trim();
+              widget.onChanged(tag.isEmpty ? 'general' : tag);
+            },
+          ),
+        ],
+      ],
     );
   }
 }

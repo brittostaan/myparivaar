@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
       const initialScope = typeof body.initial_scope === 'string' ? body.initial_scope.trim() : ''
       const staffRole = typeof body.staff_role === 'string' ? body.staff_role.trim() : 'support_staff'
 
-      const VALID_ASSIGNABLE_ROLES = ['support_staff', 'customer_service', 'reader', 'billing_service']
+      const VALID_ASSIGNABLE_ROLES = ['admin', 'support_staff', 'customer_service', 'reader', 'billing_service']
 
       if (!email || !initialScope) {
         return json({ error: 'email and initial_scope are required' }, 400)

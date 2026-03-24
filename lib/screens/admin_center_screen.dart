@@ -1908,7 +1908,178 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
             style: TextStyle(fontSize: 12, color: AppColors.grey600),
           ),
           const SizedBox(height: 20),
-          Expanded(child: _buildStaffPanel()),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 3, child: _buildStaffPanel()),
+                const SizedBox(width: 20),
+                Expanded(flex: 2, child: _buildRolePermissionsPanel()),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRolePermissionsPanel() {
+    const roles = <Map<String, dynamic>>[
+      {
+        'role': 'Super Admin',
+        'color': Color(0xFFD97706),
+        'icon': Icons.shield_outlined,
+        'actions': [
+          'Full platform access',
+          'Manage all staff & roles',
+          'Manage households & users',
+          'Manage features & plans',
+          'Configure payment gateways',
+          'View & export analytics',
+          'View audit logs',
+          'Manage security settings',
+          'Approve staff changes (dual-approval)',
+        ],
+      },
+      {
+        'role': 'Admin',
+        'color': Color(0xFFEA580C),
+        'icon': Icons.admin_panel_settings_outlined,
+        'actions': [
+          'Manage households & users',
+          'Manage features & plans',
+          'Moderate content',
+          'Handle support tickets',
+          'View & export analytics',
+          'View audit logs',
+        ],
+      },
+      {
+        'role': 'Support Staff',
+        'color': Color(0xFF3B82F6),
+        'icon': Icons.support_agent_outlined,
+        'actions': [
+          'View households & users',
+          'Moderate content',
+          'Handle support tickets',
+          'View analytics & audit logs',
+        ],
+      },
+      {
+        'role': 'Customer Service',
+        'color': Color(0xFF7C3AED),
+        'icon': Icons.headset_mic_outlined,
+        'actions': [
+          'View & manage users',
+          'View households',
+          'Handle support tickets',
+          'View audit logs',
+        ],
+      },
+      {
+        'role': 'Reader',
+        'color': Color(0xFF6B7280),
+        'icon': Icons.visibility_outlined,
+        'actions': [
+          'View dashboard (read-only)',
+          'View users & households',
+          'View analytics & audit logs',
+        ],
+      },
+      {
+        'role': 'Billing Service',
+        'color': Color(0xFF0891B2),
+        'icon': Icons.receipt_long_outlined,
+        'actions': [
+          'View dashboard',
+          'View users',
+          'View analytics (billing focus)',
+        ],
+      },
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              'Role Permissions',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'What each role can do in the app',
+              style: TextStyle(fontSize: 12, color: AppColors.grey600),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.all(12),
+              itemCount: roles.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (_, index) {
+                final r = roles[index];
+                final color = r['color'] as Color;
+                final actions = r['actions'] as List<String>;
+                return Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: color.withValues(alpha: 0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(r['icon'] as IconData, size: 18, color: color),
+                          const SizedBox(width: 8),
+                          Text(
+                            r['role'] as String,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: color,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ...actions.map((a) => Padding(
+                            padding: const EdgeInsets.only(bottom: 3),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(Icons.check_circle_outline,
+                                    size: 14, color: color.withValues(alpha: 0.7)),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    a,
+                                    style: const TextStyle(fontSize: 12, color: AppColors.grey600),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
         ],
       ),
     );
@@ -1973,13 +2144,15 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                   label: s.displayRoleName,
                   color: s.isSuperAdmin
                       ? const Color(0xFFD97706)
-                      : s.isCustomerService
-                          ? const Color(0xFF7C3AED)
-                          : s.isReader
-                              ? const Color(0xFF6B7280)
-                              : s.isBillingService
-                                  ? const Color(0xFF0891B2)
-                                  : const Color(0xFF3B82F6),
+                      : s.isAdmin
+                          ? const Color(0xFFEA580C)
+                          : s.isCustomerService
+                              ? const Color(0xFF7C3AED)
+                              : s.isReader
+                                  ? const Color(0xFF6B7280)
+                                  : s.isBillingService
+                                      ? const Color(0xFF0891B2)
+                                      : const Color(0xFF3B82F6),
                 ),
                 if (!s.isSuperAdmin) ...[
                   const SizedBox(width: 8),
@@ -2010,6 +2183,8 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
     String selectedRole = 'support_staff';
 
     final roleOptions = {
+      'super_admin': 'Super Admin',
+      'admin': 'Admin',
       'support_staff': 'Support Staff',
       'customer_service': 'Customer Service',
       'reader': 'Reader',

@@ -21,6 +21,7 @@ class AdminStaff {
   final DateTime createdAt;
 
   bool get isSuperAdmin => staffRole == 'super_admin';
+  bool get isAdmin => staffRole == 'admin';
   bool get isSupportStaff => staffRole == 'support_staff';
   bool get isCustomerService => staffRole == 'customer_service';
   bool get isReader => staffRole == 'reader';
@@ -31,6 +32,8 @@ class AdminStaff {
     switch (staffRole) {
       case 'super_admin':
         return 'Super Admin';
+      case 'admin':
+        return 'Admin';
       case 'support_staff':
         return 'Support Staff';
       case 'customer_service':

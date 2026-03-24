@@ -1,6 +1,4 @@
--- Add new staff roles: customer_service, reader, billing_service
--- Drop the old CHECK constraint and add a new one with expanded roles
-
+-- Add 'admin' as a valid staff_role
 ALTER TABLE app.users DROP CONSTRAINT IF EXISTS users_staff_role_check;
 
 ALTER TABLE app.users ADD CONSTRAINT users_staff_role_check

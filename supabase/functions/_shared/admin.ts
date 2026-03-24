@@ -87,7 +87,21 @@ const BILLING_SERVICE_DEFAULT_PERMISSIONS = new Set<AdminPermission>([
   ADMIN_PERMISSIONS.viewAnalytics,
 ])
 
-const STAFF_ROLES = new Set(['super_admin', 'support_staff', 'customer_service', 'reader', 'billing_service'])
+const ADMIN_DEFAULT_PERMISSIONS = new Set<AdminPermission>([
+  ADMIN_PERMISSIONS.viewDashboard,
+  ADMIN_PERMISSIONS.viewHouseholds,
+  ADMIN_PERMISSIONS.manageHouseholds,
+  ADMIN_PERMISSIONS.viewUsers,
+  ADMIN_PERMISSIONS.manageUsers,
+  ADMIN_PERMISSIONS.moderateContent,
+  ADMIN_PERMISSIONS.manageSupportTickets,
+  ADMIN_PERMISSIONS.manageFeatures,
+  ADMIN_PERMISSIONS.viewAuditLogs,
+  ADMIN_PERMISSIONS.viewAnalytics,
+  ADMIN_PERMISSIONS.exportReports,
+])
+
+const STAFF_ROLES = new Set(['super_admin', 'admin', 'support_staff', 'customer_service', 'reader', 'billing_service'])
 
 const DUAL_APPROVAL_DEFAULT_TTL_HOURS = 24
 
@@ -266,6 +280,8 @@ export function hasAdminPermission(actor: AdminActor, permission: AdminPermissio
 
   // Check role-based defaults
   switch (actor.staff_role) {
+    case 'admin':
+      return ADMIN_DEFAULT_PERMISSIONS.has(permission)
     case 'support_staff':
       return SUPPORT_DEFAULT_PERMISSIONS.has(permission)
     case 'customer_service':

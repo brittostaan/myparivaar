@@ -842,7 +842,23 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
                     else if (folderError != null)
                       Text(folderError!, style: const TextStyle(color: Colors.red, fontSize: 12))
                     else if (folders != null) ...[
-                      ConstrainedBox(
+                      if (folders!.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            children: [
+                              Icon(Icons.folder_open, size: 32, color: Colors.grey[400]),
+                              const SizedBox(height: 8),
+                              Text(
+                                'No folders found. Will scan Inbox by default.',
+                                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        ConstrainedBox(
                         constraints: const BoxConstraints(maxHeight: 250),
                         child: ListView(
                           shrinkWrap: true,
@@ -884,7 +900,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
                   child: const Text('Cancel'),
                 ),
                 FilledButton.icon(
-                  onPressed: (loadingFolders || selectedFolderIds.isEmpty)
+                  onPressed: loadingFolders
                       ? null
                       : () {
                           Navigator.pop(ctx);

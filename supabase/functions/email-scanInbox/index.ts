@@ -216,7 +216,9 @@ async function getAccountForHousehold(supabasePublic: any, accountId: string, ho
 
 async function ensureFreshToken(account: any, supabasePublic: any) {
   const expiresAt = account.token_expires_at ? new Date(account.token_expires_at) : null
-  if (expiresAt && expiresAt.getTime() - Date.now() < 5 * 60 * 1000) {
+  // Refresh if: no expiry stored, already expired, or expiring within 5 minutes
+  const needsRefresh = !expiresAt || expiresAt.getTime() - Date.now() < 5 * 60 * 1000
+  if (needsRefresh) {
     const provider = account.provider === 'gmail' ? 'google' : 'microsoft'
     const creds = await getOAuthCredentials(provider as 'google' | 'microsoft')
     if (!creds) throw new Error(`OAuth credentials not configured for ${provider}`)
@@ -272,6 +274,11 @@ async function listGmailLabels(account: any) {
   const resp = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/labels', {
     headers: { Authorization: `Bearer ${account.access_token}` },
   })
+  if (!resp.ok) {
+    const errBody = await resp.text()
+    console.error(`[listGmailLabels] Gmail API error ${resp.status}:`, errBody)
+    throw new Error(`Gmail API error (${resp.status}): Failed to list folders. Token may be expired.`)
+  }
   const data = await resp.json()
   if (!data.labels) return []
 
@@ -292,6 +299,11 @@ async function listOutlookFolders(account: any) {
   const resp = await fetch('https://graph.microsoft.com/v1.0/me/mailFolders?$top=50', {
     headers: { Authorization: `Bearer ${account.access_token}` },
   })
+  if (!resp.ok) {
+    const errBody = await resp.text()
+    console.error(`[listOutlookFolders] Outlook API error ${resp.status}:`, errBody)
+    throw new Error(`Outlook API error (${resp.status}): Failed to list folders. Token may be expired.`)
+  }
   const data = await resp.json()
   if (!data.value) return []
 

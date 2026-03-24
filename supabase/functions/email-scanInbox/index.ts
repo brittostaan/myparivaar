@@ -386,10 +386,10 @@ async function runScan(
                 household_id: account.household_id,
                 amount: tx.amount,
                 category: tx.category,
-                description: tx.description || subject.substring(0, 100),
+                description: composeDescription(tx, subject),
                 date: tx.date || receivedAt?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
                 source: 'email',
-                notes: `AI-classified from ${account.email_address} [${folderName}]`,
+                notes: composeNotes(tx, account.email_address, folderName, 'AI'),
                 status: 'pending',
               }).select('id').single()
               if (!txId && inserted) txId = inserted.id
@@ -405,10 +405,10 @@ async function runScan(
               household_id: account.household_id,
               amount: regexResult.amount,
               category: regexResult.category,
-              description: regexResult.description,
+              description: composeDescription(regexResult, subject),
               date: regexResult.date,
               source: 'email',
-              notes: `Regex-parsed from ${account.email_address} [${folderName}] (confidence: ${Math.round(regexResult.confidence * 100)}%)`,
+              notes: composeNotes(regexResult, account.email_address, folderName, 'Regex'),
               status: 'pending',
             }).select('id').single()
             if (inserted) txId = inserted.id
@@ -423,10 +423,10 @@ async function runScan(
             household_id: account.household_id,
             amount: regexResult.amount,
             category: regexResult.category,
-            description: regexResult.description,
+            description: composeDescription(regexResult, subject),
             date: regexResult.date,
             source: 'email',
-            notes: `Regex-parsed from ${account.email_address} [${folderName}] (confidence: ${Math.round(regexResult.confidence * 100)}%)`,
+            notes: composeNotes(regexResult, account.email_address, folderName, 'Regex'),
             status: 'pending',
           }).select('id').single()
           if (inserted) txId = inserted.id
@@ -566,17 +566,25 @@ Return ONLY a JSON object:
   "transactions": [
     {
       "amount": <number in INR>,
-      "description": "<merchant or purpose>",
+      "description": "<short transaction summary>",
       "category": "<one of: food, transport, utilities, shopping, healthcare, entertainment, other>",
       "date": "<YYYY-MM-DD>",
-      "merchant": "<merchant name if available>"
+      "merchant": "<merchant/payee name, e.g. HINDUSTAN PETROLEUM CO, MADHURA SPRITS>",
+      "bank": "<bank name, e.g. HDFC Bank, SBI, ICICI>",
+      "payment_method": "<credit_card|debit_card|upi|neft|imps|rtgs|other>",
+      "card_last4": "<last 4 digits of card if mentioned, else null>",
+      "account_last4": "<last 4 digits of account if mentioned, else null>",
+      "upi_id": "<UPI VPA if mentioned, e.g. paytm.xyz@pty, else null>",
+      "reference": "<transaction reference number if available, else null>"
     }
   ]
 }
 
 Rules:
-- Handle UPI, NEFT, IMPS, debit card, credit card notifications
+- Handle UPI, NEFT, IMPS, debit card, credit card notifications from Indian banks
 - "INR", "Rs.", "₹" all mean Indian Rupees
+- For HDFC/SBI/ICICI card emails, extract the merchant name from "towards <MERCHANT>" 
+- For UPI emails, extract recipient name and VPA from "to VPA <vpa> <name>"
 - If the email is NOT a financial transaction notification, return {"transactions": []}
 - Return ONLY valid JSON, no markdown`,
     },
@@ -587,7 +595,7 @@ Rules:
   ]
 
   const result = await routeAIRequest(supabase, 'email_parsing', messages, {
-    max_tokens: 400,
+    max_tokens: 600,
     temperature: 0.1,
   })
 
@@ -602,7 +610,27 @@ Rules:
 
 // ── Regex Classification (fallback) ──────────────────────────────────────────
 
-function parseEmailRegex(subject: string, body: string, receivedAt: Date | null) {
+interface ParsedTransaction {
+  amount: number
+  category: string
+  description: string
+  date: string
+  confidence: number
+  merchant?: string
+  bank?: string
+  payment_method?: string
+  card_last4?: string
+  account_last4?: string
+  upi_id?: string
+  reference?: string
+}
+
+function parseEmailRegex(subject: string, body: string, receivedAt: Date | null): ParsedTransaction | null {
+  // Try bank-specific patterns first (high confidence)
+  const bankResult = parseBankEmailRegex(subject, body, receivedAt)
+  if (bankResult) return bankResult
+
+  // Generic fallback
   const text = (subject + ' ' + body).toLowerCase()
 
   const amountMatch = text.match(/(?:rs\.?|inr|₹)\s*([0-9,]+(?:\.[0-9]{2})?)/i)
@@ -611,16 +639,7 @@ function parseEmailRegex(subject: string, body: string, receivedAt: Date | null)
   const amount = parseFloat(amountMatch[1].replace(/,/g, ''))
   if (amount <= 0 || amount > 1000000) return null
 
-  let category = 'other'
-  if (text.includes('food') || text.includes('restaurant') || text.includes('zomato') || text.includes('swiggy')) {
-    category = 'food'
-  } else if (text.includes('fuel') || text.includes('petrol') || text.includes('diesel') || text.includes('uber') || text.includes('ola')) {
-    category = 'transport'
-  } else if (text.includes('shopping') || text.includes('amazon') || text.includes('flipkart') || text.includes('myntra')) {
-    category = 'shopping'
-  } else if (text.includes('electricity') || text.includes('gas') || text.includes('water') || text.includes('bill')) {
-    category = 'utilities'
-  }
+  const category = detectCategory(text)
 
   let confidence = 0.5
   if (text.includes('debited') || text.includes('paid') || text.includes('transaction') || text.includes('credited')) {
@@ -630,11 +649,225 @@ function parseEmailRegex(subject: string, body: string, receivedAt: Date | null)
     confidence += 0.2
   }
 
+  // Try to detect bank and payment method from generic text
+  const bank = detectBank(text)
+  let payment_method: string | undefined
+  let card_last4: string | undefined
+  let account_last4: string | undefined
+
+  const cardMatch = text.match(/(?:credit|debit)\s+card\s+(?:ending\s+|no\.?\s*|\*{2,})(\d{4})/i)
+  if (cardMatch) {
+    payment_method = text.includes('credit') ? 'credit_card' : 'debit_card'
+    card_last4 = cardMatch[1]
+  }
+  const acctMatch = text.match(/account\s*(?:ending\s+|no\.?\s*|\*{2,})(\d{4})/i)
+  if (acctMatch) {
+    account_last4 = acctMatch[1]
+  }
+  if (text.includes('upi')) payment_method = 'upi'
+  if (text.includes('neft')) payment_method = 'neft'
+  if (text.includes('imps')) payment_method = 'imps'
+
   return {
     amount,
     category,
     description: subject.substring(0, 100) || 'Email transaction',
     date: receivedAt?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
     confidence: Math.min(confidence, 1.0),
+    bank,
+    payment_method,
+    card_last4,
+    account_last4,
   }
+}
+
+// ── Bank-Specific Regex Parsers ──────────────────────────────────────────────
+
+function parseBankEmailRegex(subject: string, body: string, receivedAt: Date | null): ParsedTransaction | null {
+  const fullText = subject + ' ' + body
+  const text = fullText.toLowerCase()
+
+  // ── Credit/Debit Card pattern ────────────────────────────────────────────
+  // "Rs.230.51 is debited from your HDFC Bank Credit Card ending 4860 towards HINDUSTAN PETROLEUM CO on 22 Mar, 2026"
+  const cardMatch = fullText.match(
+    /(?:Rs\.?|₹)\s*([0-9,]+(?:\.[0-9]{2})?)\s+is\s+debited\s+from\s+your\s+([\w\s]+?)\s*(Credit|Debit)\s+Card\s+(?:ending\s+)?(\d{4})\s+towards\s+(.+?)\s+on\s+(\d{1,2}\s+\w+,?\s*\d{4})/i
+  )
+  if (cardMatch) {
+    const amount = parseFloat(cardMatch[1].replace(/,/g, ''))
+    const bank = cardMatch[2].trim()
+    const cardType = cardMatch[3].toLowerCase()
+    const cardLast4 = cardMatch[4]
+    const merchant = cardMatch[5].trim()
+    const dateStr = parseIndianDate(cardMatch[6].trim()) || receivedAt?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0]
+
+    // Extract reference number if present
+    const refMatch = fullText.match(/(?:reference|ref)\s*(?:no\.?|number|#)?\s*[:\s]?\s*(\d{6,})/i)
+
+    return {
+      amount,
+      category: detectCategory(merchant + ' ' + text),
+      description: merchant,
+      date: dateStr,
+      confidence: 0.95,
+      merchant,
+      bank,
+      payment_method: cardType === 'credit' ? 'credit_card' : 'debit_card',
+      card_last4: cardLast4,
+      reference: refMatch?.[1],
+    }
+  }
+
+  // ── UPI pattern ──────────────────────────────────────────────────────────
+  // "Rs.230.00 has been debited from account 1827 to VPA paytm.s13zess@pty MADHURA SPRITS on 28-02-26"
+  const upiMatch = fullText.match(
+    /(?:Rs\.?|₹)\s*([0-9,]+(?:\.[0-9]{2})?)\s+has\s+been\s+debited\s+from\s+account\s*\*{0,2}(\d{4})\s+to\s+VPA\s+(\S+)\s+(.+?)\s+on\s+(\d{2}-\d{2}-\d{2,4})/i
+  )
+  if (upiMatch) {
+    const amount = parseFloat(upiMatch[1].replace(/,/g, ''))
+    const accountLast4 = upiMatch[2]
+    const upiId = upiMatch[3]
+    let recipient = upiMatch[4].trim()
+    // Clean up recipient — remove trailing period or "Your UPI..."
+    recipient = recipient.replace(/\.\s*Your\s+UPI.*/i, '').replace(/\.$/, '').trim()
+    const dateStr = parseShortDate(upiMatch[5]) || receivedAt?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0]
+
+    const bank = detectBank(text)
+    const refMatch = fullText.match(/(?:reference\s*(?:number|no\.?)?\s*(?:is)?\s*)(\d{6,})/i)
+
+    return {
+      amount,
+      category: detectCategory(recipient + ' ' + upiId + ' ' + text),
+      description: recipient,
+      date: dateStr,
+      confidence: 0.95,
+      merchant: recipient,
+      bank,
+      payment_method: 'upi',
+      account_last4: accountLast4,
+      upi_id: upiId,
+      reference: refMatch?.[1],
+    }
+  }
+
+  // ── Generic "debited from account" (NEFT/IMPS) ─────────────────────────
+  const neftMatch = fullText.match(
+    /(?:Rs\.?|₹)\s*([0-9,]+(?:\.[0-9]{2})?)\s+(?:has\s+been\s+)?(?:debited|transferred).*?(?:by|via|through)\s+(NEFT|IMPS|RTGS)\s*(?:to\s+)?(.+?)(?:\s+on\s+|\.\s)/i
+  )
+  if (neftMatch) {
+    const amount = parseFloat(neftMatch[1].replace(/,/g, ''))
+    const method = neftMatch[2].toLowerCase()
+    const payee = neftMatch[3].trim()
+    const bank = detectBank(text)
+
+    return {
+      amount,
+      category: detectCategory(payee + ' ' + text),
+      description: payee,
+      date: receivedAt?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+      confidence: 0.9,
+      merchant: payee,
+      bank,
+      payment_method: method,
+    }
+  }
+
+  return null
+}
+
+// ── Shared Helpers ───────────────────────────────────────────────────────────
+
+function detectCategory(text: string): string {
+  const t = text.toLowerCase()
+  if (t.match(/petroleum|fuel|petrol|diesel|uber|ola|rapido|cab|taxi|metro|irctc|railway/)) return 'transport'
+  if (t.match(/zomato|swiggy|food|restaurant|cafe|bakery|dominos|pizza|mcdonald|kfc|burger/)) return 'food'
+  if (t.match(/amazon|flipkart|myntra|shopping|mall|ajio|meesho|nykaa/)) return 'shopping'
+  if (t.match(/electricity|gas\s+bill|water\s+bill|broadband|jio|airtel|vodafone|bsnl|recharge|dth/)) return 'utilities'
+  if (t.match(/hospital|pharmacy|medical|doctor|apollo|medplus|diagnostic|lab|healthcare/)) return 'healthcare'
+  if (t.match(/movie|bookmyshow|netflix|spotify|hotstar|disney|prime\s+video|entertainment/)) return 'entertainment'
+  return 'other'
+}
+
+function detectBank(text: string): string | undefined {
+  const t = text.toLowerCase()
+  if (t.includes('hdfc')) return 'HDFC Bank'
+  if (t.includes('icici')) return 'ICICI Bank'
+  if (t.match(/\bsbi\b/)) return 'SBI'
+  if (t.includes('axis')) return 'Axis Bank'
+  if (t.includes('kotak')) return 'Kotak Bank'
+  if (t.includes('bob') || t.includes('bank of baroda')) return 'Bank of Baroda'
+  if (t.includes('pnb') || t.includes('punjab national')) return 'PNB'
+  if (t.includes('canara')) return 'Canara Bank'
+  if (t.includes('idbi')) return 'IDBI Bank'
+  if (t.includes('yes bank')) return 'Yes Bank'
+  if (t.includes('indusind')) return 'IndusInd Bank'
+  if (t.includes('federal bank')) return 'Federal Bank'
+  return undefined
+}
+
+function parseIndianDate(dateStr: string): string | null {
+  // "22 Mar, 2026" or "22 Mar 2026"
+  const match = dateStr.match(/(\d{1,2})\s+(\w+),?\s*(\d{4})/)
+  if (!match) return null
+  const months: Record<string, string> = {
+    jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+    jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
+  }
+  const m = months[match[2].toLowerCase().substring(0, 3)]
+  if (!m) return null
+  return `${match[3]}-${m}-${match[1].padStart(2, '0')}`
+}
+
+function parseShortDate(dateStr: string): string | null {
+  // "28-02-26" (DD-MM-YY) or "14-02-2025"
+  const match = dateStr.match(/(\d{2})-(\d{2})-(\d{2,4})/)
+  if (!match) return null
+  let year = match[3]
+  if (year.length === 2) year = (parseInt(year) > 50 ? '19' : '20') + year
+  return `${year}-${match[2]}-${match[1]}`
+}
+
+function composeDescription(tx: any, subject: string): string {
+  const parts: string[] = []
+
+  // Primary: merchant or description
+  if (tx.merchant && tx.merchant.length > 2) {
+    parts.push(tx.merchant)
+  } else if (tx.description && tx.description.length > 2) {
+    parts.push(tx.description)
+  } else {
+    parts.push(subject.substring(0, 80))
+  }
+
+  // Secondary: payment method badge
+  if (tx.payment_method === 'credit_card' && tx.card_last4) {
+    parts.push(`(CC **${tx.card_last4})`)
+  } else if (tx.payment_method === 'debit_card' && tx.card_last4) {
+    parts.push(`(DC **${tx.card_last4})`)
+  } else if (tx.payment_method === 'upi') {
+    parts.push('(UPI)')
+  } else if (tx.payment_method === 'neft') {
+    parts.push('(NEFT)')
+  } else if (tx.payment_method === 'imps') {
+    parts.push('(IMPS)')
+  }
+
+  return parts.join(' ').substring(0, 200)
+}
+
+function composeNotes(tx: any, emailAddress: string, folderName: string, classified: string): string {
+  const parts: string[] = []
+  if (tx.bank) parts.push(tx.bank)
+  if (tx.payment_method) {
+    const methodMap: Record<string, string> = {
+      credit_card: 'Credit Card', debit_card: 'Debit Card', upi: 'UPI',
+      neft: 'NEFT', imps: 'IMPS', rtgs: 'RTGS',
+    }
+    parts.push(methodMap[tx.payment_method] ?? tx.payment_method)
+  }
+  if (tx.card_last4) parts.push(`Card **${tx.card_last4}`)
+  if (tx.account_last4) parts.push(`Acct **${tx.account_last4}`)
+  if (tx.upi_id) parts.push(`VPA: ${tx.upi_id}`)
+  if (tx.reference) parts.push(`Ref: ${tx.reference}`)
+  parts.push(`${classified} from ${emailAddress} [${folderName}]`)
+  return parts.join(' | ').substring(0, 500)
 }

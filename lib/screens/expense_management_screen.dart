@@ -850,6 +850,15 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                     ),
                   ],
                 ]),
+                // Show telemetry chips from notes for email transactions
+                if (expense.source == 'email' && expense.notes != null && expense.notes!.contains('|')) ...[
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 2,
+                    children: _buildTelemetryChips(expense.notes!, isDark),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1420,6 +1429,66 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       'Dec'
     ];
     return abbrs[(month - 1).clamp(0, 11)];
+  }
+
+  List<Widget> _buildTelemetryChips(String notes, bool isDark) {
+    // Notes format: "HDFC Bank | Credit Card | Card **4860 | VPA: xyz@upi | AI from email [INBOX]"
+    final segments = notes.split('|').map((s) => s.trim()).toList();
+    final chips = <Widget>[];
+    for (final seg in segments) {
+      // Skip the "AI/Regex from email@addr [folder]" suffix
+      if (seg.contains(' from ') && seg.contains('[')) continue;
+      if (seg.isEmpty) continue;
+
+      IconData? icon;
+      Color? chipColor;
+      if (seg.contains('Bank')) {
+        icon = Icons.account_balance_outlined;
+        chipColor = Colors.blue;
+      } else if (seg.contains('Credit Card')) {
+        icon = Icons.credit_card;
+        chipColor = Colors.deepPurple;
+      } else if (seg.contains('Debit Card')) {
+        icon = Icons.credit_card_outlined;
+        chipColor = Colors.teal;
+      } else if (seg.startsWith('UPI') || seg.startsWith('VPA')) {
+        icon = Icons.phone_android;
+        chipColor = Colors.green;
+      } else if (seg.startsWith('Card')) {
+        icon = Icons.credit_card;
+        chipColor = Colors.indigo;
+      } else if (seg.startsWith('Acct')) {
+        icon = Icons.account_balance_wallet_outlined;
+        chipColor = Colors.orange;
+      } else if (seg.startsWith('Ref')) {
+        icon = Icons.tag;
+        chipColor = Colors.grey;
+      } else if (seg.contains('NEFT') || seg.contains('IMPS') || seg.contains('RTGS')) {
+        icon = Icons.swap_horiz;
+        chipColor = Colors.brown;
+      } else {
+        continue; // Skip unknown segments
+      }
+
+      chips.add(
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+          decoration: BoxDecoration(
+            color: (chipColor ?? Colors.grey).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) Icon(icon, size: 10, color: chipColor),
+              if (icon != null) const SizedBox(width: 3),
+              Text(seg, style: TextStyle(fontSize: 9, color: chipColor, fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
+      );
+    }
+    return chips;
   }
 
   Widget _approveRejectButton({

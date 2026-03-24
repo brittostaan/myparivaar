@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
       const initialScope = typeof body.initial_scope === 'string' ? body.initial_scope.trim() : ''
       const staffRole = typeof body.staff_role === 'string' ? body.staff_role.trim() : 'support_staff'
 
-      const VALID_ASSIGNABLE_ROLES = ['admin', 'support_staff', 'customer_service', 'reader', 'billing_service']
+      const VALID_ASSIGNABLE_ROLES = ['super_admin', 'admin', 'support_staff', 'customer_service', 'reader', 'billing_service']
 
       if (!email || !initialScope) {
         return json({ error: 'email and initial_scope are required' }, 400)
@@ -136,13 +136,19 @@ Deno.serve(async (req: Request) => {
         admin_permissions: existingUser.admin_permissions,
       }
 
-      const { data: updatedUser, error: updateError } = await supabase
-        .from('users')
-        .update({
+      const updatePayload: Record<string, unknown> = {
           staff_role: staffRole,
           staff_scope: initialScope,
           admin_permissions: existingUser.admin_permissions ?? {},
-        })
+        }
+      // Super admins also need the role column set for full platform access
+      if (staffRole === 'super_admin') {
+        updatePayload.role = 'super_admin'
+      }
+
+      const { data: updatedUser, error: updateError } = await supabase
+        .from('users')
+        .update(updatePayload)
         .eq('id', existingUser.id)
         .select(STAFF_COLS)
         .single()

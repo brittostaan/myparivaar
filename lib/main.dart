@@ -670,6 +670,12 @@ class _AppRouterState extends State<_AppRouter> {
 
     switch (status) {
       case AuthStatus.ready:
+        // Admin-only users (no household) always land on admin center
+        if (auth.currentUser?.isPlatformAdmin == true &&
+            !auth.hasHousehold) {
+          Navigator.of(context).pushReplacementNamed('/admin-center');
+          return;
+        }
         final dest = _authenticatedRoutes.contains(_capturedInitialPath)
             ? _capturedInitialPath
             : '/home';

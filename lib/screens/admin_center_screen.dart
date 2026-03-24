@@ -765,6 +765,12 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                                 isSelected: _selectedTabIndex == 11,
                                 onTap: () => _selectTab(11),
                               ),
+                              _NavItem(
+                                label: 'Payment Gateways',
+                                icon: Icons.payment_outlined,
+                                isSelected: _selectedTabIndex == 12,
+                                onTap: () => _selectTab(12),
+                              ),
                             ],
                             const SizedBox(height: 16),
                             const Divider(height: 1),

@@ -79,7 +79,7 @@ const Set<String> _authenticatedRoutes = {
   '/profile',
   '/family',
   '/csv-import',
-  '/ideaboard',
+  '/featureboard',
   '/subscription',
 };
 
@@ -517,7 +517,7 @@ class MyParivaaarApp extends StatelessWidget {
           builder: (_) => const AdminCenterScreen(),
         );
 
-      case '/ideaboard':
+      case '/featureboard':
         return MaterialPageRoute(
           settings: settings,
           builder: (_) => const IdeaBoardScreen(supabaseUrl: _kSupabaseUrl),

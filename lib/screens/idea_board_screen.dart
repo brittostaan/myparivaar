@@ -218,27 +218,44 @@ class _IdeaBoardScreenState extends State<IdeaBoardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthService>(context);
+    final user = auth.currentUser;
+    final isPlatformAdmin = user?.isPlatformAdmin == true;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       body: SafeArea(
         child: Column(
           children: [
             const AppHeader(
-              title: 'Idea Board',
+              title: 'Feature Board',
               avatarIcon: Icons.lightbulb_outline,
               showViewModeSelector: false,
               showSettingsButton: false,
               showNotifications: false,
             ),
-            _buildToolbar(),
             Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _error != null
-                      ? _buildError()
-                      : _viewMode == 'board'
-                          ? _buildBoard()
-                          : _buildListView(),
+              child: Row(
+                children: [
+                  if (isPlatformAdmin) _buildSidebar(context),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _buildToolbar(),
+                        Expanded(
+                          child: _loading
+                              ? const Center(child: CircularProgressIndicator())
+                              : _error != null
+                                  ? _buildError()
+                                  : _viewMode == 'board'
+                                      ? _buildBoard()
+                                      : _buildListView(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -246,9 +263,92 @@ class _IdeaBoardScreenState extends State<IdeaBoardScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showCreateDialog,
         icon: const Icon(AppIcons.add),
-        label: const Text('New Idea'),
+        label: const Text('New Feature'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+      ),
+    );
+  }
+
+  Widget _buildSidebar(BuildContext context) {
+    return Container(
+      width: 256,
+      color: const Color(0xFFF8FAFC),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _sidebarNavItem(context, 'Dashboard', Icons.dashboard_rounded, '/admin-center'),
+              _sidebarNavItem(context, 'Households', Icons.home_work_outlined, '/admin-center'),
+              _sidebarNavItem(context, 'Users', Icons.people_outlined, '/admin-center'),
+              _sidebarNavItem(context, 'Subscriptions', Icons.card_membership_outlined, '/admin-center'),
+              _sidebarNavItem(context, 'Plans', Icons.layers_outlined, '/admin-center'),
+              _sidebarNavItem(context, 'Features', Icons.toggle_on_outlined, '/admin-center'),
+              _sidebarNavItem(context, 'Analytics', Icons.analytics_outlined, '/admin-center'),
+              _sidebarNavItem(context, 'Audit Logs', Icons.history_outlined, '/admin-center'),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 16),
+              _sidebarNavItem(context, 'Staff', Icons.admin_panel_settings_outlined, '/admin-center'),
+              _sidebarNavItem(context, 'Approvals', Icons.approval_outlined, '/admin-center'),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 16),
+              _sidebarNavItem(context, 'AI', Icons.psychology_outlined, '/admin-center'),
+              _sidebarNavItem(context, 'Email Admin', Icons.email_outlined, '/admin-center'),
+              _sidebarNavItem(context, 'Payment Gateways', Icons.payment_outlined, '/admin-center'),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 16),
+              _buildSelectedNavItem('Feature Board', Icons.lightbulb_outline),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sidebarNavItem(BuildContext context, String label, IconData icon, String route) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => Navigator.pushReplacementNamed(context, route),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Icon(icon, size: 20, color: AppColors.grey600),
+                const SizedBox(width: 12),
+                Text(label, style: const TextStyle(fontSize: 14, color: AppColors.grey600)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectedNavItem(String label, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: AppColors.primary),
+            const SizedBox(width: 12),
+            Text(label, style: const TextStyle(fontSize: 14, color: AppColors.primary, fontWeight: FontWeight.w600)),
+          ],
+        ),
       ),
     );
   }

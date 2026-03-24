@@ -776,10 +776,10 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                             const Divider(height: 1),
                             const SizedBox(height: 16),
                             _NavItem(
-                              label: 'Idea Board',
+                              label: 'Feature Board',
                               icon: Icons.lightbulb_outline,
                               isSelected: false,
-                              onTap: () => Navigator.pushNamed(context, '/ideaboard'),
+                              onTap: () => Navigator.pushNamed(context, '/featureboard'),
                             ),
                           ],
                         ),

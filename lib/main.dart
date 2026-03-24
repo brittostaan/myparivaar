@@ -82,7 +82,7 @@ const Set<String> _authenticatedRoutes = {
 };
 
 const Set<String> _publicRoutes = {
-  '/landing',
+  '/',
   '/privacy',
   '/terms',
   '/login',
@@ -105,7 +105,7 @@ String _routeFromEndpoint() {
     return candidate;
   }
   // Root URL with no hash fragment → landing page
-  if (candidate == '/' || candidate.isEmpty) return '/landing';
+  if (candidate == '/' || candidate.isEmpty) return '/';
   return '/home';
 }
 
@@ -255,7 +255,8 @@ class MyParivaaarApp extends StatelessWidget {
               child: child!,
             );
           },
-          home: const _AppRouter(),
+          home: null,
+          initialRoute: '/_init',
           onGenerateRoute: _onGenerateRoute,
         );
       },
@@ -568,6 +569,7 @@ class MyParivaaarApp extends StatelessWidget {
         );
 
       case '/landing':
+      case '/':
         return MaterialPageRoute(
           settings: settings,
           builder: (_) => const LandingPageScreen(),
@@ -586,7 +588,10 @@ class MyParivaaarApp extends StatelessWidget {
         );
 
       default:
-        return MaterialPageRoute(builder: (_) => const _AppRouter());
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => const _AppRouter(),
+        );
     }
   }
 }

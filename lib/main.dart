@@ -659,7 +659,10 @@ class _AppRouterState extends State<_AppRouter> {
 
     switch (status) {
       case AuthStatus.ready:
-        Navigator.of(context).pushReplacementNamed(_routeFromEndpoint());
+        final dest = _authenticatedRoutes.contains(_capturedInitialPath)
+            ? _capturedInitialPath
+            : '/home';
+        Navigator.of(context).pushReplacementNamed(dest);
       case AuthStatus.needsHousehold:
         Navigator.of(context).pushReplacementNamed('/household-setup');
       case null:
@@ -789,7 +792,12 @@ class _LoginScreenState extends State<_LoginScreen> {
         Navigator.of(context).pushReplacementNamed('/admin-center');
         return;
       }
-      Navigator.of(context).pushReplacementNamed(_routeFromEndpoint());
+      // Only deep-link to an authenticated route the user originally
+      // requested (e.g. bookmarked /expenses). Otherwise default to /home.
+      final target = _authenticatedRoutes.contains(_capturedInitialPath)
+          ? _capturedInitialPath
+          : '/home';
+      Navigator.of(context).pushReplacementNamed(target);
     } else {
       Navigator.of(context).pushReplacementNamed('/household-setup');
     }

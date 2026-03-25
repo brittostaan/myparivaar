@@ -885,79 +885,245 @@ class _BudgetScreenState extends State<BudgetScreen> {
           ],
         ),
         const SizedBox(height: 28),
-        Container(
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.surfaceDark : Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        // Budget Category Widgets
+        _buildBudgetCategoryGrid(isDark),
+      ],
+    );
+  }
+
+  Widget _buildBudgetCategoryGrid(bool isDark) {
+    const categories = [
+      _BudgetCategoryItem(
+        label: 'Entertainment',
+        icon: Icons.movie_outlined,
+        color: Color(0xFFE91E63),
+        bgColor: Color(0xFFFCE4EC),
+      ),
+      _BudgetCategoryItem(
+        label: 'Groceries',
+        icon: Icons.shopping_cart_outlined,
+        color: Color(0xFF4CAF50),
+        bgColor: Color(0xFFE8F5E9),
+      ),
+      _BudgetCategoryItem(
+        label: 'Mental Wellness',
+        icon: Icons.self_improvement,
+        color: Color(0xFF7C4DFF),
+        bgColor: Color(0xFFEDE7F6),
+      ),
+      _BudgetCategoryItem(
+        label: 'Physical Wellness',
+        icon: Icons.fitness_center,
+        color: Color(0xFFFF5722),
+        bgColor: Color(0xFFFBE9E7),
+      ),
+      _BudgetCategoryItem(
+        label: 'Party',
+        icon: Icons.celebration_outlined,
+        color: Color(0xFFFF9800),
+        bgColor: Color(0xFFFFF3E0),
+      ),
+      _BudgetCategoryItem(
+        label: 'Personal Care',
+        icon: Icons.spa_outlined,
+        color: Color(0xFFEC407A),
+        bgColor: Color(0xFFFCE4EC),
+      ),
+      _BudgetCategoryItem(
+        label: 'Pet Care',
+        icon: Icons.pets_outlined,
+        color: Color(0xFF8D6E63),
+        bgColor: Color(0xFFEFEBE9),
+      ),
+      _BudgetCategoryItem(
+        label: 'Senior Care',
+        icon: Icons.elderly_outlined,
+        color: Color(0xFF00897B),
+        bgColor: Color(0xFFE0F2F1),
+      ),
+      _BudgetCategoryItem(
+        label: 'Education',
+        icon: Icons.school_outlined,
+        color: Color(0xFF1565C0),
+        bgColor: Color(0xFFE3F2FD),
+      ),
+      _BudgetCategoryItem(
+        label: 'Vacation',
+        icon: Icons.flight_outlined,
+        color: Color(0xFF00ACC1),
+        bgColor: Color(0xFFE0F7FA),
+      ),
+      _BudgetCategoryItem(
+        label: 'Convenience Food',
+        icon: Icons.fastfood_outlined,
+        color: Color(0xFFEF6C00),
+        bgColor: Color(0xFFFFF8E1),
+      ),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+            color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(22, 18, 22, 12),
-                child: Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Category-wise Budgets',
-                        style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    Text(
-                      _monthLabel(_selectedMonth),
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+              const Expanded(
+                child: Text(
+                  'Budget Categories',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
-              if (_budgets.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: Text('No budgets set for this month')),
-                )
-              else
-                ..._budgets.map((budget) => _buildWebBudgetRow(
-                      budget,
-                      isDark,
-                      onEdit: () => _addOrEditBudget(existing: budget),
-                      onDelete: () => _deleteBudget(budget),
-                    )),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.grey800 : const Color(0xFFF8FAFC),
-                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: primary, size: 18),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Looks like your food budget is tight. Tap Review & Adjust to quickly rebalance.',
-                        style: TextStyle(fontSize: 13),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: () => _addOrEditBudget(),
-                      child: const Text('Review & Adjust'),
-                    ),
-                  ],
+              Text(
+                _monthLabel(_selectedMonth),
+                style: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 6),
+          Text(
+            'Tap a category to set or adjust its budget',
+            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+          ),
+          const SizedBox(height: 20),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              mainAxisSpacing: 14,
+              crossAxisSpacing: 14,
+              childAspectRatio: 1.0,
+            ),
+            itemCount: categories.length,
+            itemBuilder: (context, index) {
+              final cat = categories[index];
+              final matchingBudget = _findBudgetForCategory(cat.label);
+              return _buildBudgetCategoryTile(cat, matchingBudget);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Budget? _findBudgetForCategory(String label) {
+    final lbl = label.toLowerCase();
+    for (final budget in _budgets) {
+      final cat = budget.category.toLowerCase();
+      if (cat == lbl) return budget;
+      if (cat.contains(lbl)) return budget;
+      // Match specific keywords
+      switch (lbl) {
+        case 'entertainment':
+          if (cat == 'entertainment') return budget;
+        case 'groceries':
+          if (cat == 'groceries' || cat == 'grocery') return budget;
+        case 'mental wellness':
+          if (cat.contains('mental') || cat.contains('therapy') || cat.contains('counseling')) return budget;
+        case 'physical wellness':
+          if (cat.contains('gym') || cat.contains('fitness') || cat.contains('yoga')) return budget;
+        case 'party':
+          if (cat.contains('party') || cat.contains('celebration')) return budget;
+        case 'personal care':
+          if (cat.contains('personal') || cat.contains('salon') || cat.contains('grooming')) return budget;
+        case 'pet care':
+          if (cat.contains('pet') || cat.contains('vet')) return budget;
+        case 'senior care':
+          if (cat.contains('senior') || cat.contains('elderly') || cat.contains('parent')) return budget;
+        case 'education':
+          if (cat == 'education') return budget;
+        case 'vacation':
+          if (cat.contains('travel') || cat.contains('vacation') || cat.contains('trip')) return budget;
+        case 'convenience food':
+          if (cat.contains('food delivery') || cat.contains('takeaway') || cat.contains('convenience')) return budget;
+      }
+    }
+    return null;
+  }
+
+  Widget _buildBudgetCategoryTile(_BudgetCategoryItem cat, Budget? budget) {
+    final hasBudget = budget != null;
+    final spent = hasBudget ? budget.spent : 0.0;
+    final total = hasBudget ? budget.amount : 0.0;
+    final ratio = total > 0 ? (spent / total).clamp(0.0, 1.0) : 0.0;
+
+    return Material(
+      color: cat.bgColor,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () {
+          if (hasBudget) {
+            _addOrEditBudget(existing: budget);
+          } else {
+            _addOrEditBudget();
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(cat.icon, size: 28, color: cat.color),
+              const SizedBox(height: 6),
+              Text(
+                cat.label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: cat.color,
+                ),
+              ),
+              if (hasBudget) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '₹${spent.toStringAsFixed(0)} / ₹${total.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: cat.color.withOpacity(0.8),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: LinearProgressIndicator(
+                    value: ratio,
+                    backgroundColor: cat.color.withOpacity(0.15),
+                    valueColor: AlwaysStoppedAnimation(
+                      ratio > 0.9 ? AppColors.error : cat.color,
+                    ),
+                    minHeight: 4,
+                  ),
+                ),
+              ] else ...[
+                const SizedBox(height: 4),
+                Text(
+                  'No budget set',
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: cat.color.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
-      ],
+      ),
     );
   }
 
@@ -1910,6 +2076,20 @@ class _BudgetCategoryAnalytics {
     this.totalSpent = 0,
     this.monthsTracked = 0,
     this.overBudgetMonths = 0,
+  });
+}
+
+class _BudgetCategoryItem {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final Color bgColor;
+
+  const _BudgetCategoryItem({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.bgColor,
   });
 }
 

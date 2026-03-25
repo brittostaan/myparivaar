@@ -69,6 +69,7 @@ class NavigationConfig {
     '/notifications': _mainNavigation,
     '/csv-import': _mainNavigation,
     '/savings': _mainNavigation,
+    '/assets': _mainNavigation,
   };
 
   /// Standard navigation shown on main screens

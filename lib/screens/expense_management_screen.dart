@@ -570,67 +570,9 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               ],
             ),
             const SizedBox(height: 30),
-            Row(
-              children: [
-                Expanded(
-                    child: Container(
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.surfaceDark : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: isDark
-                            ? AppColors.grey800
-                            : const Color(0xFFE2E8F0)),
-                  ),
-                  child: Row(children: [
-                    const SizedBox(width: 14),
-                    Icon(Icons.search, color: Colors.grey[400], size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        onChanged: (v) => setState(() => _searchQuery = v),
-                        decoration: InputDecoration(
-                          hintText: 'Search transactions, merchants...',
-                          hintStyle:
-                              TextStyle(color: Colors.grey[400], fontSize: 13),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                    ),
-                  ]),
-                )),
-                const SizedBox(width: 12),
-                _filterChip(isDark, 'Member', Icons.filter_alt_outlined),
-                const SizedBox(width: 8),
-                _filterChip(
-                    isDark, 'Payment Method', Icons.credit_card_outlined),
-                const SizedBox(width: 8),
-                _filterChip(isDark, 'Category', Icons.category_outlined),
-                const SizedBox(width: 8),
-                Tooltip(
-                  message: 'Feature coming soon',
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color:
-                          isDark ? AppColors.grey800 : const Color(0xFFE2E8F0),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(children: const [
-                      Icon(Icons.download_outlined, size: 18),
-                      SizedBox(width: 4),
-                      Icon(Icons.close_rounded, size: 11, color: Colors.red),
-                    ]),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 22),
             // Pending review banner
-            if (_pendingEmailExpenses.isNotEmpty) ...[              Container(
+            if (_pendingEmailExpenses.isNotEmpty) ...[
+              Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.amber.withOpacity(0.1),
@@ -648,54 +590,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            Container(
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceDark : Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                    color:
-                        isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Recent Transactions',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold)),
-                        Text('${filtered.length} results',
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey[500])),
-                      ],
-                    ),
-                  ),
-                  if (filtered.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Center(
-                        child: Text('No transactions found',
-                            style: TextStyle(color: Colors.grey[400])),
-                      ),
-                    )
-                  else
-                    ...filtered.map((e) => _buildWebTransactionRow(e, isDark)),
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Center(
-                      child: TextButton(
-                        onPressed: _loadExpenses,
-                        child: const Text('View More Transactions',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Expense Category Widgets
+            _buildExpenseCategoryGrid(isDark),
             const SizedBox(height: 30),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -768,6 +664,244 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                 ),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpenseCategoryGrid(bool isDark) {
+    const categories = [
+      _ExpenseCategoryItem(
+        label: 'Entertainment',
+        icon: Icons.movie_outlined,
+        color: Color(0xFFE91E63),
+        bgColor: Color(0xFFFCE4EC),
+      ),
+      _ExpenseCategoryItem(
+        label: 'Groceries',
+        icon: Icons.shopping_cart_outlined,
+        color: Color(0xFF4CAF50),
+        bgColor: Color(0xFFE8F5E9),
+      ),
+      _ExpenseCategoryItem(
+        label: 'Mental Wellness',
+        icon: Icons.self_improvement,
+        color: Color(0xFF7C4DFF),
+        bgColor: Color(0xFFEDE7F6),
+      ),
+      _ExpenseCategoryItem(
+        label: 'Physical Wellness',
+        icon: Icons.fitness_center,
+        color: Color(0xFFFF5722),
+        bgColor: Color(0xFFFBE9E7),
+      ),
+      _ExpenseCategoryItem(
+        label: 'Party',
+        icon: Icons.celebration_outlined,
+        color: Color(0xFFFF9800),
+        bgColor: Color(0xFFFFF3E0),
+      ),
+      _ExpenseCategoryItem(
+        label: 'Personal Care',
+        icon: Icons.spa_outlined,
+        color: Color(0xFFEC407A),
+        bgColor: Color(0xFFFCE4EC),
+      ),
+      _ExpenseCategoryItem(
+        label: 'Pet Care',
+        icon: Icons.pets_outlined,
+        color: Color(0xFF8D6E63),
+        bgColor: Color(0xFFEFEBE9),
+      ),
+      _ExpenseCategoryItem(
+        label: 'Senior Care',
+        icon: Icons.elderly_outlined,
+        color: Color(0xFF00897B),
+        bgColor: Color(0xFFE0F2F1),
+      ),
+      _ExpenseCategoryItem(
+        label: 'Education',
+        icon: Icons.school_outlined,
+        color: Color(0xFF1565C0),
+        bgColor: Color(0xFFE3F2FD),
+      ),
+      _ExpenseCategoryItem(
+        label: 'Vacation',
+        icon: Icons.flight_outlined,
+        color: Color(0xFF00ACC1),
+        bgColor: Color(0xFFE0F7FA),
+      ),
+      _ExpenseCategoryItem(
+        label: 'Convenience Food',
+        icon: Icons.fastfood_outlined,
+        color: Color(0xFFEF6C00),
+        bgColor: Color(0xFFFFF8E1),
+      ),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+            color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Spending Categories',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Tap a category to view or add expenses',
+            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+          ),
+          const SizedBox(height: 20),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              mainAxisSpacing: 14,
+              crossAxisSpacing: 14,
+              childAspectRatio: 1.15,
+            ),
+            itemCount: categories.length,
+            itemBuilder: (context, index) {
+              final cat = categories[index];
+              final count = _getCategoryExpenseCount(cat.label);
+              final total = _getCategoryExpenseTotal(cat.label);
+              return _buildCategoryTile(cat, count, total);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  int _getCategoryExpenseCount(String categoryLabel) {
+    final now = DateTime.now();
+    final lbl = categoryLabel.toLowerCase();
+    return _expenses.where((e) {
+      if (e.date.year != now.year || e.date.month != now.month) return false;
+      return _matchesCategory(e, lbl);
+    }).length;
+  }
+
+  double _getCategoryExpenseTotal(String categoryLabel) {
+    final now = DateTime.now();
+    final lbl = categoryLabel.toLowerCase();
+    return _expenses.where((e) {
+      if (e.date.year != now.year || e.date.month != now.month) return false;
+      return _matchesCategory(e, lbl);
+    }).fold(0.0, (s, e) => s + e.amount);
+  }
+
+  bool _matchesCategory(Expense e, String lbl) {
+    final cat = e.category.toLowerCase();
+    final desc = e.description.toLowerCase();
+    final tags = e.tags.map((t) => t.toLowerCase()).join(' ');
+    final blob = '$cat $desc $tags';
+
+    switch (lbl) {
+      case 'entertainment':
+        return cat == 'entertainment' || blob.contains('movie') || blob.contains('netflix') || blob.contains('concert') || blob.contains('game');
+      case 'groceries':
+        return cat == 'groceries' || cat == 'grocery' || blob.contains('grocery') || blob.contains('supermarket') || blob.contains('vegetables');
+      case 'mental wellness':
+        return blob.contains('therapy') || blob.contains('counseling') || blob.contains('meditation') || blob.contains('mental') || blob.contains('wellness app');
+      case 'physical wellness':
+        return blob.contains('gym') || blob.contains('fitness') || blob.contains('yoga') || blob.contains('sports') || blob.contains('workout');
+      case 'party':
+        return blob.contains('party') || blob.contains('celebration') || blob.contains('birthday') || blob.contains('event');
+      case 'personal care':
+        return blob.contains('salon') || blob.contains('spa') || blob.contains('grooming') || blob.contains('haircut') || blob.contains('beauty');
+      case 'pet care':
+        return blob.contains('pet') || blob.contains('vet') || blob.contains('dog') || blob.contains('cat') || blob.contains('animal');
+      case 'senior care':
+        return blob.contains('senior') || blob.contains('elderly') || blob.contains('parent care') || blob.contains('old age');
+      case 'education':
+        return cat == 'education' || blob.contains('school') || blob.contains('tuition') || blob.contains('course') || blob.contains('book') || blob.contains('training');
+      case 'vacation':
+        return blob.contains('travel') || blob.contains('vacation') || blob.contains('trip') || blob.contains('hotel') || blob.contains('flight') || blob.contains('holiday');
+      case 'convenience food':
+        return blob.contains('swiggy') || blob.contains('zomato') || blob.contains('food delivery') || blob.contains('takeaway') || blob.contains('fast food') || blob.contains('convenience food');
+      default:
+        return cat == lbl;
+    }
+  }
+
+  Widget _buildCategoryTile(_ExpenseCategoryItem cat, int count, double total) {
+    return Material(
+      color: cat.bgColor,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () {
+          // Navigate to add expense with this category pre-selected
+          _addExpense();
+        },
+        child: Stack(
+          children: [
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(cat.icon, size: 28, color: cat.color),
+                    const SizedBox(height: 6),
+                    Text(
+                      cat.label,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: cat.color,
+                      ),
+                    ),
+                    if (count > 0) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        _fmtCurrency(total),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: cat.color.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            if (count > 0)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: cat.color,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -1618,6 +1752,20 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       ),
     );
   }
+}
+
+class _ExpenseCategoryItem {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final Color bgColor;
+
+  const _ExpenseCategoryItem({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.bgColor,
+  });
 }
 
 class AddEditExpenseScreen extends StatefulWidget {

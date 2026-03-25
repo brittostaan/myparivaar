@@ -446,6 +446,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             .pushNamed('/parents-dashboard');
                                       },
                                     ),
+                                    QuickAction(
+                                      label: 'Assets',
+                                      icon: Icons.account_balance_outlined,
+                                      onTap: () {
+                                        Navigator.of(context)
+                                            .pushNamed('/assets');
+                                      },
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 32),

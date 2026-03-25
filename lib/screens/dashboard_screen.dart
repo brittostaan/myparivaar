@@ -558,6 +558,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           active: false,
           connected: true),
       _DashNavItem(
+          label: 'Assets',
+          icon: Icons.account_balance_outlined,
+          route: '/assets',
+          active: false,
+          connected: true),
+      _DashNavItem(
+          label: 'Key Contacts',
+          icon: Icons.contacts_outlined,
+          route: '/key-contacts',
+          active: false,
+          connected: true),
+      _DashNavItem(
           label: 'Reports',
           icon: Icons.description_outlined,
           route: '',

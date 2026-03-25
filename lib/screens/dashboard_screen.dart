@@ -454,6 +454,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             .pushNamed('/assets');
                                       },
                                     ),
+                                    QuickAction(
+                                      label: 'Key Contacts',
+                                      icon: Icons.contacts_outlined,
+                                      onTap: () {
+                                        Navigator.of(context)
+                                            .pushNamed('/key-contacts');
+                                      },
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 32),

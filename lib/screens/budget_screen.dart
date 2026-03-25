@@ -961,58 +961,17 @@ class _BudgetScreenState extends State<BudgetScreen> {
       ),
     ];
 
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-            color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Budget Categories',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-              Text(
-                _monthLabel(_selectedMonth),
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Tap a category to set or adjust its budget',
-            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-          ),
-          const SizedBox(height: 20),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              mainAxisSpacing: 14,
-              crossAxisSpacing: 14,
-              childAspectRatio: 1.0,
-            ),
-            itemCount: categories.length,
-            itemBuilder: (context, index) {
-              final cat = categories[index];
-              final matchingBudget = _findBudgetForCategory(cat.label);
-              return _buildBudgetCategoryTile(cat, matchingBudget);
-            },
-          ),
-        ],
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: categories.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final cat = categories[index];
+          final matchingBudget = _findBudgetForCategory(cat.label);
+          return _buildBudgetCategoryChip(cat, matchingBudget);
+        },
       ),
     );
   }
@@ -1052,7 +1011,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
     return null;
   }
 
-  Widget _buildBudgetCategoryTile(_BudgetCategoryItem cat, Budget? budget) {
+  Widget _buildBudgetCategoryChip(_BudgetCategoryItem cat, Budget? budget) {
     final hasBudget = budget != null;
     final spent = hasBudget ? budget.spent : 0.0;
     final total = hasBudget ? budget.amount : 0.0;
@@ -1060,9 +1019,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
     return Material(
       color: cat.bgColor,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(22),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(22),
         onTap: () {
           if (hasBudget) {
             _addOrEditBudget(existing: budget);
@@ -1071,52 +1030,35 @@ class _BudgetScreenState extends State<BudgetScreen> {
           }
         },
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(cat.icon, size: 28, color: cat.color),
-              const SizedBox(height: 6),
+              Icon(cat.icon, size: 18, color: cat.color),
+              const SizedBox(width: 6),
               Text(
                 cat.label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: cat.color,
                 ),
               ),
               if (hasBudget) ...[
-                const SizedBox(height: 4),
-                Text(
-                  '₹${spent.toStringAsFixed(0)} / ₹${total.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    color: cat.color.withOpacity(0.8),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: ratio > 0.9 ? AppColors.error : cat.color,
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                ),
-                const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
-                  child: LinearProgressIndicator(
-                    value: ratio,
-                    backgroundColor: cat.color.withOpacity(0.15),
-                    valueColor: AlwaysStoppedAnimation(
-                      ratio > 0.9 ? AppColors.error : cat.color,
+                  child: Text(
+                    '${(ratio * 100).toStringAsFixed(0)}%',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
                     ),
-                    minHeight: 4,
-                  ),
-                ),
-              ] else ...[
-                const SizedBox(height: 4),
-                Text(
-                  'No budget set',
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: cat.color.withOpacity(0.6),
                   ),
                 ),
               ],

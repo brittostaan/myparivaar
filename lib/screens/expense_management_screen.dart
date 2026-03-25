@@ -740,45 +740,18 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       ),
     ];
 
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-            color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Spending Categories',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Tap a category to view or add expenses',
-            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-          ),
-          const SizedBox(height: 20),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              mainAxisSpacing: 14,
-              crossAxisSpacing: 14,
-              childAspectRatio: 1.15,
-            ),
-            itemCount: categories.length,
-            itemBuilder: (context, index) {
-              final cat = categories[index];
-              final count = _getCategoryExpenseCount(cat.label);
-              final total = _getCategoryExpenseTotal(cat.label);
-              return _buildCategoryTile(cat, count, total);
-            },
-          ),
-        ],
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: categories.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final cat = categories[index];
+          final count = _getCategoryExpenseCount(cat.label);
+          final total = _getCategoryExpenseTotal(cat.label);
+          return _buildCategoryChip(cat, count, total);
+        },
       ),
     );
   }
@@ -835,59 +808,31 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     }
   }
 
-  Widget _buildCategoryTile(_ExpenseCategoryItem cat, int count, double total) {
+  Widget _buildCategoryChip(_ExpenseCategoryItem cat, int count, double total) {
     return Material(
       color: cat.bgColor,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(22),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () {
-          // Navigate to add expense with this category pre-selected
-          _addExpense();
-        },
-        child: Stack(
-          children: [
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(cat.icon, size: 28, color: cat.color),
-                    const SizedBox(height: 6),
-                    Text(
-                      cat.label,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: cat.color,
-                      ),
-                    ),
-                    if (count > 0) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        _fmtCurrency(total),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: cat.color.withOpacity(0.8),
-                        ),
-                      ),
-                    ],
-                  ],
+        borderRadius: BorderRadius.circular(22),
+        onTap: () => _addExpense(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(cat.icon, size: 18, color: cat.color),
+              const SizedBox(width: 6),
+              Text(
+                cat.label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: cat.color,
                 ),
               ),
-            ),
-            if (count > 0)
-              Positioned(
-                top: 6,
-                right: 6,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              if (count > 0) ...[                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                   decoration: BoxDecoration(
                     color: cat.color,
                     borderRadius: BorderRadius.circular(10),
@@ -901,8 +846,9 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                     ),
                   ),
                 ),
-              ),
-          ],
+              ],
+            ],
+          ),
         ),
       ),
     );

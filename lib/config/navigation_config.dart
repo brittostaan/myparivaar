@@ -70,6 +70,7 @@ class NavigationConfig {
     '/csv-import': _mainNavigation,
     '/savings': _mainNavigation,
     '/assets': _mainNavigation,
+    '/key-contacts': _mainNavigation,
   };
 
   /// Standard navigation shown on main screens

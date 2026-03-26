@@ -499,7 +499,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? _buildWebError(context)
-              : _buildWebContent(context, isDark, theme),
+              : Row(
+                  children: [
+                    _buildSidebar(context, isDark, theme),
+                    Expanded(
+                      child: _buildWebContent(context, isDark, theme),
+                    ),
+                  ],
+                ),
     );
   }
 

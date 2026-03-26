@@ -369,6 +369,18 @@ class _NavigationShellState extends State<NavigationShell> {
         connected: true,
       ),
       _WebSidebarItem(
+        label: 'Assets',
+        icon: Icons.account_balance_outlined,
+        route: '/assets',
+        connected: true,
+      ),
+      _WebSidebarItem(
+        label: 'Key Contacts',
+        icon: Icons.contacts_outlined,
+        route: '/key-contacts',
+        connected: true,
+      ),
+      _WebSidebarItem(
         label: 'Bills',
         icon: Icons.receipt_outlined,
         route: '/bills',

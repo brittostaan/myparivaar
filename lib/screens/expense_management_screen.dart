@@ -191,57 +191,131 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Row(
+            // ── Action Pane ──────────────────────────────────────
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              child: Column(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Expenses',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
+                  Row(
+                    children: [
+                      const Text(
+                        'Expenses',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+                      const Spacer(),
+                      _buildActionChip(
+                        icon: Icons.auto_awesome,
+                        label: 'AI Insights',
+                        onTap: _loadSmartInsights,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildActionChip(
+                        icon: Icons.upload_file,
+                        label: 'Import CSV',
+                        onTap: () => Navigator.of(context).pushNamed('/csv-import'),
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton.icon(
+                        onPressed: _addExpense,
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text('Add Expense'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Track and manage your spending',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  FilledButton.icon(
-                    onPressed: _addExpense,
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Add'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
+                    ],
                   ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _buildViewTab('Current Month', Icons.calendar_month, true),
+                      const SizedBox(width: 6),
+                      _buildViewTab('Historical', Icons.history, false, comingSoon: true),
+                      const SizedBox(width: 6),
+                      _buildViewTab('Analytics', Icons.insights, false, comingSoon: true),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _loadExpenses,
                 child: _buildBody(),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionChip({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: Colors.grey[600]),
+            const SizedBox(width: 5),
+            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey[700])),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildViewTab(String label, IconData icon, bool active, {bool comingSoon = false}) {
+    return Tooltip(
+      message: comingSoon ? 'Coming soon' : '',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? AppColors.primary.withAlpha(15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          border: active
+              ? Border(bottom: BorderSide(color: AppColors.primary, width: 2))
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: active ? AppColors.primary : Colors.grey[400]),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                color: active ? AppColors.primary : Colors.grey[500],
+              ),
+            ),
+            if (comingSoon) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.lock_outline, size: 11, color: Colors.grey[400]),
+            ],
           ],
         ),
       ),
@@ -480,70 +554,53 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                children: [
+                  Row(
                     children: [
                       const Text(
                         'Expense Analysis',
-                        style: TextStyle(
-                            fontSize: 28, fontWeight: FontWeight.w700),
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Detailed breakdown of your spending habits',
-                        style: const TextStyle(
-                            fontSize: 14, color: Color(0xFF64748B)),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          _webTabChip(
-                            label: 'Current Month',
-                            icon: Icons.calendar_month,
-                            active: true,
-                          ),
-                          const SizedBox(width: 8),
-                          _webTabChip(
-                            label: 'Historical Performance',
-                            icon: Icons.history,
-                            active: false,
-                            comingSoon: true,
-                          ),
-                          const SizedBox(width: 8),
-                          _webTabChip(
-                            label: 'Spending Analytics',
-                            icon: Icons.insights,
-                            active: false,
-                            comingSoon: true,
-                          ),
-                        ],
+                      const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+                      const Spacer(),
+                      _buildActionChip(icon: Icons.auto_awesome, label: 'AI Insights', onTap: _loadSmartInsights),
+                      const SizedBox(width: 8),
+                      _buildActionChip(icon: Icons.upload_file, label: 'Import CSV', onTap: () => Navigator.of(context).pushNamed('/csv-import')),
+                      const SizedBox(width: 12),
+                      FilledButton.icon(
+                        onPressed: _addExpense,
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text('Add Expense'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
                       ),
                     ],
                   ),
-                ),
-                FilledButton.icon(
-                  onPressed: _addExpense,
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Add Expense'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _buildViewTab('Current Month', Icons.calendar_month, true),
+                      const SizedBox(width: 6),
+                      _buildViewTab('Historical Performance', Icons.history, false, comingSoon: true),
+                      const SizedBox(width: 6),
+                      _buildViewTab('Spending Analytics', Icons.insights, false, comingSoon: true),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                ],
+              ),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 24),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

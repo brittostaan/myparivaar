@@ -258,34 +258,29 @@ class _ReportsScreenState extends State<ReportsScreen> {
   // ── Header ────────────────────────────────────────────────────────────────
 
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 6),
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
       child: Row(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Reports',
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.4,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Build custom reports from your financial data.',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-              ],
+          const Text(
+            'Reports',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
             ),
           ),
+          const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+          const Spacer(),
           FilledButton.icon(
             onPressed: _runReport,
-            icon: const Icon(Icons.refresh_rounded),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
             label: const Text('Run Report'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
           ),
         ],
       ),

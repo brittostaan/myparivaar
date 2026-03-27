@@ -268,66 +268,146 @@ class _FamilyPlannerScreenState extends State<FamilyPlannerScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 14),
-              _buildOverviewCard(
-                upcomingCount: upcomingCount,
-                todayCount: todayCount,
-                birthdays: birthdays,
-                vacations: vacations,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(),
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                child: Column(
+                  children: [
+                    _buildOverviewCard(
+                      upcomingCount: upcomingCount,
+                      todayCount: todayCount,
+                      birthdays: birthdays,
+                      vacations: vacations,
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: _isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : _error != null
+                              ? _ErrorState(error: _error!, onRetry: _loadItems)
+                              : _buildTimeline(),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
-              _buildFilters(),
-              const SizedBox(height: 10),
-              Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _error != null
-                        ? _ErrorState(error: _error!, onRetry: _loadItems)
-                        : _buildTimeline(),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openItemDialog(),
-        backgroundColor: const Color(0xFF2563EB),
-        icon: const Icon(Icons.add),
-        label: const Text('Add Plan'),
       ),
     );
   }
 
   Widget _buildHeader() {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      child: Column(
+        children: [
+          Row(
             children: [
               const Text(
                 'Family Planner',
                 style: TextStyle(
-                  fontSize: 30,
+                  fontSize: 22,
                   fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
+                  letterSpacing: -0.3,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Shared calendar for birthdays, anniversaries, vacations, and events.',
-                style: TextStyle(color: Colors.grey[600]),
+              const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+              const Spacer(),
+              FilledButton.icon(
+                onPressed: () => _openItemDialog(),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add Plan'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
               ),
             ],
           ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                ..._PlannerFilter.values.map((f) {
+                  final label = switch (f) {
+                    _PlannerFilter.all => 'All',
+                    _PlannerFilter.today => 'Today',
+                    _PlannerFilter.upcoming => 'Upcoming',
+                    _PlannerFilter.thisMonth => 'This Month',
+                    _PlannerFilter.completed => 'Completed',
+                  };
+                  final icon = switch (f) {
+                    _PlannerFilter.all => Icons.grid_view_rounded,
+                    _PlannerFilter.today => Icons.today,
+                    _PlannerFilter.upcoming => Icons.upcoming,
+                    _PlannerFilter.thisMonth => Icons.calendar_month,
+                    _PlannerFilter.completed => Icons.check_circle_outline,
+                  };
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: _buildPlannerTab(label, icon, _activeFilter == f, onTap: () => setState(() => _activeFilter = f)),
+                  );
+                }),
+                const SizedBox(width: 8),
+                ...PlannerItemType.values.map((t) {
+                  final label = t.name[0].toUpperCase() + t.name.substring(1);
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: _buildPlannerTab(
+                      label,
+                      Icons.label_outline,
+                      _activeType == t,
+                      onTap: () => setState(() => _activeType = (_activeType == t) ? null : t),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlannerTab(String label, IconData icon, bool active, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFF2563EB).withAlpha(15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          border: active
+              ? Border(bottom: BorderSide(color: const Color(0xFF2563EB), width: 2))
+              : null,
         ),
-      ],
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: active ? const Color(0xFF2563EB) : Colors.grey[500]),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                color: active ? const Color(0xFF2563EB) : Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

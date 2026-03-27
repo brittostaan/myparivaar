@@ -326,11 +326,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
-            AppHeader(
-              title: userName,
-              subtitle: '${_getGreeting()},',
+            // ── Action Pane ──────────────────────────────────────
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${_getGreeting()},',
+                            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Text(
+                                userName,
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
             ),
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
 
             // Content
             Expanded(

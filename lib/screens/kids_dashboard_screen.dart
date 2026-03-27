@@ -367,6 +367,7 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildHeader(),
+                        const Divider(height: 1, color: Color(0xFFE2E8F0)),
                         const SizedBox(height: 12),
                         _buildKidNameBar(),
                         const SizedBox(height: 12),
@@ -472,29 +473,41 @@ class _KidsDashboardScreenState extends State<KidsDashboardScreen> {
   }
 
   Widget _buildHeader() {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Kids Dashboard',
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.4,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Capture kids activity, money sent, school events, budgets, and investments in one place.',
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-            ],
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
+      child: Row(
+        children: [
+          const Text(
+            'Kids Dashboard',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+            ),
           ),
-        ),
-      ],
+          const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2563EB).withAlpha(20),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.child_care, size: 14, color: Color(0xFF2563EB)),
+                const SizedBox(width: 4),
+                Text(
+                  'Education · Money · Events',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF2563EB)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

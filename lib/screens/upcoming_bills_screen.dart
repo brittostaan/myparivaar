@@ -268,89 +268,75 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Action Pane ──────────────────────────────────────
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Upcoming Bills',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+                      const Spacer(),
+                      FilledButton.icon(
+                        onPressed: () => _showBillDialog(),
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text('Add Bill'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _buildBillViewTab('Current Month', Icons.calendar_month, true),
+                      const SizedBox(width: 6),
+                      _buildBillViewTab('Historical', Icons.history, false, comingSoon: true),
+                      const SizedBox(width: 6),
+                      _buildBillViewTab('Analytics', Icons.insights, false, comingSoon: true),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Upcoming Bills',
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.4,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Track due dates, avoid misses, and stay cashflow-ready.',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: const [
-                            _BillsTopTabChip(
-                              label: 'Current Month',
-                              icon: Icons.calendar_month,
-                              active: true,
-                            ),
-                            _BillsTopTabChip(
-                              label: 'Historical Performance',
-                              icon: Icons.history,
-                              active: false,
-                              comingSoon: true,
-                            ),
-                            _BillsTopTabChip(
-                              label: 'Spending Analytics',
-                              icon: Icons.insights,
-                              active: false,
-                              comingSoon: true,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _StatCard(label: 'Due', value: _formatCurrency(dueTotal)),
+                      _StatCard(label: 'Overdue', value: _formatCurrency(overdueTotal)),
+                      _StatCard(label: 'Upcoming', value: upcoming.length.toString()),
+                      _StatCard(label: 'Paid', value: paid.length.toString()),
+                    ],
                   ),
-                  FilledButton.icon(
-                    onPressed: () => _showBillDialog(),
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Add Bill'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
+                  const SizedBox(height: 12),
                 ],
               ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  _StatCard(label: 'Due', value: _formatCurrency(dueTotal)),
-                  _StatCard(label: 'Overdue', value: _formatCurrency(overdueTotal)),
-                  _StatCard(label: 'Upcoming', value: upcoming.length.toString()),
-                  _StatCard(label: 'Paid', value: paid.length.toString()),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Expanded(
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _error != null
@@ -506,10 +492,41 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
                                   );
                                 },
                               ),
-              )
+                ),
+              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildBillViewTab(String label, IconData icon, bool active, {bool comingSoon = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: active ? Theme.of(context).colorScheme.primary.withOpacity(0.08) : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        border: active ? Border(bottom: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)) : null,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: active ? Theme.of(context).colorScheme.primary : Colors.grey[500]),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+              color: active ? Theme.of(context).colorScheme.primary : Colors.grey[600],
+            ),
+          ),
+          if (comingSoon) ...[
+            const SizedBox(width: 4),
+            Icon(Icons.lock_outline, size: 11, color: Colors.grey[400]),
+          ],
+        ],
       ),
     );
   }
@@ -540,53 +557,6 @@ class _StatCard extends StatelessWidget {
             value,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BillsTopTabChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool active;
-  final bool comingSoon;
-
-  const _BillsTopTabChip({
-    required this.label,
-    required this.icon,
-    required this.active,
-    this.comingSoon = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-      decoration: BoxDecoration(
-        color: active ? Colors.white : const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: active ? const Color(0xFF0D7FF2) : const Color(0xFFE2E8F0),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: active ? const Color(0xFF0D7FF2) : null),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: active ? const Color(0xFF0D7FF2) : null,
-            ),
-          ),
-          if (comingSoon) ...[
-            const SizedBox(width: 6),
-            const Icon(Icons.close_rounded, size: 11, color: Colors.red),
-          ],
         ],
       ),
     );

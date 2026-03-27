@@ -619,46 +619,56 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                            Container(
+                              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
                                     children: [
                                       const Text(
                                         'Investments',
                                         style: TextStyle(
-                                          fontSize: 28,
+                                          fontSize: 22,
                                           fontWeight: FontWeight.w800,
-                                          color: Color(0xFF0F172A),
+                                          letterSpacing: -0.3,
                                         ),
                                       ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        'Track portfolio, due dates, and child-linked investments.',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.grey[600],
+                                      const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+                                      const Spacer(),
+                                      FilledButton.icon(
+                                        onPressed: _addInvestment,
+                                        icon: const Icon(Icons.add_rounded, size: 18),
+                                        label: const Text('Add Investment'),
+                                        style: FilledButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-                                FilledButton.icon(
-                                  onPressed: _addInvestment,
-                                  icon: const Icon(Icons.add_rounded),
-                                  label: const Text('Add Investment'),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                  const SizedBox(height: 10),
+                                  SizedBox(
+                                    height: 36,
+                                    child: ListView(
+                                      scrollDirection: Axis.horizontal,
+                                      children: [
+                                        _buildInvViewTab('All', Icons.grid_view_rounded, true),
+                                        const SizedBox(width: 6),
+                                        ..._types.map((t) => Padding(
+                                          padding: const EdgeInsets.only(right: 6),
+                                          child: _buildInvViewTab(t, Icons.show_chart, false),
+                                        )),
+                                      ],
                                     ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 8),
+                                ],
+                              ),
                             ),
                             const SizedBox(height: 18),
                             if (isWebDesktop)
@@ -780,6 +790,34 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                       ],
                     ),
                   ),
+      ),
+    );
+  }
+
+  Widget _buildInvViewTab(String label, IconData icon, bool active) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: active ? AppColors.primary.withAlpha(15) : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        border: active
+            ? Border(bottom: BorderSide(color: AppColors.primary, width: 2))
+            : null,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: active ? AppColors.primary : Colors.grey[500]),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+              color: active ? AppColors.primary : Colors.grey[600],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -367,124 +367,104 @@ class _AssetsScreenState extends State<AssetsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Header ───────────────────────────────────────────────
-              Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Action Pane ────────────────────────────────────────────
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Assets',
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.4,
+                  Row(
+                    children: [
+                      const Text(
+                        'Assets',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+                      const Spacer(),
+                      if (_assets.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withAlpha(20),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${_assets.length} asset${_assets.length == 1 ? '' : 's'} · ${_fmtCurrency(_totalEstimatedValue)}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Track and manage all your family assets in one place.',
-                          style: TextStyle(color: Colors.grey[600]),
+                      const SizedBox(width: 12),
+                      FilledButton.icon(
+                        onPressed: _showAddAssetDialog,
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Add Asset'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Row 2: View tabs / filters
+                  SizedBox(
+                    height: 36,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        _ActionPaneTab(
+                          label: 'All Assets',
+                          icon: Icons.grid_view_rounded,
+                          selected: _selectedCategoryFilter == null,
+                          onTap: () => setState(() => _selectedCategoryFilter = null),
+                        ),
+                        const SizedBox(width: 6),
+                        ..._categoryInfoList.map((info) {
+                          final label = Asset.categoryLabel(info.category);
+                          final count = _assets.where((a) => a.category == info.category).length;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: _ActionPaneTab(
+                              label: count > 0 ? '$label ($count)' : label,
+                              icon: info.icon,
+                              selected: _selectedCategoryFilter == label,
+                              onTap: () => setState(() => _selectedCategoryFilter = label),
+                            ),
+                          );
+                        }),
                       ],
                     ),
                   ),
-                  FilledButton.icon(
-                    onPressed: _showAddAssetDialog,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add Asset'),
-                  ),
+                  const SizedBox(height: 8),
                 ],
               ),
-              const SizedBox(height: 16),
+            ),
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
 
-              // ── Total Value Card ─────────────────────────────────────
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Total Estimated Value',
-                      style: TextStyle(
-                        color: Colors.white.withAlpha(200),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _fmtCurrency(_totalEstimatedValue),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${_assets.length} asset${_assets.length == 1 ? '' : 's'} across ${_categoryTotals.length} categor${_categoryTotals.length == 1 ? 'y' : 'ies'}',
-                      style: TextStyle(
-                        color: Colors.white.withAlpha(180),
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // ── Category Filter Chips ────────────────────────────────
-              if (_assets.isNotEmpty) ...[
-                SizedBox(
-                  height: 40,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      _FilterChip(
-                        label: 'All',
-                        selected: _selectedCategoryFilter == null,
-                        onTap: () =>
-                            setState(() => _selectedCategoryFilter = null),
-                      ),
-                      const SizedBox(width: 8),
-                      ..._categoryTotals.keys.map((cat) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: _FilterChip(
-                            label: cat,
-                            selected: _selectedCategoryFilter == cat,
-                            onTap: () => setState(
-                                () => _selectedCategoryFilter = cat),
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-
-              // ── Content ──────────────────────────────────────────────
-              Expanded(
+            // ── Content ──────────────────────────────────────────────
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
                 child: _assets.isEmpty
                     ? _buildEmptyState()
                     : _buildAssetContent(),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -958,6 +938,53 @@ class _CategoryTile extends StatelessWidget {
                   ),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionPaneTab extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ActionPaneTab({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary.withAlpha(15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          border: selected
+              ? Border(bottom: BorderSide(color: AppColors.primary, width: 2))
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: selected ? AppColors.primary : Colors.grey[500]),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: selected ? AppColors.primary : Colors.grey[600],
+              ),
+            ),
           ],
         ),
       ),

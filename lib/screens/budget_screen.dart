@@ -535,65 +535,65 @@ class _BudgetScreenState extends State<BudgetScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Row(
+            // ── Action Pane ──────────────────────────────────────
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              child: Column(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Budget',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
-                          ),
+                  Row(
+                    children: [
+                      const Text(
+                        'Budget',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Plan your monthly spending',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[600],
+                      ),
+                      const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+                      const Spacer(),
+                      if (_backendAvailable) ...[
+                        _buildBudgetActionChip(
+                          icon: Icons.auto_awesome,
+                          label: 'AI Insights',
+                          onTap: () {},
+                        ),
+                        const SizedBox(width: 8),
+                        _buildBudgetActionChip(
+                          icon: Icons.upload_file,
+                          label: 'Upload Excel',
+                          onTap: _isUploading ? null : _uploadExcelBudget,
+                        ),
+                        const SizedBox(width: 12),
+                        FilledButton.icon(
+                          onPressed: () => _addOrEditBudget(),
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: const Text('Add Budget'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
-                  if (_backendAvailable) ...[
-                    IconButton(
-                      onPressed: _isUploading ? null : _uploadExcelBudget,
-                      icon: _isUploading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.upload_file),
-                      tooltip: 'Upload Excel',
-                    ),
-                    const SizedBox(width: 4),
-                    FilledButton.icon(
-                      onPressed: () => _addOrEditBudget(),
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Add'),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ],
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _buildBudgetViewTab('Current Month', Icons.calendar_month, true),
+                      const SizedBox(width: 6),
+                      _buildBudgetViewTab('Historical', Icons.history, false, comingSoon: true),
+                      const SizedBox(width: 6),
+                      _buildBudgetViewTab('Analytics', Icons.insights, false, comingSoon: true),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+            const SizedBox(height: 4),
             _buildMonthSelector(),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -602,6 +602,71 @@ class _BudgetScreenState extends State<BudgetScreen> {
             Expanded(child: _buildBody()),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildBudgetActionChip({
+    required IconData icon,
+    required String label,
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: Colors.grey[600]),
+            const SizedBox(width: 5),
+            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey[700])),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBudgetViewTab(String label, IconData icon, bool active, {bool comingSoon = false, VoidCallback? onTap}) {
+    return Tooltip(
+      message: comingSoon ? 'Coming soon' : '',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? AppColors.primary.withAlpha(15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          border: active
+              ? Border(bottom: BorderSide(color: AppColors.primary, width: 2))
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: active ? AppColors.primary : Colors.grey[400]),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                color: active ? AppColors.primary : Colors.grey[500],
+              ),
+            ),
+            if (comingSoon) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.lock_outline, size: 11, color: Colors.grey[400]),
+            ],
+          ],
+        ),
+      ),
       ),
     );
   }
@@ -675,116 +740,85 @@ class _BudgetScreenState extends State<BudgetScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                children: [
+                  Row(
                     children: [
                       const Text(
                         'Budget Analysis',
-                        style: TextStyle(
-                            fontSize: 28, fontWeight: FontWeight.w700),
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Detailed breakdown of your budget',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                      const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+                      const Spacer(),
+                      _buildBudgetActionChip(icon: Icons.auto_awesome, label: 'AI Insights', onTap: () {}),
+                      const SizedBox(width: 8),
+                      _buildBudgetActionChip(
+                        icon: Icons.upload_file,
+                        label: _isUploading ? 'Processing...' : 'Upload Excel',
+                        onTap: _isUploading ? null : _uploadExcelBudget,
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton.icon(
+                        onPressed: () => _addOrEditBudget(),
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text('Add Budget'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
                       ),
                     ],
                   ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _isUploading ? null : _uploadExcelBudget,
-                  icon: _isUploading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.upload_file),
-                  label: Text(_isUploading ? 'Processing...' : 'Upload Excel'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: BorderSide(color: AppColors.primary),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _buildBudgetViewTab(
+                        'Current Month', Icons.calendar_month,
+                        _selectedWebView == _BudgetWebView.currentMonth,
+                        onTap: () => setState(() => _selectedWebView = _BudgetWebView.currentMonth),
+                      ),
+                      const SizedBox(width: 6),
+                      _buildBudgetViewTab(
+                        'Historical Performance', Icons.history,
+                        _selectedWebView == _BudgetWebView.historicalPerformance,
+                        onTap: () => setState(() => _selectedWebView = _BudgetWebView.historicalPerformance),
+                      ),
+                      const SizedBox(width: 6),
+                      _buildBudgetViewTab(
+                        'Spending Analytics', Icons.insights,
+                        _selectedWebView == _BudgetWebView.spendingAnalytics,
+                        onTap: () => setState(() => _selectedWebView = _BudgetWebView.spendingAnalytics),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: 'Previous month',
+                        onPressed: () => _moveMonth(-1),
+                        icon: const Icon(Icons.chevron_left, size: 20),
+                      ),
+                      Text(
+                        _monthLabel(_selectedMonth),
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      ),
+                      IconButton(
+                        tooltip: 'Next month',
+                        onPressed: (_selectedMonth.year == DateTime.now().year &&
+                                _selectedMonth.month == DateTime.now().month)
+                            ? null
+                            : () => _moveMonth(1),
+                        icon: const Icon(Icons.chevron_right, size: 20),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: () => _addOrEditBudget(),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Add Budget'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                _webTabChip(
-                  label: 'Current Month',
-                  icon: Icons.calendar_month,
-                  active: _selectedWebView == _BudgetWebView.currentMonth,
-                  onTap: () => setState(
-                    () => _selectedWebView = _BudgetWebView.currentMonth,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _webTabChip(
-                  label: 'Historical Performance',
-                  icon: Icons.history,
-                  active: _selectedWebView == _BudgetWebView.historicalPerformance,
-                  onTap: () => setState(
-                    () =>
-                        _selectedWebView = _BudgetWebView.historicalPerformance,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _webTabChip(
-                  label: 'Spending Analytics',
-                  icon: Icons.insights,
-                  active: _selectedWebView == _BudgetWebView.spendingAnalytics,
-                  onTap: () => setState(
-                    () => _selectedWebView = _BudgetWebView.spendingAnalytics,
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  tooltip: 'Previous month',
-                  onPressed: () => _moveMonth(-1),
-                  icon: const Icon(Icons.chevron_left),
-                ),
-                Text(
-                  _monthLabel(_selectedMonth),
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                IconButton(
-                  tooltip: 'Next month',
-                  onPressed: (_selectedMonth.year == DateTime.now().year &&
-                          _selectedMonth.month == DateTime.now().month)
-                      ? null
-                      : () => _moveMonth(1),
-                  icon: const Icon(Icons.chevron_right),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                ],
+              ),
             ),
             const SizedBox(height: 28),
             if (_selectedWebView == _BudgetWebView.currentMonth)

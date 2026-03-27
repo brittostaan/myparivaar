@@ -128,38 +128,42 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              const AppHeader(
-                title: 'AI Insights',
-                avatarIcon: AppIcons.smartToy,
-                showViewModeSelector: false,
-                showSettingsButton: false,
-                showNotifications: false,
-              ),
-              // Quick-access AI tools
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
+              // ── Action Pane ──────────────────────────────────────
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                child: Column(
                   children: [
-                    Expanded(
-                      child: _buildAIToolCard(
-                        icon: Icons.warning_amber_rounded,
-                        label: 'Anomaly Detection',
-                        color: Colors.orange,
-                        onTap: () => Navigator.pushNamed(context, '/anomaly-detection'),
-                      ),
+                    Row(
+                      children: [
+                        const Text(
+                          'AI Insights',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+                        const Spacer(),
+                        _buildAIActionChip(
+                          icon: Icons.warning_amber_rounded,
+                          label: 'Anomaly Detection',
+                          onTap: () => Navigator.pushNamed(context, '/anomaly-detection'),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildAIActionChip(
+                          icon: Icons.trending_up,
+                          label: 'Financial Simulator',
+                          onTap: () => Navigator.pushNamed(context, '/financial-simulator'),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildAIToolCard(
-                        icon: Icons.trending_up,
-                        label: 'Financial Simulator',
-                        color: Colors.teal,
-                        onTap: () => Navigator.pushNamed(context, '/financial-simulator'),
-                      ),
-                    ),
+                    const SizedBox(height: 8),
                   ],
                 ),
               ),
+              const Divider(height: 1, color: Color(0xFFE2E8F0)),
               const TabBar(
                 tabs: [
                   Tab(icon: Icon(AppIcons.summarize), text: 'Weekly Summary'),
@@ -181,37 +185,29 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
     );
   }
 
-  Widget _buildAIToolCard({
+  Widget _buildAIActionChip({
     required IconData icon,
     required String label,
-    required Color color,
     required VoidCallback onTap,
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.2)),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: color.withOpacity(0.9),
-                ),
-              ),
+            Icon(icon, size: 15, color: Colors.grey[600]),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[700]),
             ),
-            Icon(Icons.chevron_right, color: color.withOpacity(0.5), size: 20),
           ],
         ),
       ),

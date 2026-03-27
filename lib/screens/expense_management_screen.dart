@@ -212,7 +212,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                       _buildActionChip(
                         icon: Icons.auto_awesome,
                         label: 'AI Insights',
-                        onTap: _loadSmartInsights,
+                        onTap: () => Navigator.of(context).pushNamed('/ai-features'),
                       ),
                       const SizedBox(width: 8),
                       _buildActionChip(
@@ -571,7 +571,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                       ),
                       const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
                       const Spacer(),
-                      _buildActionChip(icon: Icons.auto_awesome, label: 'AI Insights', onTap: _loadSmartInsights),
+                      _buildActionChip(icon: Icons.auto_awesome, label: 'AI Insights', onTap: () => Navigator.of(context).pushNamed('/ai-features')),
                       const SizedBox(width: 8),
                       _buildActionChip(icon: Icons.upload_file, label: 'Import CSV', onTap: () => Navigator.of(context).pushNamed('/csv-import')),
                       const SizedBox(width: 12),

@@ -492,10 +492,9 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
                                   );
                                 },
                               ),
-                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

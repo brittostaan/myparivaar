@@ -208,6 +208,16 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                         ),
                       ),
                       const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _buildViewTab('Current Month', Icons.calendar_month, true),
+                      const SizedBox(width: 6),
+                      _buildViewTab('Historical', Icons.history, false, comingSoon: true),
+                      const SizedBox(width: 6),
+                      _buildViewTab('Analytics', Icons.insights, false, comingSoon: true),
                       const Spacer(),
                       _buildActionChip(
                         icon: Icons.auto_awesome,
@@ -232,16 +242,6 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      _buildViewTab('Current Month', Icons.calendar_month, true),
-                      const SizedBox(width: 6),
-                      _buildViewTab('Historical', Icons.history, false, comingSoon: true),
-                      const SizedBox(width: 6),
-                      _buildViewTab('Analytics', Icons.insights, false, comingSoon: true),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -570,6 +570,16 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                         style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
                       ),
                       const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _buildViewTab('Current Month', Icons.calendar_month, true),
+                      const SizedBox(width: 6),
+                      _buildViewTab('Historical Performance', Icons.history, false, comingSoon: true),
+                      const SizedBox(width: 6),
+                      _buildViewTab('Spending Analytics', Icons.insights, false, comingSoon: true),
                       const Spacer(),
                       _buildActionChip(icon: Icons.auto_awesome, label: 'AI Insights', onTap: () => Navigator.of(context).pushNamed('/ai-features')),
                       const SizedBox(width: 8),
@@ -584,16 +594,6 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      _buildViewTab('Current Month', Icons.calendar_month, true),
-                      const SizedBox(width: 6),
-                      _buildViewTab('Historical Performance', Icons.history, false, comingSoon: true),
-                      const SizedBox(width: 6),
-                      _buildViewTab('Spending Analytics', Icons.insights, false, comingSoon: true),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -649,78 +649,6 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             ],
             // Expense Category Widgets
             _buildExpenseCategoryGrid(isDark),
-            const SizedBox(height: 30),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: _buildBudgetStatusCard(isDark, primary)),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(26),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E2836),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Category Trend',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              'Last 5 Months',
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            _trendBar(0.42, primary.withOpacity(0.45)),
-                            const SizedBox(width: 6),
-                            _trendBar(0.58, primary.withOpacity(0.6)),
-                            const SizedBox(width: 6),
-                            _trendBar(0.5, primary.withOpacity(0.45)),
-                            const SizedBox(width: 6),
-                            _trendBar(0.72, primary.withOpacity(0.8)),
-                            const SizedBox(width: 6),
-                            _trendBar(0.9, primary),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        const Row(
-                          children: [
-                            Icon(Icons.close_rounded,
-                                size: 12, color: Colors.red),
-                            SizedBox(width: 6),
-                            Text(
-                              'Advanced trend analytics coming soon',
-                              style: TextStyle(
-                                  color: Colors.white54, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ],
         ),
       ),

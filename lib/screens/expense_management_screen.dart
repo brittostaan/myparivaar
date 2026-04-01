@@ -621,7 +621,9 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       _buildControlPill(
                         icon: Icons.calendar_month,
@@ -630,37 +632,30 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                         active: true,
                         onTap: () {},
                       ),
-                      const SizedBox(width: 8),
                       _buildControlPill(
                         icon: Icons.history,
                         label: 'Historical Performance',
                         color: const Color(0xFF7C4DFF),
-                        locked: true,
                         onTap: () {},
                       ),
-                      const SizedBox(width: 8),
                       _buildControlPill(
                         icon: Icons.insights,
                         label: 'Spending Analytics',
                         color: const Color(0xFF00ACC1),
-                        locked: true,
                         onTap: () {},
                       ),
-                      const Spacer(),
                       _buildControlPill(
                         icon: Icons.auto_awesome,
                         label: 'AI Insights',
                         color: const Color(0xFF9C27B0),
                         onTap: () => Navigator.of(context).pushNamed('/ai-features'),
                       ),
-                      const SizedBox(width: 8),
                       _buildControlPill(
                         icon: Icons.upload_file,
                         label: 'Import CSV',
                         color: const Color(0xFF43A047),
                         onTap: () => Navigator.of(context).pushNamed('/csv-import'),
                       ),
-                      const SizedBox(width: 8),
                       _buildControlPill(
                         icon: _showAddExpensePanel ? Icons.close_rounded : Icons.add_rounded,
                         label: _showAddExpensePanel ? 'Close' : 'Add Expense',

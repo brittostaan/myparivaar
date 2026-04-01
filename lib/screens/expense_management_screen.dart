@@ -46,8 +46,9 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
   // Web: category filter & inline panels
   String? _selectedCategoryFilter;
-  DateTime? _filterDate; // date filter for expenses
-  bool _showDateFilterPicker = false;
+  DateTime? _filterStartDate; // date range filter start
+  DateTime? _filterEndDate; // date range filter end
+  bool _showCalendarDropdown = false; // inline calendar dropdown
   bool _showAddExpensePanel = false;
   bool _showImportPanel = false;
   bool _showHistoricalPanel = false;
@@ -55,8 +56,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   bool _showAIInsightsPanel = false;
   Expense? _selectedExpenseDetail;
   bool _showLeakageFlip = false; // flip between Projected ↔ Leakage when panel active
-  int _infoCardPage = 0; // 0 = col A (cards 1-7), 1 = col B (cards 8-14)
-  bool _showCol3UnderCol1 = false; // when panel active, flip col3 cards under col1
+  final ScrollController _infoCardScrollController = ScrollController();
 
   void _closeAllPanels() {
     _showAddExpensePanel = false;
@@ -75,6 +75,12 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   void initState() {
     super.initState();
     _loadExpenses();
+  }
+
+  @override
+  void dispose() {
+    _infoCardScrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadExpenses() async {
@@ -631,305 +637,244 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         ? (spendDelta.abs() / previousMonthSpend) * 100
         : 0.0;
 
-    return RefreshIndicator(
-      onRefresh: _loadExpenses,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(30),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        'Expense',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
-                      ),
-                      const Spacer(),
-                      // Daily Wisdom
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFF3E5F5), Color(0xFFE8EAF6)],
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.auto_awesome, size: 14, color: Colors.deepPurple[300]),
-                            const SizedBox(width: 6),
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 300),
-                              child: Text(
-                                '"${_financeProverbs[DateTime.now().day % _financeProverbs.length]}"',
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.deepPurple[700], fontStyle: FontStyle.italic),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      // Date filter
-                      GestureDetector(
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: _filterDate ?? DateTime.now(),
-                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                            lastDate: DateTime.now(),
-                            builder: (ctx, child) => Theme(
-                              data: Theme.of(ctx).copyWith(
-                                colorScheme: ColorScheme.light(
-                                  primary: const Color(0xFF1565C0),
-                                  onPrimary: Colors.white,
-                                  surface: Colors.white,
-                                ),
-                              ),
-                              child: child!,
-                            ),
-                          );
-                          if (picked != null) {
-                            setState(() => _filterDate = picked);
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                          decoration: BoxDecoration(
-                            color: _filterDate != null ? const Color(0xFFE3F2FD) : Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: _filterDate != null ? const Color(0xFF1565C0) : Colors.grey.shade200),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.today_rounded, size: 16, color: _filterDate != null ? const Color(0xFF1565C0) : Colors.orange.shade600),
-                              if (_filterDate != null) ...[
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${_filterDate!.day}/${_filterDate!.month}',
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF1565C0)),
-                                ),
-                                const SizedBox(width: 4),
-                                GestureDetector(
-                                  onTap: () => setState(() => _filterDate = null),
-                                  child: const Icon(Icons.close, size: 12, color: Color(0xFF1565C0)),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                      _buildControlPill(
-                        icon: Icons.calendar_month,
-                        label: 'Current Month',
-                        color: const Color(0xFF1565C0),
-                        active: false,
-                        onTap: () => setState(() => _filterDate = null),
-                      ),
-                      _buildControlPill(
-                        icon: _showHistoricalPanel ? Icons.close_rounded : Icons.history,
-                        label: _showHistoricalPanel ? 'Close' : 'Historical Performance',
-                        color: const Color(0xFF7C4DFF),
-                        active: _showHistoricalPanel,
-                        onTap: () => setState(() {
-                          final opening = !_showHistoricalPanel;
-                          _closeAllPanels();
-                          _showHistoricalPanel = opening;
-                        }),
-                      ),
-                      _buildControlPill(
-                        icon: _showAnalyticsPanel ? Icons.close_rounded : Icons.insights,
-                        label: _showAnalyticsPanel ? 'Close' : 'Spending Analytics',
-                        color: const Color(0xFF00ACC1),
-                        active: _showAnalyticsPanel,
-                        onTap: () => setState(() {
-                          final opening = !_showAnalyticsPanel;
-                          _closeAllPanels();
-                          _showAnalyticsPanel = opening;
-                        }),
-                      ),
-                      _buildControlPill(
-                        icon: _showAIInsightsPanel ? Icons.close_rounded : Icons.auto_awesome,
-                        label: _showAIInsightsPanel ? 'Close' : 'AI Insights',
-                        color: const Color(0xFF9C27B0),
-                        active: _showAIInsightsPanel,
-                        onTap: () => setState(() {
-                          final opening = !_showAIInsightsPanel;
-                          _closeAllPanels();
-                          _showAIInsightsPanel = opening;
-                        }),
-                      ),
-                      _buildControlPill(
-                        icon: _showImportPanel ? Icons.close_rounded : Icons.upload_file,
-                        label: _showImportPanel ? 'Close' : 'Import',
-                        color: const Color(0xFF43A047),
-                        active: _showImportPanel,
-                        onTap: () => setState(() {
-                          final opening = !_showImportPanel;
-                          _closeAllPanels();
-                          _showImportPanel = opening;
-                        }),
-                      ),
-                      _buildControlPill(
-                        icon: _showAddExpensePanel ? Icons.close_rounded : Icons.add_rounded,
-                        label: _showAddExpensePanel ? 'Close' : 'Add Expense',
-                        color: const Color(0xFFFF6D00),
-                        active: _showAddExpensePanel,
-                        onTap: () => setState(() {
-                          final opening = !_showAddExpensePanel;
-                          _closeAllPanels();
-                          _showAddExpensePanel = opening;
-                        }),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Pending review banner
-            if (_pendingEmailExpenses.isNotEmpty) ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.amber.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.amber.withOpacity(0.4)),
-                ),
-                child: Row(children: [
-                  const Icon(Icons.pending_actions, color: Colors.amber, size: 22),
-                  const SizedBox(width: 12),
-                  Text(
-                    '${_pendingEmailExpenses.length} email transaction(s) pending your review',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                  ),
-                ]),
-              ),
-              const SizedBox(height: 16),
-            ],
-            // Expense Category Chips (now filter transactions)
-            _buildExpenseCategoryGrid(isDark),
-            // Clear filter chip
-            if (_selectedCategoryFilter != null) ...[
-              const SizedBox(height: 8),
-              InkWell(
-                onTap: () => setState(() => _selectedCategoryFilter = null),
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: primary.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.close, size: 14, color: primary),
-                      const SizedBox(width: 4),
-                      Text('Clear filter: $_selectedCategoryFilter', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primary)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            // ── Main Row: Transactions | Rewards | AI Info Cards | Projected / Control ──
-            Row(
+    final hasDateFilter = _filterStartDate != null;
+    String dateFilterLabel = '';
+    if (_filterStartDate != null) {
+      final s = _filterStartDate!;
+      dateFilterLabel = '${s.day}/${s.month}';
+      if (_filterEndDate != null && _filterEndDate != _filterStartDate) {
+        final e = _filterEndDate!;
+        dateFilterLabel += ' – ${e.day}/${e.month}';
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(30),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Title Row ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Col 1: Transaction List
-                Expanded(
-                  flex: 5,
-                  child: Column(
-                    children: [
-                      _buildWebTransactionList(filtered, isDark, primary),
-                      // When panel active, col 4 cards flip under transactions
-                      if (_anyPanelOpen && _showCol3UnderCol1) ...[
-                        const SizedBox(height: 12),
-                        _buildAIInfoCardsColumn(isDark, primary, page: 1),
-                      ],
-                      if (_anyPanelOpen) ...[
-                        const SizedBox(height: 8),
-                        GestureDetector(
-                          onTap: () => setState(() => _showCol3UnderCol1 = !_showCol3UnderCol1),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(_showCol3UnderCol1 ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, size: 16, color: Colors.grey.shade600),
-                                const SizedBox(width: 4),
-                                Text(_showCol3UnderCol1 ? 'Hide More Cards' : 'More AI Cards', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
-                              ],
+                Row(
+                  children: [
+                    const Text(
+                      'Expense',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+                    ),
+                    const Spacer(),
+                    // Daily Wisdom
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFF3E5F5), Color(0xFFE8EAF6)],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.auto_awesome, size: 14, color: Colors.deepPurple[300]),
+                          const SizedBox(width: 6),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 300),
+                            child: Text(
+                              '"${_financeProverbs[DateTime.now().day % _financeProverbs.length]}"',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.deepPurple[700], fontStyle: FontStyle.italic),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                             ),
                           ),
-                        ),
-                      ],
-                    ],
-                  ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // ── Controls Row ──
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    // Date filter pill (toggles calendar dropdown)
+                    _buildControlPill(
+                      icon: Icons.date_range_rounded,
+                      label: hasDateFilter ? dateFilterLabel : 'Date Filter',
+                      color: const Color(0xFFE65100),
+                      active: _showCalendarDropdown || hasDateFilter,
+                      onTap: () => setState(() => _showCalendarDropdown = !_showCalendarDropdown),
+                    ),
+                    _buildControlPill(
+                      icon: Icons.calendar_month,
+                      label: 'Current Month',
+                      color: const Color(0xFF1565C0),
+                      active: false,
+                      onTap: () => setState(() {
+                        _filterStartDate = null;
+                        _filterEndDate = null;
+                        _showCalendarDropdown = false;
+                      }),
+                    ),
+                    _buildControlPill(
+                      icon: _showHistoricalPanel ? Icons.close_rounded : Icons.history,
+                      label: _showHistoricalPanel ? 'Close' : 'Historical Performance',
+                      color: const Color(0xFF7C4DFF),
+                      active: _showHistoricalPanel,
+                      onTap: () => setState(() {
+                        final opening = !_showHistoricalPanel;
+                        _closeAllPanels();
+                        _showHistoricalPanel = opening;
+                      }),
+                    ),
+                    _buildControlPill(
+                      icon: _showAnalyticsPanel ? Icons.close_rounded : Icons.insights,
+                      label: _showAnalyticsPanel ? 'Close' : 'Spending Analytics',
+                      color: const Color(0xFF00ACC1),
+                      active: _showAnalyticsPanel,
+                      onTap: () => setState(() {
+                        final opening = !_showAnalyticsPanel;
+                        _closeAllPanels();
+                        _showAnalyticsPanel = opening;
+                      }),
+                    ),
+                    _buildControlPill(
+                      icon: _showAIInsightsPanel ? Icons.close_rounded : Icons.auto_awesome,
+                      label: _showAIInsightsPanel ? 'Close' : 'AI Insights',
+                      color: const Color(0xFF9C27B0),
+                      active: _showAIInsightsPanel,
+                      onTap: () => setState(() {
+                        final opening = !_showAIInsightsPanel;
+                        _closeAllPanels();
+                        _showAIInsightsPanel = opening;
+                      }),
+                    ),
+                    _buildControlPill(
+                      icon: _showImportPanel ? Icons.close_rounded : Icons.upload_file,
+                      label: _showImportPanel ? 'Close' : 'Import',
+                      color: const Color(0xFF43A047),
+                      active: _showImportPanel,
+                      onTap: () => setState(() {
+                        final opening = !_showImportPanel;
+                        _closeAllPanels();
+                        _showImportPanel = opening;
+                      }),
+                    ),
+                    _buildControlPill(
+                      icon: _showAddExpensePanel ? Icons.close_rounded : Icons.add_rounded,
+                      label: _showAddExpensePanel ? 'Close' : 'Add Expense',
+                      color: const Color(0xFFFF6D00),
+                      active: _showAddExpensePanel,
+                      onTap: () => setState(() {
+                        final opening = !_showAddExpensePanel;
+                        _closeAllPanels();
+                        _showAddExpensePanel = opening;
+                      }),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+          // ── Inline Calendar Dropdown ──
+          if (_showCalendarDropdown) ...[
+            _buildInlineCalendar(isDark, primary),
+            const SizedBox(height: 8),
+          ],
+          // Pending review banner
+          if (_pendingEmailExpenses.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.amber.withOpacity(0.4)),
+              ),
+              child: Row(children: [
+                const Icon(Icons.pending_actions, color: Colors.amber, size: 22),
+                const SizedBox(width: 12),
+                Text(
+                  '${_pendingEmailExpenses.length} email transaction(s) pending your review',
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+              ]),
+            ),
+            const SizedBox(height: 8),
+          ],
+          // Expense Category Chips
+          _buildExpenseCategoryGrid(isDark),
+          // Clear filter chip
+          if (_selectedCategoryFilter != null) ...[
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: () => setState(() => _selectedCategoryFilter = null),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.close, size: 14, color: primary),
+                    const SizedBox(width: 4),
+                    Text('Clear filter: $_selectedCategoryFilter', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primary)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          // ── Main Content: fills remaining viewport height ──
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Col 1: Transaction List (internal scroll)
+                Expanded(
+                  flex: 5,
+                  child: _buildWebTransactionList(filtered, isDark, primary),
                 ),
                 const SizedBox(width: 12),
-                // Col 2: Rewards
-                SizedBox(
-                  width: 52,
-                  child: _buildRewardsColumn(isDark),
-                ),
-                const SizedBox(width: 12),
-                // Col 3: AI Info Cards (page 0)
+                // Col 2: Rewards row + all 14 info cards (single column, with arrow navigation)
                 SizedBox(
                   width: 280,
-                  child: _buildAIInfoCardsColumn(isDark, primary, page: 0),
+                  child: _buildInfoCardsWithRewards(isDark, primary),
                 ),
                 const SizedBox(width: 12),
-                // Col 4: AI Info Cards page 1 (default) OR Control Panel (when active)
-                if (!_anyPanelOpen)
-                  SizedBox(
-                    width: 280,
-                    child: _buildAIInfoCardsColumn(isDark, primary, page: 1),
-                  )
-                else
+                // Col 3: Control Panel (only when panel active)
+                if (_anyPanelOpen)
                   SizedBox(
                     width: 340,
-                    child: Column(
-                      children: [
-                        if (_showAddExpensePanel)
-                          _buildInlineAddExpensePanel(isDark, primary),
-                        if (_showImportPanel)
-                          _buildInlineImportPanel(isDark, primary),
-                        if (_selectedExpenseDetail != null)
-                          _buildInlineTransactionDetail(isDark, primary),
-                        if (_showHistoricalPanel)
-                          _buildHistoricalPerformancePanel(isDark, primary),
-                        if (_showAnalyticsPanel)
-                          _buildSpendingAnalyticsPanel(isDark, primary),
-                        if (_showAIInsightsPanel)
-                          _buildAIInsightsPanel(isDark, primary),
-                      ],
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          if (_showAddExpensePanel)
+                            _buildInlineAddExpensePanel(isDark, primary),
+                          if (_showImportPanel)
+                            _buildInlineImportPanel(isDark, primary),
+                          if (_selectedExpenseDetail != null)
+                            _buildInlineTransactionDetail(isDark, primary),
+                          if (_showHistoricalPanel)
+                            _buildHistoricalPerformancePanel(isDark, primary),
+                          if (_showAnalyticsPanel)
+                            _buildSpendingAnalyticsPanel(isDark, primary),
+                          if (_showAIInsightsPanel)
+                            _buildAIInsightsPanel(isDark, primary),
+                        ],
+                      ),
                     ),
                   ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -951,9 +896,219 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     'Don\'t save what\'s left after spending. Spend what\'s left after saving.',
   ];
 
-  // ── Rewards Column ──────────────────────────────────────────────────────
+  // ── Custom Inline Calendar Widget ────────────────────────────────────────
 
-  Widget _buildRewardsColumn(bool isDark) {
+  Widget _buildInlineCalendar(bool isDark, Color primary) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    // Use the start date's month/year for display, or current month
+    final displayMonth = _filterStartDate ?? now;
+    final calMonth = DateTime(displayMonth.year, displayMonth.month, 1);
+    final daysInMonth = DateTime(calMonth.year, calMonth.month + 1, 0).day;
+    final firstWeekday = calMonth.weekday % 7; // Sunday=0
+
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+    return Container(
+      width: 280,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF7C4DFF), Color(0xFF651FFF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.deepPurple.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header: month navigation
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  final prev = DateTime(calMonth.year, calMonth.month - 1, 1);
+                  setState(() {
+                    _filterStartDate = prev;
+                    _filterEndDate = null;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.chevron_left, size: 16, color: Colors.white),
+                ),
+              ),
+              Text(
+                '${months[calMonth.month - 1]} ${calMonth.year}',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+              ),
+              GestureDetector(
+                onTap: () {
+                  final next = DateTime(calMonth.year, calMonth.month + 1, 1);
+                  if (!next.isAfter(today)) {
+                    setState(() {
+                      _filterStartDate = next;
+                      _filterEndDate = null;
+                    });
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.chevron_right, size: 16,
+                    color: DateTime(calMonth.year, calMonth.month + 1, 1).isAfter(today) ? Colors.white38 : Colors.white),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Weekday headers
+          Row(
+            children: weekdays.map((d) => Expanded(
+              child: Center(child: Text(d, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white70))),
+            )).toList(),
+          ),
+          const SizedBox(height: 4),
+          // Day grid
+          ...List.generate(6, (week) {
+            return Row(
+              children: List.generate(7, (dow) {
+                final dayIdx = week * 7 + dow - firstWeekday + 1;
+                if (dayIdx < 1 || dayIdx > daysInMonth) {
+                  return const Expanded(child: SizedBox(height: 28));
+                }
+                final date = DateTime(calMonth.year, calMonth.month, dayIdx);
+                final isFuture = date.isAfter(today);
+                final isToday = date == today;
+                final isStart = _filterStartDate != null &&
+                    date.year == _filterStartDate!.year && date.month == _filterStartDate!.month && date.day == _filterStartDate!.day;
+                final isEnd = _filterEndDate != null &&
+                    date.year == _filterEndDate!.year && date.month == _filterEndDate!.month && date.day == _filterEndDate!.day;
+                final inRange = _filterStartDate != null && _filterEndDate != null &&
+                    date.isAfter(_filterStartDate!.subtract(const Duration(days: 1))) &&
+                    date.isBefore(_filterEndDate!.add(const Duration(days: 1)));
+                final isSelected = isStart || isEnd;
+
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: isFuture ? null : () {
+                      setState(() {
+                        if (_filterStartDate == null || (_filterStartDate != null && _filterEndDate != null)) {
+                          // First tap or reset: set start date
+                          _filterStartDate = date;
+                          _filterEndDate = null;
+                        } else {
+                          // Second tap: set end date (ensure start < end)
+                          if (date.isBefore(_filterStartDate!)) {
+                            _filterEndDate = _filterStartDate;
+                            _filterStartDate = date;
+                          } else {
+                            _filterEndDate = date;
+                          }
+                          _showCalendarDropdown = false;
+                        }
+                      });
+                    },
+                    child: Container(
+                      height: 28,
+                      margin: const EdgeInsets.symmetric(vertical: 1),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.white
+                            : inRange
+                                ? Colors.white24
+                                : null,
+                        borderRadius: BorderRadius.circular(isSelected ? 8 : 4),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$dayIdx',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: isSelected || isToday ? FontWeight.w800 : FontWeight.w500,
+                            color: isFuture
+                                ? Colors.white24
+                                : isSelected
+                                    ? const Color(0xFF651FFF)
+                                    : isToday
+                                        ? Colors.amber
+                                        : Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            );
+          }),
+          const SizedBox(height: 8),
+          // Quick select buttons
+          Row(
+            children: [
+              _calQuickBtn('Today', () {
+                setState(() {
+                  _filterStartDate = today;
+                  _filterEndDate = today;
+                  _showCalendarDropdown = false;
+                });
+              }),
+              const SizedBox(width: 6),
+              _calQuickBtn('Yesterday', () {
+                final y = today.subtract(const Duration(days: 1));
+                setState(() {
+                  _filterStartDate = y;
+                  _filterEndDate = y;
+                  _showCalendarDropdown = false;
+                });
+              }),
+              const SizedBox(width: 6),
+              _calQuickBtn('Last 7 days', () {
+                setState(() {
+                  _filterStartDate = today.subtract(const Duration(days: 6));
+                  _filterEndDate = today;
+                  _showCalendarDropdown = false;
+                });
+              }),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _calQuickBtn(String label, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white24,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Center(
+            child: Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Info Cards with Rewards: single column, horizontal rewards row, arrow nav ──
+
+  Widget _buildInfoCardsWithRewards(bool isDark, Color primary) {
     final rewards = <_RewardIcon>[
       _RewardIcon(Icons.emoji_events_rounded, Colors.amber, 'Budget Champion'),
       _RewardIcon(Icons.savings_rounded, Colors.green, 'Smart Saver'),
@@ -963,37 +1118,150 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       _RewardIcon(Icons.star_rounded, Colors.orange, 'Consistent'),
       _RewardIcon(Icons.diamond_rounded, Colors.teal, 'Goal Achiever'),
     ];
+
     return Column(
       children: [
-        Text('Rewards', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.grey.shade500)),
-        const SizedBox(height: 8),
-        ...rewards.map((r) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Tooltip(
-            message: r.label,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [r.color.withOpacity(0.15), r.color.withOpacity(0.05)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: r.color.withOpacity(0.3)),
-              ),
-              child: Icon(r.icon, size: 18, color: r.color),
-            ),
+        // Horizontal Rewards Row
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(12),
           ),
-        )),
+          child: Column(
+            children: [
+              Text('Rewards', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.grey.shade500)),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: rewards.map((r) => Tooltip(
+                  message: r.label,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [r.color.withOpacity(0.15), r.color.withOpacity(0.05)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: r.color.withOpacity(0.3)),
+                    ),
+                    child: Icon(r.icon, size: 15, color: r.color),
+                  ),
+                )).toList(),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Info Cards — scrollable with up/down arrows
+        Expanded(
+          child: _buildAllInfoCards(isDark, primary),
+        ),
       ],
     );
   }
 
-  // ── AI Info Cards Column (paged: 0 or 1) ────────────────────────────────
+  // ── All 14 AI Info Cards in a single scrollable column with arrow nav ──
 
-  Widget _buildAIInfoCardsColumn(bool isDark, Color primary, {required int page}) {
+  Widget _buildAllInfoCards(bool isDark, Color primary) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final canScrollDown = _infoCardScrollController.hasClients &&
+            _infoCardScrollController.offset < _infoCardScrollController.position.maxScrollExtent;
+        final canScrollUp = _infoCardScrollController.hasClients &&
+            _infoCardScrollController.offset > 0;
+
+        return Stack(
+          children: [
+            NotificationListener<ScrollNotification>(
+              onNotification: (_) {
+                // Trigger rebuild for arrow visibility
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) setState(() {});
+                });
+                return false;
+              },
+              child: SingleChildScrollView(
+                controller: _infoCardScrollController,
+                child: _buildInfoCardsList(isDark, primary),
+              ),
+            ),
+            // Up arrow
+            if (canScrollUp)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: () {
+                    _infoCardScrollController.animateTo(
+                      (_infoCardScrollController.offset - constraints.maxHeight * 0.7).clamp(0, _infoCardScrollController.position.maxScrollExtent),
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                    );
+                  },
+                  child: Container(
+                    height: 28,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          (isDark ? Colors.grey.shade900 : Colors.white),
+                          (isDark ? Colors.grey.shade900 : Colors.white).withOpacity(0),
+                        ],
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(Icons.keyboard_arrow_up_rounded, size: 20, color: Colors.grey.shade500),
+                    ),
+                  ),
+                ),
+              ),
+            // Down arrow
+            if (canScrollDown)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: () {
+                    _infoCardScrollController.animateTo(
+                      (_infoCardScrollController.offset + constraints.maxHeight * 0.7).clamp(0, _infoCardScrollController.position.maxScrollExtent),
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                    );
+                  },
+                  child: Container(
+                    height: 28,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          (isDark ? Colors.grey.shade900 : Colors.white),
+                          (isDark ? Colors.grey.shade900 : Colors.white).withOpacity(0),
+                        ],
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Colors.grey.shade500),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ── Build the flat list of all 14 info cards ──
+
+  Widget _buildInfoCardsList(bool isDark, Color primary) {
     final now = DateTime.now();
     final currentMonthExpenses = _expenses.where((e) =>
         e.date.year == now.year && e.date.month == now.month).toList();
@@ -1098,10 +1366,9 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     final dailyRate = now.day > 0 ? totalSpend / now.day : 0.0;
     final projectedTotal = dailyRate * daysInMonth;
 
-    // Build cards based on page
-    final List<Widget> cards;
-    if (page == 0) {
-      cards = [
+    // Build all 14 cards in a single list
+    return Column(
+      children: [
         _buildThreeInfoCards(isDark, primary),
         const SizedBox(height: 8),
         _buildSpendLeakageSection(isDark, primary),
@@ -1113,9 +1380,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         _aiCard('⚡', 'Impulse Spend', impulseCount > 0 ? '$impulseCount impulse spend${impulseCount == 1 ? '' : 's'} detected this month' : 'No impulse spending detected!', Colors.orange, impulseCount > 0 ? 'Review spending' : 'Great control!'),
         const SizedBox(height: 8),
         _aiCard('🔍', 'Silent Expenses', smallExpenses.isNotEmpty ? '${smallExpenses.length} small spends totaling ₹${smallTotal.toStringAsFixed(0)}' : 'No silent expenses detected', Colors.indigo, 'Under ₹200 each'),
-      ];
-    } else {
-      cards = [
+        const SizedBox(height: 8),
         _aiCard('📈', 'Lifestyle Creep', creepPct.abs() > 5 ? 'Spending ${creepPct > 0 ? 'up' : 'down'} ${creepPct.abs().toStringAsFixed(0)}% vs last quarter' : 'Spending stable vs last quarter', creepPct > 10 ? Colors.red : Colors.teal, 'Quarter comparison'),
         const SizedBox(height: 8),
         _aiCard('🎯', 'Budget Drift', driftingCat != null ? '$driftingCat drifting—${driftPct.toStringAsFixed(0)}% used with ${(100 - monthPct).toStringAsFixed(0)}% of month left' : 'All categories on track', Colors.amber, 'Budget pace'),
@@ -1129,10 +1394,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         _aiCard('✅', 'Good Spend Ratio', '${goodRatio.toStringAsFixed(0)}% of spending on essentials & goals', goodRatio >= 70 ? Colors.green : Colors.orange, goodRatio >= 70 ? 'Healthy!' : 'Could improve'),
         const SizedBox(height: 8),
         _aiCard('🛡️', 'Avoided Spend', avoidedCount > 0 ? 'You avoided $avoidedCount impulse spend${avoidedCount == 1 ? '' : 's'} vs last month' : prevImpulse == 0 ? 'Clean record both months!' : '${impulseCount - prevImpulse} more impulse spends than last month', avoidedCount > 0 ? Colors.green : Colors.grey, 'Habit tracking'),
-      ];
-    }
-
-    return Column(children: cards);
+      ],
+    );
   }
 
   Widget _aiCard(String emoji, String title, String message, Color color, String badge) {
@@ -2652,12 +2915,13 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   /// Filtered expenses for web layout, with optional category filter applied.
   List<Expense> get _webFilteredExpenses {
     var base = _filteredExpenses;
-    // Date filter
-    if (_filterDate != null) {
-      base = base.where((e) =>
-          e.date.year == _filterDate!.year &&
-          e.date.month == _filterDate!.month &&
-          e.date.day == _filterDate!.day).toList();
+    // Date range filter
+    if (_filterStartDate != null) {
+      final start = DateTime(_filterStartDate!.year, _filterStartDate!.month, _filterStartDate!.day);
+      final end = _filterEndDate != null
+          ? DateTime(_filterEndDate!.year, _filterEndDate!.month, _filterEndDate!.day, 23, 59, 59)
+          : DateTime(start.year, start.month, start.day, 23, 59, 59);
+      base = base.where((e) => !e.date.isBefore(start) && !e.date.isAfter(end)).toList();
     }
     if (_selectedCategoryFilter == null) return base;
     final lbl = _selectedCategoryFilter!.toLowerCase();
@@ -2887,6 +3151,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         ),
         child: Center(
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(AppIcons.receiptOutlined, size: 48, color: Colors.grey[300]),
               const SizedBox(height: 12),
@@ -2943,7 +3208,13 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               ],
             ),
           ),
-          ...filtered.map((expense) => _buildWebTransactionRow(expense, isDark)),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: filtered.map((expense) => _buildWebTransactionRow(expense, isDark)).toList(),
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -577,33 +577,28 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildViewTab('Current Month', Icons.calendar_month, true),
-                        const SizedBox(width: 6),
-                        _buildViewTab('Historical Performance', Icons.history, false, comingSoon: true),
-                        const SizedBox(width: 6),
-                        _buildViewTab('Spending Analytics', Icons.insights, false, comingSoon: true),
-                        const SizedBox(width: 16),
-                        Container(width: 1, height: 24, color: const Color(0xFFE2E8F0)),
-                        const SizedBox(width: 16),
-                        _buildActionChip(icon: Icons.auto_awesome, label: 'AI Insights', onTap: () => Navigator.of(context).pushNamed('/ai-features')),
-                        const SizedBox(width: 8),
-                        _buildActionChip(icon: Icons.upload_file, label: 'Import CSV', onTap: () => Navigator.of(context).pushNamed('/csv-import')),
-                        const SizedBox(width: 12),
-                        FilledButton.icon(
-                          onPressed: () => setState(() => _showAddExpensePanel = !_showAddExpensePanel),
-                          icon: Icon(_showAddExpensePanel ? Icons.close_rounded : Icons.add_rounded, size: 18),
-                          label: Text(_showAddExpensePanel ? 'Close' : 'Add Expense'),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
+                  Row(
+                    children: [
+                      _buildViewTab('Current Month', Icons.calendar_month, true),
+                      const SizedBox(width: 6),
+                      _buildViewTab('Historical Performance', Icons.history, false, comingSoon: true),
+                      const SizedBox(width: 6),
+                      _buildViewTab('Spending Analytics', Icons.insights, false, comingSoon: true),
+                      const Spacer(),
+                      _buildActionChip(icon: Icons.auto_awesome, label: 'AI Insights', onTap: () => Navigator.of(context).pushNamed('/ai-features')),
+                      const SizedBox(width: 8),
+                      _buildActionChip(icon: Icons.upload_file, label: 'Import CSV', onTap: () => Navigator.of(context).pushNamed('/csv-import')),
+                      const SizedBox(width: 12),
+                      FilledButton.icon(
+                        onPressed: () => setState(() => _showAddExpensePanel = !_showAddExpensePanel),
+                        icon: Icon(_showAddExpensePanel ? Icons.close_rounded : Icons.add_rounded, size: 18),
+                        label: Text(_showAddExpensePanel ? 'Close' : 'Add Expense'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -660,18 +655,18 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Left: Inline Add Expense Panel
+                // Left: Transaction List
+                Expanded(
+                  child: _buildWebTransactionList(filtered, isDark, primary),
+                ),
+                // Right: Inline Add Expense Panel
                 if (_showAddExpensePanel) ...[
+                  const SizedBox(width: 24),
                   SizedBox(
                     width: 380,
                     child: _buildInlineAddExpensePanel(isDark, primary),
                   ),
-                  const SizedBox(width: 24),
                 ],
-                // Right: Transaction List
-                Expanded(
-                  child: _buildWebTransactionList(filtered, isDark, primary),
-                ),
               ],
             ),
           ],

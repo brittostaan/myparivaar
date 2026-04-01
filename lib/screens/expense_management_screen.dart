@@ -768,7 +768,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               ),
             ],
             const SizedBox(height: 16),
-            // ── Single Row: Transactions | Info Cards (+AI flip) | AI Sections / Control Panel ──
+            // ── Single Row: Transactions | Info Cards + Leakage (+AI flip) | Projected / Control Panel ──
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -778,22 +778,24 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   child: _buildWebTransactionList(filtered, isDark, primary),
                 ),
                 const SizedBox(width: 16),
-                // Col 2: Info Cards (+ AI sections hidden behind when panel active)
+                // Col 2: Info Cards + Spend Leakage (permanent) + AI flip when panel active
                 SizedBox(
                   width: 260,
                   child: Column(
                     children: [
                       _buildThreeInfoCards(isDark, primary),
-                      // When a control panel is active, AI sections flip under info cards
+                      const SizedBox(height: 10),
+                      _buildSpendLeakageSection(isDark, primary),
+                      // When a control panel is active, Projected Expense flips under here
                       if (_anyPanelOpen) ...[
                         const SizedBox(height: 10),
-                        _buildFlippableAISections(isDark, primary),
+                        _buildFlippableProjectedSection(isDark, primary),
                       ],
                     ],
                   ),
                 ),
                 const SizedBox(width: 16),
-                // Col 3: AI Sections (default) OR Control Panel (when active)
+                // Col 3: Projected Expense (default) OR Control Panel (when active)
                 SizedBox(
                   width: 340,
                   child: _anyPanelOpen
@@ -813,13 +815,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                               _buildAIInsightsPanel(isDark, primary),
                           ],
                         )
-                      : Column(
-                          children: [
-                            _buildProjectedExpenseSection(isDark, primary),
-                            const SizedBox(height: 16),
-                            _buildSpendLeakageSection(isDark, primary),
-                          ],
-                        ),
+                      : _buildProjectedExpenseSection(isDark, primary),
                 ),
               ],
             ),
@@ -1034,21 +1030,19 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // ── Flippable AI Sections (when a control panel is active) ───────────────
+  // ── Flippable Projected Expense (shown under info cards when panel active) ──
 
-  Widget _buildFlippableAISections(bool isDark, Color primary) {
+  Widget _buildFlippableProjectedSection(bool isDark, Color primary) {
     return Column(
       children: [
-        // Header with flip arrow
         AnimatedCrossFade(
-          firstChild: _buildProjectedExpenseSection(isDark, primary),
-          secondChild: _buildSpendLeakageSection(isDark, primary),
+          firstChild: const SizedBox.shrink(),
+          secondChild: _buildProjectedExpenseSection(isDark, primary),
           crossFadeState: _showLeakageFlip ? CrossFadeState.showSecond : CrossFadeState.showFirst,
           duration: const Duration(milliseconds: 300),
           sizeCurve: Curves.easeInOut,
         ),
-        const SizedBox(height: 8),
-        // Flip indicator
+        const SizedBox(height: 6),
         GestureDetector(
           onTap: () => setState(() => _showLeakageFlip = !_showLeakageFlip),
           child: Container(
@@ -1061,14 +1055,14 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  _showLeakageFlip ? Icons.arrow_back_rounded : Icons.arrow_forward_rounded,
-                  size: 14,
+                  _showLeakageFlip ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                  size: 16,
                   color: Colors.grey.shade600,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 4),
                 Text(
-                  _showLeakageFlip ? 'Projected Expense' : 'Spend Leakage',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+                  _showLeakageFlip ? 'Hide Projection' : 'Show Projection',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
                 ),
               ],
             ),
@@ -1089,12 +1083,6 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     // Current month spend
     final currentSpend = _monthlySpendTotal;
 
-    // Daily burn rate
-    final dailyRate = daysPassed > 0 ? currentSpend / daysPassed : 0.0;
-
-    // Projected end-of-month
-    final projected = dailyRate * daysInMonth;
-
     // Historical average (from past months in _expenses)
     final monthlyTotals = <String, double>{};
     for (final e in _expenses) {
@@ -1110,6 +1098,24 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
     // Budget total
     final totalBudget = _budgets.fold<double>(0, (s, b) => s + b.amount);
+
+    // Daily burn rate — use current data, or fall back to historical, or budget
+    final double dailyRate;
+    final double projected;
+    if (currentSpend > 0 && daysPassed > 0) {
+      dailyRate = currentSpend / daysPassed;
+      projected = dailyRate * daysInMonth;
+    } else if (historicalAvg > 0) {
+      dailyRate = historicalAvg / daysInMonth;
+      projected = historicalAvg;
+    } else if (totalBudget > 0) {
+      dailyRate = totalBudget / daysInMonth;
+      projected = totalBudget;
+    } else {
+      dailyRate = 0;
+      projected = 0;
+    }
+
     final projectedOverBudget = projected > totalBudget && totalBudget > 0;
     final projectedOverflowAmt = projected - totalBudget;
     final projectedPct = totalBudget > 0 ? (projected / totalBudget * 100) : 0.0;

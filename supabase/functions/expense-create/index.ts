@@ -86,17 +86,16 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    const normalizedCategory = (category || '').toLowerCase().trim()
-    const validCategories = ['food', 'transport', 'shopping', 'utilities', 'healthcare', 'entertainment', 'education', 'other']
-    if (!normalizedCategory || !validCategories.includes(normalizedCategory)) {
-      return new Response(JSON.stringify({ error: 'Invalid category' }), {
+    const normalizedCategory = (category || '').trim()
+    if (!normalizedCategory || normalizedCategory.length > 50) {
+      return new Response(JSON.stringify({ error: 'Category must be 1-50 characters' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    if (!description || typeof description !== 'string' || description.trim().length < 3 || description.length > 100) {
-      return new Response(JSON.stringify({ error: 'Description must be 3-100 characters' }), {
+    if (!description || typeof description !== 'string' || description.trim().length < 1 || description.length > 200) {
+      return new Response(JSON.stringify({ error: 'Description must be 1-200 characters' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -109,8 +108,8 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    if (notes && (typeof notes !== 'string' || notes.length > 200)) {
-      return new Response(JSON.stringify({ error: 'Notes cannot exceed 200 characters' }), {
+    if (notes && (typeof notes !== 'string' || notes.length > 500)) {
+      return new Response(JSON.stringify({ error: 'Notes cannot exceed 500 characters' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })

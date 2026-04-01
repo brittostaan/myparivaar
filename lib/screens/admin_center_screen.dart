@@ -4944,6 +4944,10 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
         return Icons.insights;
       case 'ai_insights':
         return Icons.auto_awesome;
+      case 'expense_projection':
+        return Icons.trending_up_rounded;
+      case 'spend_leakage':
+        return Icons.water_drop_outlined;
       default:
         return Icons.smart_toy_outlined;
     }

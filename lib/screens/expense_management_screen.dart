@@ -641,15 +641,11 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      const Text(
-                        'Expense',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
-                      ),
-                      const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
-                    ],
+                  const Text(
+                    'Expense',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
                   ),
                   const SizedBox(height: 10),
                   Wrap(
@@ -727,6 +723,20 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             const SizedBox(height: 16),
             // ── Three info cards ─────────────────────────────────────
             _buildThreeInfoCards(isDark, primary),
+            // ── Projected Expense & Spend Leakage (collapsible) ──────
+            AnimatedCrossFade(
+              firstChild: Column(
+                children: [
+                  const SizedBox(height: 16),
+                  _buildProjectedExpenseSection(isDark, primary),
+                  const SizedBox(height: 16),
+                  _buildSpendLeakageSection(isDark, primary),
+                ],
+              ),
+              secondChild: const SizedBox.shrink(),
+              crossFadeState: _anyPanelOpen ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
+            ),
             const SizedBox(height: 24),
             // Pending review banner
             if (_pendingEmailExpenses.isNotEmpty) ...[
@@ -1059,6 +1069,406 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // ── Projected Expense This Month ─────────────────────────────────────────
+
+  Widget _buildProjectedExpenseSection(bool isDark, Color primary) {
+    final now = DateTime.now();
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final daysPassed = now.day;
+    final daysRemaining = daysInMonth - daysPassed;
+
+    // Current month spend
+    final currentSpend = _monthlySpendTotal;
+
+    // Daily burn rate
+    final dailyRate = daysPassed > 0 ? currentSpend / daysPassed : 0.0;
+
+    // Projected end-of-month
+    final projected = dailyRate * daysInMonth;
+
+    // Historical average (from past months in _expenses)
+    final monthlyTotals = <String, double>{};
+    for (final e in _expenses) {
+      final key = '${e.date.year}-${e.date.month}';
+      final currentKey = '${now.year}-${now.month}';
+      if (key != currentKey) {
+        monthlyTotals[key] = (monthlyTotals[key] ?? 0) + e.amount;
+      }
+    }
+    final historicalAvg = monthlyTotals.isNotEmpty
+        ? monthlyTotals.values.fold<double>(0, (a, b) => a + b) / monthlyTotals.length
+        : 0.0;
+
+    // Budget total
+    final totalBudget = _budgets.fold<double>(0, (s, b) => s + b.amount);
+    final projectedOverBudget = projected > totalBudget && totalBudget > 0;
+    final projectedOverflowAmt = projected - totalBudget;
+    final projectedPct = totalBudget > 0 ? (projected / totalBudget * 100) : 0.0;
+
+    // Compare projected to historical
+    final vsHistorical = historicalAvg > 0 ? ((projected - historicalAvg) / historicalAvg * 100) : 0.0;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: projectedOverBudget
+              ? [const Color(0xFFFFF3E0), const Color(0xFFFFE0B2)]
+              : [const Color(0xFFE8F5E9), const Color(0xFFC8E6C9)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: projectedOverBudget ? Colors.orange.shade200 : Colors.green.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: projectedOverBudget ? Colors.orange.shade100 : Colors.green.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.trending_up_rounded,
+                  size: 20,
+                  color: projectedOverBudget ? Colors.orange.shade700 : Colors.green.shade700,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text('Projected Expense This Month', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: projectedOverBudget ? Colors.orange.shade600 : Colors.green.shade600,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'AI',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 1),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Projected amount with gauge
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('₹${projected.toStringAsFixed(0)}', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: projectedOverBudget ? Colors.orange.shade800 : Colors.green.shade800)),
+                    const SizedBox(height: 2),
+                    Text('projected by month end', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                  ],
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Column(
+                  children: [
+                    // Circular gauge indicator
+                    SizedBox(
+                      width: 64,
+                      height: 64,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            value: (projectedPct / 100).clamp(0, 1).toDouble(),
+                            strokeWidth: 6,
+                            backgroundColor: Colors.grey.shade200,
+                            color: projectedOverBudget ? Colors.orange.shade600 : Colors.green.shade600,
+                          ),
+                          Text(
+                            '${projectedPct.toStringAsFixed(0)}%',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: projectedOverBudget ? Colors.orange.shade700 : Colors.green.shade700),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text('of budget', style: TextStyle(fontSize: 9, color: Colors.grey.shade600)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Stats row
+          Row(
+            children: [
+              _projStatChip(
+                '₹${dailyRate.toStringAsFixed(0)}',
+                'Daily Rate',
+                Icons.speed_rounded,
+                Colors.blue,
+              ),
+              const SizedBox(width: 8),
+              _projStatChip(
+                '$daysRemaining',
+                'Days Left',
+                Icons.hourglass_bottom_rounded,
+                Colors.purple,
+              ),
+              const SizedBox(width: 8),
+              _projStatChip(
+                '${vsHistorical >= 0 ? '+' : ''}${vsHistorical.toStringAsFixed(0)}%',
+                'vs History',
+                vsHistorical > 0 ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                vsHistorical > 5 ? Colors.red : Colors.green,
+              ),
+            ],
+          ),
+
+          if (projectedOverBudget && totalBudget > 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, size: 18, color: Colors.orange.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'May overflow budget by ₹${projectedOverflowAmt.toStringAsFixed(0)} based on current spending pattern',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.orange.shade800),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _projStatChip(String value, String label, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.7),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(height: 4),
+            Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)),
+            Text(label, style: TextStyle(fontSize: 9, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Spend Leakage Section ────────────────────────────────────────────────
+
+  Widget _buildSpendLeakageSection(bool isDark, Color primary) {
+    final now = DateTime.now();
+
+    // Identify "leakage" — categories where spend is disproportionately high
+    // or items with small recurring charges that add up
+    final categorySpend = <String, double>{};
+    final categoryCount = <String, int>{};
+    for (final e in _expenses) {
+      if (e.date.year == now.year && e.date.month == now.month) {
+        categorySpend[e.category] = (categorySpend[e.category] ?? 0) + e.amount;
+        categoryCount[e.category] = (categoryCount[e.category] ?? 0) + 1;
+      }
+    }
+
+    // Find leakage: categories with high frequency low-value txns, or over-budget
+    final leakageItems = <_LeakageItem>[];
+    for (final entry in categorySpend.entries) {
+      final budget = _budgets.where((b) => b.category == entry.key).firstOrNull;
+      final count = categoryCount[entry.key] ?? 0;
+      final avgTxn = count > 0 ? entry.value / count : 0.0;
+
+      // Over-budget leak
+      if (budget != null && entry.value > budget.amount) {
+        final overAmt = entry.value - budget.amount;
+        leakageItems.add(_LeakageItem(
+          category: entry.key,
+          amount: overAmt,
+          reason: 'Over budget by ₹${overAmt.toStringAsFixed(0)}',
+          severity: overAmt / budget.amount,
+          icon: Icons.warning_amber_rounded,
+          color: Colors.red,
+        ));
+      }
+      // High frequency small transactions (potential impulse spending)
+      else if (count >= 3 && avgTxn < 1000) {
+        leakageItems.add(_LeakageItem(
+          category: entry.key,
+          amount: entry.value,
+          reason: '$count transactions, avg ₹${avgTxn.toStringAsFixed(0)} each',
+          severity: count / 10,
+          icon: Icons.repeat_rounded,
+          color: Colors.orange,
+        ));
+      }
+      // Large single outlier (> 30% of total spend)
+      else if (_monthlySpendTotal > 0 && entry.value / _monthlySpendTotal > 0.3) {
+        leakageItems.add(_LeakageItem(
+          category: entry.key,
+          amount: entry.value,
+          reason: '${(entry.value / _monthlySpendTotal * 100).toStringAsFixed(0)}% of total spend',
+          severity: entry.value / _monthlySpendTotal,
+          icon: Icons.pie_chart_outline_rounded,
+          color: Colors.deepPurple,
+        ));
+      }
+    }
+
+    leakageItems.sort((a, b) => b.severity.compareTo(a.severity));
+    final totalLeakage = leakageItems.fold<double>(0, (s, i) => s + i.amount);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFCE4EC), Color(0xFFF3E5F5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.pink.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.pink.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.water_drop_outlined, size: 20, color: Colors.pink.shade600),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('Spend Leakage', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800))),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [Colors.pink.shade400, Colors.purple.shade400]),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text('AI', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 1)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          if (leakageItems.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle_outline, size: 22, color: Colors.green.shade600),
+                  const SizedBox(width: 10),
+                  const Expanded(child: Text('No spending leaks detected! Your finances look healthy.', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+                ],
+              ),
+            )
+          else ...[
+            // Total leakage header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    '₹${totalLeakage.toStringAsFixed(0)}',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.pink.shade700),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('identified across ${leakageItems.length} area${leakageItems.length == 1 ? '' : 's'}',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Leakage items
+            ...leakageItems.take(5).map((item) {
+              final barFraction = totalLeakage > 0 ? (item.amount / totalLeakage).clamp(0.1, 1.0) : 0.3;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: item.color.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Icon(item.icon, size: 14, color: item.color),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(item.category, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
+                          Text('₹${item.amount.toStringAsFixed(0)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: item.color)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: LinearProgressIndicator(
+                          value: barFraction,
+                          backgroundColor: Colors.grey.shade200,
+                          color: item.color.withOpacity(0.6),
+                          minHeight: 4,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(item.reason, style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
     );
   }
 
@@ -2172,17 +2582,9 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     final expense = _selectedExpenseDetail!;
     return _InlineTransactionDetailPanel(
       expense: expense,
-      onEdit: () async {
-        final result = await Navigator.push<bool>(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AddEditExpenseScreen(expense: expense),
-          ),
-        );
-        if (result == true) {
-          setState(() => _selectedExpenseDetail = null);
-          _loadExpenses();
-        }
+      onSaved: () {
+        setState(() => _selectedExpenseDetail = null);
+        _loadExpenses();
       },
       onDelete: () => _deleteExpenseInline(expense),
       onClose: () => setState(() => _selectedExpenseDetail = null),
@@ -2408,6 +2810,8 @@ class _InlineAddExpensePanelState extends State<_InlineAddExpensePanel> {
     final daysInMonth = DateTime(_calendarMonth.year, _calendarMonth.month + 1, 0).day;
     final startWeekday = firstOfMonth.weekday % 7; // Sunday = 0
     final earliest = today.subtract(const Duration(days: 365));
+    // Allow selecting up to end of current month
+    final lastSelectable = DateTime(now.year, now.month + 1, 0); // last day of current month
     final canGoPrev = DateTime(_calendarMonth.year, _calendarMonth.month - 1).isAfter(DateTime(earliest.year, earliest.month - 1));
     final canGoNext = !DateTime(_calendarMonth.year, _calendarMonth.month + 1).isAfter(DateTime(now.year, now.month));
 
@@ -2478,7 +2882,7 @@ class _InlineAddExpensePanelState extends State<_InlineAddExpensePanel> {
                 final date = DateTime(_calendarMonth.year, _calendarMonth.month, dayIndex);
                 final isSelected = date.year == _selectedDate.year && date.month == _selectedDate.month && date.day == _selectedDate.day;
                 final isToday = date.year == today.year && date.month == today.month && date.day == today.day;
-                final isFuture = date.isAfter(today);
+                final isFuture = date.isAfter(lastSelectable);
                 final isTooOld = date.isBefore(earliest);
                 final isDisabled = isFuture || isTooOld;
 
@@ -3664,28 +4068,99 @@ class _InlineImportPanelState extends State<_InlineImportPanel> {
 // Inline Transaction Detail Panel (right side, same look as Add Expense)
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _InlineTransactionDetailPanel extends StatelessWidget {
+class _InlineTransactionDetailPanel extends StatefulWidget {
   final Expense expense;
-  final VoidCallback onEdit;
+  final VoidCallback onSaved;
   final VoidCallback onDelete;
   final VoidCallback onClose;
 
   const _InlineTransactionDetailPanel({
     required this.expense,
-    required this.onEdit,
+    required this.onSaved,
     required this.onDelete,
     required this.onClose,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final isIncome = expense.category.toLowerCase() == 'income' ||
-        expense.category.toLowerCase() == 'salary';
-    final d = expense.date;
-    final dateStr = '${d.day}/${d.month}/${d.year}';
-    final bgColor = AppColors.getCategoryColor(expense.category);
-    final iconColor = AppColors.getCategoryIconColor(expense.category);
+  State<_InlineTransactionDetailPanel> createState() => _InlineTransactionDetailPanelState();
+}
 
+class _InlineTransactionDetailPanelState extends State<_InlineTransactionDetailPanel> {
+  bool _isEditing = false;
+  bool _isSaving = false;
+  late TextEditingController _amountCtrl;
+  late TextEditingController _descCtrl;
+  late TextEditingController _tagsCtrl;
+  late String _editCategory;
+  late DateTime _editDate;
+
+  static const _categories = [
+    'Groceries', 'Entertainment', 'Education', 'Personal Care',
+    'Physical Wellness', 'Mental Wellness', 'Convenience Food',
+    'Senior Care', 'Pet Care', 'Vacation', 'Party', 'Income', 'Salary',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _initEditing();
+  }
+
+  void _initEditing() {
+    _amountCtrl = TextEditingController(text: widget.expense.amount.toStringAsFixed(2));
+    _descCtrl = TextEditingController(text: widget.expense.description);
+    _tagsCtrl = TextEditingController(text: widget.expense.tags.join(', '));
+    _editCategory = widget.expense.category;
+    _editDate = widget.expense.date;
+  }
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    _descCtrl.dispose();
+    _tagsCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveEdit() async {
+    final amount = double.tryParse(_amountCtrl.text);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid amount')));
+      return;
+    }
+    final desc = _descCtrl.text.trim();
+    if (desc.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a description')));
+      return;
+    }
+    setState(() => _isSaving = true);
+    try {
+      final auth = Provider.of<AuthService>(context, listen: false);
+      final tags = parseTags(_tagsCtrl.text);
+      await ExpenseService().updateExpense(
+        expenseId: widget.expense.id,
+        amount: amount,
+        category: _editCategory,
+        description: desc,
+        date: _editDate,
+        tags: tags,
+        supabaseUrl: auth.supabaseUrl,
+        idToken: await auth.getIdToken(),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Expense updated')));
+        widget.onSaved();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -3693,96 +4168,179 @@ class _InlineTransactionDetailPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header
-          Row(
-            children: [
-              const Text('Transaction Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const Spacer(),
-              IconButton(
-                onPressed: onClose,
-                icon: const Icon(Icons.close, size: 20),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
+      child: _isEditing ? _buildEditView() : _buildDetailView(),
+    );
+  }
 
-          // Category icon + amount
-          Center(
-            child: Column(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(AppIcons.getCategoryIcon(expense.category), size: 28, color: iconColor),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '${isIncome ? '+' : '-'} ₹${expense.amount.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: isIncome ? AppColors.success : AppColors.error,
-                  ),
-                ),
-              ],
+  Widget _buildDetailView() {
+    final e = widget.expense;
+    final isIncome = e.category.toLowerCase() == 'income' || e.category.toLowerCase() == 'salary';
+    final d = e.date;
+    final dateStr = '${d.day}/${d.month}/${d.year}';
+    final bgColor = AppColors.getCategoryColor(e.category);
+    final iconColor = AppColors.getCategoryIconColor(e.category);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            const Text('Transaction Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Spacer(),
+            IconButton(onPressed: widget.onClose, icon: const Icon(Icons.close, size: 20), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Center(
+          child: Column(children: [
+            Container(
+              width: 56, height: 56,
+              decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(16)),
+              child: Icon(AppIcons.getCategoryIcon(e.category), size: 28, color: iconColor),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '${isIncome ? '+' : '-'} ₹${e.amount.toStringAsFixed(2)}',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: isIncome ? AppColors.success : AppColors.error),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 20),
+        _detailRow(Icons.description_outlined, 'Description', e.description),
+        _detailRow(Icons.category_outlined, 'Category', e.category),
+        _detailRow(Icons.calendar_today_outlined, 'Date', dateStr),
+        _detailRow(Icons.source_outlined, 'Source', e.source),
+        if (e.notes != null && e.notes!.isNotEmpty) _detailRow(Icons.notes_outlined, 'Notes', e.notes!),
+        if (e.tags.isNotEmpty) _detailRow(Icons.label_outlined, 'Tags', e.tags.join(', ')),
+        _detailRow(Icons.verified_outlined, 'Status', e.isApproved ? 'Approved' : 'Pending'),
+        const SizedBox(height: 24),
+        Row(children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => setState(() => _isEditing = true),
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              label: const Text('Edit'),
+              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             ),
           ),
-          const SizedBox(height: 20),
-
-          // Details
-          _detailRow(Icons.description_outlined, 'Description', expense.description),
-          _detailRow(Icons.category_outlined, 'Category', expense.category),
-          _detailRow(Icons.calendar_today_outlined, 'Date', dateStr),
-          _detailRow(Icons.source_outlined, 'Source', expense.source),
-          if (expense.notes != null && expense.notes!.isNotEmpty)
-            _detailRow(Icons.notes_outlined, 'Notes', expense.notes!),
-          if (expense.tags.isNotEmpty)
-            _detailRow(Icons.label_outlined, 'Tags', expense.tags.join(', ')),
-          _detailRow(Icons.verified_outlined, 'Status', expense.isApproved ? 'Approved' : 'Pending'),
-
-          const SizedBox(height: 24),
-
-          // Action buttons
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onEdit,
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: const Text('Edit'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onDelete,
-                  icon: Icon(Icons.delete_outline, size: 18, color: Colors.red[600]),
-                  label: Text('Delete', style: TextStyle(color: Colors.red[600])),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    side: BorderSide(color: Colors.red[300]!),
-                  ),
-                ),
-              ),
-            ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: widget.onDelete,
+              icon: Icon(Icons.delete_outline, size: 18, color: Colors.red[600]),
+              label: Text('Delete', style: TextStyle(color: Colors.red[600])),
+              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), side: BorderSide(color: Colors.red[300]!)),
+            ),
           ),
-        ],
-      ),
+        ]),
+      ],
+    );
+  }
+
+  Widget _buildEditView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            const Text('Edit Transaction', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Spacer(),
+            IconButton(
+              onPressed: () => setState(() => _isEditing = false),
+              icon: const Icon(Icons.close, size: 20),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _amountCtrl,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: 'Amount (₹)', prefixText: '₹ ',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          ),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _descCtrl,
+          decoration: InputDecoration(
+            labelText: 'Description',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          ),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: _categories.contains(_editCategory) ? _editCategory : _categories.first,
+          decoration: InputDecoration(
+            labelText: 'Category',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          ),
+          items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 14)))).toList(),
+          onChanged: (v) { if (v != null) setState(() => _editCategory = v); },
+        ),
+        const SizedBox(height: 12),
+        InkWell(
+          onTap: () async {
+            final date = await showDatePicker(
+              context: context,
+              initialDate: _editDate,
+              firstDate: DateTime.now().subtract(const Duration(days: 365)),
+              lastDate: DateTime.now(),
+            );
+            if (date != null && mounted) setState(() => _editDate = date);
+          },
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(border: Border.all(color: Colors.grey[400]!), borderRadius: BorderRadius.circular(10)),
+            child: Row(children: [
+              Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
+              const SizedBox(width: 8),
+              Text('${_editDate.day}/${_editDate.month}/${_editDate.year}', style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _tagsCtrl,
+          decoration: InputDecoration(
+            labelText: 'Tags (optional)', hintText: 'mom, school, medical',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          ),
+        ),
+        const SizedBox(height: 18),
+        Row(children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _isSaving ? null : () => setState(() => _isEditing = false),
+              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              child: const Text('Cancel'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FilledButton(
+              onPressed: _isSaving ? null : _saveEdit,
+              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              child: _isSaving
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Icon(Icons.check, size: 18), SizedBox(width: 6),
+                      Text('Save', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    ]),
+            ),
+          ),
+        ]),
+      ],
     );
   }
 
@@ -3794,13 +4352,8 @@ class _InlineTransactionDetailPanel extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: Colors.grey[500]),
           const SizedBox(width: 10),
-          SizedBox(
-            width: 80,
-            child: Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w600)),
-          ),
-          Expanded(
-            child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-          ),
+          SizedBox(width: 80, child: Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w600))),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
         ],
       ),
     );
@@ -4398,4 +4951,14 @@ class _ChatMessage {
   final String text;
   final bool isUser;
   const _ChatMessage({required this.text, required this.isUser});
+}
+
+class _LeakageItem {
+  final String category;
+  final double amount;
+  final String reason;
+  final double severity;
+  final IconData icon;
+  final Color color;
+  const _LeakageItem({required this.category, required this.amount, required this.reason, required this.severity, required this.icon, required this.color});
 }

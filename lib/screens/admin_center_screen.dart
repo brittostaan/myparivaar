@@ -4938,6 +4938,12 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
         return Icons.warning_amber_outlined;
       case 'financial_simulator':
         return Icons.science_outlined;
+      case 'historical_performance':
+        return Icons.history;
+      case 'spending_analytics':
+        return Icons.insights;
+      case 'ai_insights':
+        return Icons.auto_awesome;
       default:
         return Icons.smart_toy_outlined;
     }

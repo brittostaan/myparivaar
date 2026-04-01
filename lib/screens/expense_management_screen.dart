@@ -265,33 +265,77 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  Widget _buildActionChip({
+  // ── Unified modern control pill ──────────────────────────────────────────
+
+  Widget _buildControlPill({
     required IconData icon,
     required String label,
+    required Color color,
     required VoidCallback onTap,
+    bool active = false,
+    bool locked = false,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: Colors.grey[600]),
-            const SizedBox(width: 5),
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey[700])),
-          ],
+    final bg = active ? color : color.withOpacity(0.08);
+    final fg = active ? Colors.white : color;
+    return Tooltip(
+      message: locked ? 'Coming soon' : '',
+      child: Material(
+        color: bg,
+        borderRadius: BorderRadius.circular(24),
+        elevation: active ? 2 : 0,
+        shadowColor: color.withOpacity(0.3),
+        child: InkWell(
+          onTap: locked ? null : onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 16, color: fg),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: fg,
+                  ),
+                ),
+                if (locked) ...[
+                  const SizedBox(width: 4),
+                  Icon(Icons.lock_outline, size: 11, color: fg.withOpacity(0.5)),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
+  // Keep legacy methods as thin wrappers for mobile layout
+  Widget _buildActionChip({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return _buildControlPill(icon: icon, label: label, color: Colors.grey, onTap: onTap);
+  }
+
   Widget _buildViewTab(String label, IconData icon, bool active, {bool comingSoon = false}) {
+    return _buildControlPill(
+      icon: icon,
+      label: label,
+      color: AppColors.primary,
+      active: active,
+      locked: comingSoon,
+      onTap: () {},
+    );
+  }
+
+  // Kept for backwards compatibility — unused references
+  Widget _buildViewTabLegacy(String label, IconData icon, bool active, {bool comingSoon = false}) {
     return Tooltip(
       message: comingSoon ? 'Coming soon' : '',
       child: Container(
@@ -579,24 +623,50 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      _buildViewTab('Current Month', Icons.calendar_month, true),
-                      const SizedBox(width: 6),
-                      _buildViewTab('Historical Performance', Icons.history, false, comingSoon: true),
-                      const SizedBox(width: 6),
-                      _buildViewTab('Spending Analytics', Icons.insights, false, comingSoon: true),
-                      const Spacer(),
-                      _buildActionChip(icon: Icons.auto_awesome, label: 'AI Insights', onTap: () => Navigator.of(context).pushNamed('/ai-features')),
+                      _buildControlPill(
+                        icon: Icons.calendar_month,
+                        label: 'Current Month',
+                        color: const Color(0xFF2196F3),
+                        active: true,
+                        onTap: () {},
+                      ),
                       const SizedBox(width: 8),
-                      _buildActionChip(icon: Icons.upload_file, label: 'Import CSV', onTap: () => Navigator.of(context).pushNamed('/csv-import')),
-                      const SizedBox(width: 12),
-                      FilledButton.icon(
-                        onPressed: () => setState(() => _showAddExpensePanel = !_showAddExpensePanel),
-                        icon: Icon(_showAddExpensePanel ? Icons.close_rounded : Icons.add_rounded, size: 18),
-                        label: Text(_showAddExpensePanel ? 'Close' : 'Add Expense'),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
+                      _buildControlPill(
+                        icon: Icons.history,
+                        label: 'Historical Performance',
+                        color: const Color(0xFF7C4DFF),
+                        locked: true,
+                        onTap: () {},
+                      ),
+                      const SizedBox(width: 8),
+                      _buildControlPill(
+                        icon: Icons.insights,
+                        label: 'Spending Analytics',
+                        color: const Color(0xFF00ACC1),
+                        locked: true,
+                        onTap: () {},
+                      ),
+                      const Spacer(),
+                      _buildControlPill(
+                        icon: Icons.auto_awesome,
+                        label: 'AI Insights',
+                        color: const Color(0xFF9C27B0),
+                        onTap: () => Navigator.of(context).pushNamed('/ai-features'),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildControlPill(
+                        icon: Icons.upload_file,
+                        label: 'Import CSV',
+                        color: const Color(0xFF43A047),
+                        onTap: () => Navigator.of(context).pushNamed('/csv-import'),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildControlPill(
+                        icon: _showAddExpensePanel ? Icons.close_rounded : Icons.add_rounded,
+                        label: _showAddExpensePanel ? 'Close' : 'Add Expense',
+                        color: const Color(0xFFFF6D00),
+                        active: _showAddExpensePanel,
+                        onTap: () => setState(() => _showAddExpensePanel = !_showAddExpensePanel),
                       ),
                     ],
                   ),

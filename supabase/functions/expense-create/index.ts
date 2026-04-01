@@ -133,11 +133,12 @@ Deno.serve(async (req: Request) => {
     // Get user's household
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('household_id')
+      .select('id, household_id')
       .eq('firebase_uid', decodedToken.uid)
       .single()
 
     if (userError || !userData?.household_id) {
+      console.error('User lookup error:', userError, 'uid:', decodedToken.uid)
       return new Response(JSON.stringify({ error: 'User not found or not active' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -163,6 +164,7 @@ Deno.serve(async (req: Request) => {
       .from('transactions')
       .insert({
         household_id: userData.household_id,
+        created_by_user_id: userData.id,
         amount,
         category: normalizedCategory,
         description: description.trim(),
@@ -177,7 +179,7 @@ Deno.serve(async (req: Request) => {
 
     if (createError) {
       console.error('Database error:', createError)
-      return new Response(JSON.stringify({ error: 'Failed to create expense' }), {
+      return new Response(JSON.stringify({ error: `Failed to create expense: ${createError.message}` }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })

@@ -46,6 +46,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
   // Web: category filter & inline panels
   String? _selectedCategoryFilter;
+  DateTime? _filterDate; // date filter for expenses
+  bool _showDateFilterPicker = false;
   bool _showAddExpensePanel = false;
   bool _showImportPanel = false;
   bool _showHistoricalPanel = false;
@@ -53,6 +55,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   bool _showAIInsightsPanel = false;
   Expense? _selectedExpenseDetail;
   bool _showLeakageFlip = false; // flip between Projected ↔ Leakage when panel active
+  int _infoCardPage = 0; // 0 = col A (cards 1-7), 1 = col B (cards 8-14)
+  bool _showCol3UnderCol1 = false; // when panel active, flip col3 cards under col1
 
   void _closeAllPanels() {
     _showAddExpensePanel = false;
@@ -634,31 +638,107 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
+            Padding(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Expense',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+                  Row(
+                    children: [
+                      const Text(
+                        'Expense',
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+                      ),
+                      const Spacer(),
+                      // Daily Wisdom
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFF3E5F5), Color(0xFFE8EAF6)],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.auto_awesome, size: 14, color: Colors.deepPurple[300]),
+                            const SizedBox(width: 6),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 300),
+                              child: Text(
+                                '"${_financeProverbs[DateTime.now().day % _financeProverbs.length]}"',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.deepPurple[700], fontStyle: FontStyle.italic),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
+                      // Date filter
+                      GestureDetector(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _filterDate ?? DateTime.now(),
+                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                            lastDate: DateTime.now(),
+                            builder: (ctx, child) => Theme(
+                              data: Theme.of(ctx).copyWith(
+                                colorScheme: ColorScheme.light(
+                                  primary: const Color(0xFF1565C0),
+                                  onPrimary: Colors.white,
+                                  surface: Colors.white,
+                                ),
+                              ),
+                              child: child!,
+                            ),
+                          );
+                          if (picked != null) {
+                            setState(() => _filterDate = picked);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: _filterDate != null ? const Color(0xFFE3F2FD) : Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: _filterDate != null ? const Color(0xFF1565C0) : Colors.grey.shade200),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.today_rounded, size: 16, color: _filterDate != null ? const Color(0xFF1565C0) : Colors.orange.shade600),
+                              if (_filterDate != null) ...[
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${_filterDate!.day}/${_filterDate!.month}',
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF1565C0)),
+                                ),
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () => setState(() => _filterDate = null),
+                                  child: const Icon(Icons.close, size: 12, color: Color(0xFF1565C0)),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
                       _buildControlPill(
                         icon: Icons.calendar_month,
                         label: 'Current Month',
-                        color: const Color(0xFF2196F3),
-                        active: true,
-                        onTap: () {},
+                        color: const Color(0xFF1565C0),
+                        active: false,
+                        onTap: () => setState(() => _filterDate = null),
                       ),
                       _buildControlPill(
                         icon: _showHistoricalPanel ? Icons.close_rounded : Icons.history,
@@ -768,55 +848,84 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               ),
             ],
             const SizedBox(height: 16),
-            // ── Single Row: Transactions | Info Cards + Leakage (+AI flip) | Projected / Control Panel ──
+            // ── Main Row: Transactions | Rewards | AI Info Cards | Projected / Control ──
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Col 1: Transaction List
                 Expanded(
                   flex: 5,
-                  child: _buildWebTransactionList(filtered, isDark, primary),
-                ),
-                const SizedBox(width: 16),
-                // Col 2: Info Cards + Spend Leakage (permanent) + AI flip when panel active
-                SizedBox(
-                  width: 260,
                   child: Column(
                     children: [
-                      _buildThreeInfoCards(isDark, primary),
-                      const SizedBox(height: 10),
-                      _buildSpendLeakageSection(isDark, primary),
-                      // When a control panel is active, Projected Expense flips under here
+                      _buildWebTransactionList(filtered, isDark, primary),
+                      // When panel active, col 4 cards flip under transactions
+                      if (_anyPanelOpen && _showCol3UnderCol1) ...[
+                        const SizedBox(height: 12),
+                        _buildAIInfoCardsColumn(isDark, primary, page: 1),
+                      ],
                       if (_anyPanelOpen) ...[
-                        const SizedBox(height: 10),
-                        _buildFlippableProjectedSection(isDark, primary),
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () => setState(() => _showCol3UnderCol1 = !_showCol3UnderCol1),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(_showCol3UnderCol1 ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, size: 16, color: Colors.grey.shade600),
+                                const SizedBox(width: 4),
+                                Text(_showCol3UnderCol1 ? 'Hide More Cards' : 'More AI Cards', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ],
                   ),
                 ),
-                const SizedBox(width: 16),
-                // Col 3: Projected Expense (default) OR Control Panel (when active)
+                const SizedBox(width: 12),
+                // Col 2: Rewards
                 SizedBox(
-                  width: 340,
-                  child: _anyPanelOpen
-                      ? Column(
-                          children: [
-                            if (_showAddExpensePanel)
-                              _buildInlineAddExpensePanel(isDark, primary),
-                            if (_showImportPanel)
-                              _buildInlineImportPanel(isDark, primary),
-                            if (_selectedExpenseDetail != null)
-                              _buildInlineTransactionDetail(isDark, primary),
-                            if (_showHistoricalPanel)
-                              _buildHistoricalPerformancePanel(isDark, primary),
-                            if (_showAnalyticsPanel)
-                              _buildSpendingAnalyticsPanel(isDark, primary),
-                            if (_showAIInsightsPanel)
-                              _buildAIInsightsPanel(isDark, primary),
-                          ],
-                        )
-                      : _buildProjectedExpenseSection(isDark, primary),
+                  width: 52,
+                  child: _buildRewardsColumn(isDark),
                 ),
+                const SizedBox(width: 12),
+                // Col 3: AI Info Cards (page 0)
+                SizedBox(
+                  width: 280,
+                  child: _buildAIInfoCardsColumn(isDark, primary, page: 0),
+                ),
+                const SizedBox(width: 12),
+                // Col 4: AI Info Cards page 1 (default) OR Control Panel (when active)
+                if (!_anyPanelOpen)
+                  SizedBox(
+                    width: 280,
+                    child: _buildAIInfoCardsColumn(isDark, primary, page: 1),
+                  )
+                else
+                  SizedBox(
+                    width: 340,
+                    child: Column(
+                      children: [
+                        if (_showAddExpensePanel)
+                          _buildInlineAddExpensePanel(isDark, primary),
+                        if (_showImportPanel)
+                          _buildInlineImportPanel(isDark, primary),
+                        if (_selectedExpenseDetail != null)
+                          _buildInlineTransactionDetail(isDark, primary),
+                        if (_showHistoricalPanel)
+                          _buildHistoricalPerformancePanel(isDark, primary),
+                        if (_showAnalyticsPanel)
+                          _buildSpendingAnalyticsPanel(isDark, primary),
+                        if (_showAIInsightsPanel)
+                          _buildAIInsightsPanel(isDark, primary),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ],
@@ -842,6 +951,231 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     'Don\'t save what\'s left after spending. Spend what\'s left after saving.',
   ];
 
+  // ── Rewards Column ──────────────────────────────────────────────────────
+
+  Widget _buildRewardsColumn(bool isDark) {
+    final rewards = <_RewardIcon>[
+      _RewardIcon(Icons.emoji_events_rounded, Colors.amber, 'Budget Champion'),
+      _RewardIcon(Icons.savings_rounded, Colors.green, 'Smart Saver'),
+      _RewardIcon(Icons.auto_graph_rounded, Colors.blue, 'Trend Watcher'),
+      _RewardIcon(Icons.favorite_rounded, Colors.pink, 'Impulse Control'),
+      _RewardIcon(Icons.shield_rounded, Colors.purple, 'No Leaks'),
+      _RewardIcon(Icons.star_rounded, Colors.orange, 'Consistent'),
+      _RewardIcon(Icons.diamond_rounded, Colors.teal, 'Goal Achiever'),
+    ];
+    return Column(
+      children: [
+        Text('Rewards', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.grey.shade500)),
+        const SizedBox(height: 8),
+        ...rewards.map((r) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Tooltip(
+            message: r.label,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [r.color.withOpacity(0.15), r.color.withOpacity(0.05)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: r.color.withOpacity(0.3)),
+              ),
+              child: Icon(r.icon, size: 18, color: r.color),
+            ),
+          ),
+        )),
+      ],
+    );
+  }
+
+  // ── AI Info Cards Column (paged: 0 or 1) ────────────────────────────────
+
+  Widget _buildAIInfoCardsColumn(bool isDark, Color primary, {required int page}) {
+    final now = DateTime.now();
+    final currentMonthExpenses = _expenses.where((e) =>
+        e.date.year == now.year && e.date.month == now.month).toList();
+    final totalSpend = currentMonthExpenses.fold<double>(0, (s, e) => s + e.amount);
+    final totalBudget = _budgets.fold<double>(0, (s, b) => s + b.amount);
+
+    // Category spends
+    final catSpend = <String, double>{};
+    final catCount = <String, int>{};
+    for (final e in currentMonthExpenses) {
+      catSpend[e.category] = (catSpend[e.category] ?? 0) + e.amount;
+      catCount[e.category] = (catCount[e.category] ?? 0) + 1;
+    }
+
+    // Previous month data
+    final prevMonth = DateTime(now.year, now.month - 1);
+    final prevMonthExpenses = _expenses.where((e) =>
+        e.date.year == prevMonth.year && e.date.month == prevMonth.month).toList();
+    final prevTotal = prevMonthExpenses.fold<double>(0, (s, e) => s + e.amount);
+    final prevCatSpend = <String, double>{};
+    for (final e in prevMonthExpenses) {
+      prevCatSpend[e.category] = (prevCatSpend[e.category] ?? 0) + e.amount;
+    }
+
+    // Daily spend pattern
+    final dailySpends = <int, double>{};
+    for (final e in currentMonthExpenses) {
+      dailySpends[e.date.weekday] = (dailySpends[e.date.weekday] ?? 0) + e.amount;
+    }
+
+    // Small recurring (silent expenses)
+    final smallExpenses = currentMonthExpenses.where((e) => e.amount < 200).toList();
+    final smallTotal = smallExpenses.fold<double>(0, (s, e) => s + e.amount);
+
+    // Impulse: late night or unplanned categories
+    final impulseCategories = {'convenience food', 'entertainment', 'shopping', 'party'};
+    final impulseCount = currentMonthExpenses.where((e) =>
+        impulseCategories.contains(e.category.toLowerCase())).length;
+
+    // Budget drift
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final monthPct = now.day / daysInMonth * 100;
+
+    // Weekend vs weekday variance
+    final weekendSpend = (dailySpends[6] ?? 0) + (dailySpends[7] ?? 0);
+    final weekdaySpend = [1, 2, 3, 4, 5].fold<double>(0, (s, d) => s + (dailySpends[d] ?? 0));
+    final avgWeekend = weekendSpend / 2;
+    final avgWeekday = weekdaySpend > 0 ? weekdaySpend / 5 : 1;
+    final volatilityPct = avgWeekday > 0 ? ((avgWeekend - avgWeekday) / avgWeekday * 100) : 0.0;
+
+    // Essential ratio
+    final essentialCats = {'groceries', 'education', 'healthcare', 'utilities', 'housing', 'senior care'};
+    final essentialSpend = catSpend.entries
+        .where((e) => essentialCats.contains(e.key.toLowerCase()))
+        .fold<double>(0, (s, e) => s + e.value);
+    final goodRatio = totalSpend > 0 ? (essentialSpend / totalSpend * 100) : 100;
+
+    // Lifestyle creep
+    final prevQ = _expenses.where((e) {
+      final m = (now.year - e.date.year) * 12 + now.month - e.date.month;
+      return m >= 3 && m <= 5;
+    }).toList();
+    final prevQTotal = prevQ.fold<double>(0, (s, e) => s + e.amount);
+    final prevQAvg = prevQTotal / 3;
+    final creepPct = prevQAvg > 0 ? ((totalSpend - prevQAvg) / prevQAvg * 100) : 0.0;
+
+    // Budget drift per category
+    String? driftingCat;
+    double driftPct = 0;
+    for (final b in _budgets) {
+      if (b.amount > 0) {
+        final usedPct = b.spent / b.amount * 100;
+        if (usedPct > monthPct + 10) {
+          if (usedPct > driftPct) {
+            driftPct = usedPct;
+            driftingCat = b.category;
+          }
+        }
+      }
+    }
+
+    // Category overshoot
+    String? overshootCat;
+    double overshootAmt = 0;
+    for (final entry in catSpend.entries) {
+      final prev = prevCatSpend[entry.key] ?? 0;
+      if (prev > 0 && entry.value > prev * 1.3) {
+        final diff = entry.value - prev;
+        if (diff > overshootAmt) {
+          overshootAmt = diff;
+          overshootCat = entry.key;
+        }
+      }
+    }
+
+    // Avoided spend (less impulse than last month)
+    final prevImpulse = prevMonthExpenses.where((e) =>
+        impulseCategories.contains(e.category.toLowerCase())).length;
+    final avoidedCount = prevImpulse - impulseCount;
+
+    // Projected expense
+    final dailyRate = now.day > 0 ? totalSpend / now.day : 0.0;
+    final projectedTotal = dailyRate * daysInMonth;
+
+    // Build cards based on page
+    final List<Widget> cards;
+    if (page == 0) {
+      cards = [
+        _buildThreeInfoCards(isDark, primary),
+        const SizedBox(height: 8),
+        _buildSpendLeakageSection(isDark, primary),
+        const SizedBox(height: 8),
+        _aiCard('💰', 'Projected Expense', '₹${projectedTotal.toStringAsFixed(0)} projected this month', Colors.green, '₹${dailyRate.toStringAsFixed(0)}/day'),
+        const SizedBox(height: 8),
+        _aiCard('🔔', 'Subscription Drain', currentMonthExpenses.isEmpty ? 'Connect email to track subscriptions' : '${catCount.length} active spending categories detected', Colors.red, 'Track recurring'),
+        const SizedBox(height: 8),
+        _aiCard('⚡', 'Impulse Spend', impulseCount > 0 ? '$impulseCount impulse spend${impulseCount == 1 ? '' : 's'} detected this month' : 'No impulse spending detected!', Colors.orange, impulseCount > 0 ? 'Review spending' : 'Great control!'),
+        const SizedBox(height: 8),
+        _aiCard('🔍', 'Silent Expenses', smallExpenses.isNotEmpty ? '${smallExpenses.length} small spends totaling ₹${smallTotal.toStringAsFixed(0)}' : 'No silent expenses detected', Colors.indigo, 'Under ₹200 each'),
+      ];
+    } else {
+      cards = [
+        _aiCard('📈', 'Lifestyle Creep', creepPct.abs() > 5 ? 'Spending ${creepPct > 0 ? 'up' : 'down'} ${creepPct.abs().toStringAsFixed(0)}% vs last quarter' : 'Spending stable vs last quarter', creepPct > 10 ? Colors.red : Colors.teal, 'Quarter comparison'),
+        const SizedBox(height: 8),
+        _aiCard('🎯', 'Budget Drift', driftingCat != null ? '$driftingCat drifting—${driftPct.toStringAsFixed(0)}% used with ${(100 - monthPct).toStringAsFixed(0)}% of month left' : 'All categories on track', Colors.amber, 'Budget pace'),
+        const SizedBox(height: 8),
+        _aiCard('⚠️', 'Category Overshoot', overshootCat != null ? '$overshootCat spend up ₹${overshootAmt.toStringAsFixed(0)} vs last month' : 'No unusual category spikes', overshootCat != null ? Colors.deepOrange : Colors.green, 'Category watch'),
+        const SizedBox(height: 8),
+        _aiCard('📊', 'Spend Volatility', volatilityPct.abs() > 20 ? 'Weekend spending ${volatilityPct > 0 ? '${volatilityPct.toStringAsFixed(0)}% higher' : '${volatilityPct.abs().toStringAsFixed(0)}% lower'} than weekdays' : 'Spending pattern is stable', Colors.purple, 'Daily patterns'),
+        const SizedBox(height: 8),
+        _aiCard('💡', 'Smart Saving', totalBudget > 0 && totalSpend < totalBudget ? 'Potential to save ₹${(totalBudget - totalSpend).toStringAsFixed(0)} this month' : 'Set budgets to unlock saving tips', Colors.blue, 'Opportunity'),
+        const SizedBox(height: 8),
+        _aiCard('✅', 'Good Spend Ratio', '${goodRatio.toStringAsFixed(0)}% of spending on essentials & goals', goodRatio >= 70 ? Colors.green : Colors.orange, goodRatio >= 70 ? 'Healthy!' : 'Could improve'),
+        const SizedBox(height: 8),
+        _aiCard('🛡️', 'Avoided Spend', avoidedCount > 0 ? 'You avoided $avoidedCount impulse spend${avoidedCount == 1 ? '' : 's'} vs last month' : prevImpulse == 0 ? 'Clean record both months!' : '${impulseCount - prevImpulse} more impulse spends than last month', avoidedCount > 0 ? Colors.green : Colors.grey, 'Habit tracking'),
+      ];
+    }
+
+    return Column(children: cards);
+  }
+
+  Widget _aiCard(String emoji, String title, String message, Color color, String badge) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.15)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 18)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color)),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(badge, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: color)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(message, style: TextStyle(fontSize: 10, color: Colors.grey.shade700, height: 1.3)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildThreeInfoCards(bool isDark, Color primary) {
     final totalBudget = _budgets.fold<double>(0, (s, b) => s + b.amount);
     final totalExpense = _monthlySpendTotal;
@@ -858,46 +1192,9 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     }
     overBudgetItems.sort((a, b) => b.value.compareTo(a.value));
 
-    // Random proverb based on day
-    final proverb = _financeProverbs[DateTime.now().day % _financeProverbs.length];
-
     return Column(
       children: [
-        // Card 1: AI Finance Proverb (Daily Wisdom)
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFF3E5F5), Color(0xFFE8EAF6)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.auto_awesome, size: 22, color: Colors.deepPurple[300]),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Daily Wisdom', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.deepPurple[300], letterSpacing: 0.5)),
-                    const SizedBox(height: 3),
-                    Text(
-                      '"$proverb"',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.deepPurple[700], fontStyle: FontStyle.italic, height: 1.3),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        // Card 2: Budget vs Expense
+        // Card 1: Budget vs Expense
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -1035,13 +1332,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   Widget _buildFlippableProjectedSection(bool isDark, Color primary) {
     return Column(
       children: [
-        AnimatedCrossFade(
-          firstChild: const SizedBox.shrink(),
-          secondChild: _buildProjectedExpenseSection(isDark, primary),
-          crossFadeState: _showLeakageFlip ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-          duration: const Duration(milliseconds: 300),
-          sizeCurve: Curves.easeInOut,
-        ),
+        if (_showLeakageFlip)
+          _buildProjectedExpenseSection(isDark, primary),
         const SizedBox(height: 6),
         GestureDetector(
           onTap: () => setState(() => _showLeakageFlip = !_showLeakageFlip),
@@ -2359,7 +2651,14 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
   /// Filtered expenses for web layout, with optional category filter applied.
   List<Expense> get _webFilteredExpenses {
-    final base = _filteredExpenses;
+    var base = _filteredExpenses;
+    // Date filter
+    if (_filterDate != null) {
+      base = base.where((e) =>
+          e.date.year == _filterDate!.year &&
+          e.date.month == _filterDate!.month &&
+          e.date.day == _filterDate!.day).toList();
+    }
     if (_selectedCategoryFilter == null) return base;
     final lbl = _selectedCategoryFilter!.toLowerCase();
     return base.where((e) => _matchesCategory(e, lbl)).toList();
@@ -5067,4 +5366,11 @@ class _ProjectedItem {
   final double amount;
   final DateTime date;
   const _ProjectedItem({required this.description, required this.category, required this.amount, required this.date});
+}
+
+class _RewardIcon {
+  final IconData icon;
+  final Color color;
+  final String label;
+  const _RewardIcon(this.icon, this.color, this.label);
 }

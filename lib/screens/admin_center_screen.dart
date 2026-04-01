@@ -4948,6 +4948,26 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
         return Icons.trending_up_rounded;
       case 'spend_leakage':
         return Icons.water_drop_outlined;
+      case 'subscription_drain':
+        return Icons.subscriptions_rounded;
+      case 'impulse_spend':
+        return Icons.flash_on_rounded;
+      case 'silent_expenses':
+        return Icons.visibility_off_rounded;
+      case 'lifestyle_creep':
+        return Icons.trending_up_rounded;
+      case 'budget_drift':
+        return Icons.swap_vert_rounded;
+      case 'category_overshoot':
+        return Icons.warning_amber_rounded;
+      case 'spend_volatility':
+        return Icons.show_chart_rounded;
+      case 'smart_saving':
+        return Icons.lightbulb_rounded;
+      case 'good_spend_ratio':
+        return Icons.check_circle_rounded;
+      case 'avoided_spend':
+        return Icons.shield_rounded;
       default:
         return Icons.smart_toy_outlined;
     }

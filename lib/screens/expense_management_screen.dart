@@ -722,28 +722,6 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // ── Top row: Info Cards | Projected Expense | Spend Leakage ──
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left: 3 info cards stacked vertically
-                SizedBox(
-                  width: 260,
-                  child: _buildThreeInfoCards(isDark, primary),
-                ),
-                const SizedBox(width: 16),
-                // Middle: Projected Expense
-                Expanded(
-                  child: _buildProjectedExpenseSection(isDark, primary),
-                ),
-                const SizedBox(width: 16),
-                // Right: Spend Leakage
-                Expanded(
-                  child: _buildSpendLeakageSection(isDark, primary),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
             // Pending review banner
             if (_pendingEmailExpenses.isNotEmpty) ...[
               Container(
@@ -789,39 +767,60 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                 ),
               ),
             ],
-            const SizedBox(height: 24),
-            // Two-column layout: Transaction List (left) + Control Panel (right)
+            const SizedBox(height: 16),
+            // ── Single Row: Transactions | Info Cards (+AI flip) | AI Sections / Control Panel ──
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Left: Transaction List (constrained width)
+                // Col 1: Transaction List
                 Expanded(
-                  flex: 3,
+                  flex: 5,
                   child: _buildWebTransactionList(filtered, isDark, primary),
                 ),
-                // Right: Active control panel only
-                if (_anyPanelOpen) ...[
-                  const SizedBox(width: 24),
-                  SizedBox(
-                    width: 380,
-                    child: Column(
-                      children: [
-                        if (_showAddExpensePanel)
-                          _buildInlineAddExpensePanel(isDark, primary),
-                        if (_showImportPanel)
-                          _buildInlineImportPanel(isDark, primary),
-                        if (_selectedExpenseDetail != null)
-                          _buildInlineTransactionDetail(isDark, primary),
-                        if (_showHistoricalPanel)
-                          _buildHistoricalPerformancePanel(isDark, primary),
-                        if (_showAnalyticsPanel)
-                          _buildSpendingAnalyticsPanel(isDark, primary),
-                        if (_showAIInsightsPanel)
-                          _buildAIInsightsPanel(isDark, primary),
+                const SizedBox(width: 16),
+                // Col 2: Info Cards (+ AI sections hidden behind when panel active)
+                SizedBox(
+                  width: 260,
+                  child: Column(
+                    children: [
+                      _buildThreeInfoCards(isDark, primary),
+                      // When a control panel is active, AI sections flip under info cards
+                      if (_anyPanelOpen) ...[
+                        const SizedBox(height: 10),
+                        _buildFlippableAISections(isDark, primary),
                       ],
-                    ),
+                    ],
                   ),
-                ],
+                ),
+                const SizedBox(width: 16),
+                // Col 3: AI Sections (default) OR Control Panel (when active)
+                SizedBox(
+                  width: 340,
+                  child: _anyPanelOpen
+                      ? Column(
+                          children: [
+                            if (_showAddExpensePanel)
+                              _buildInlineAddExpensePanel(isDark, primary),
+                            if (_showImportPanel)
+                              _buildInlineImportPanel(isDark, primary),
+                            if (_selectedExpenseDetail != null)
+                              _buildInlineTransactionDetail(isDark, primary),
+                            if (_showHistoricalPanel)
+                              _buildHistoricalPerformancePanel(isDark, primary),
+                            if (_showAnalyticsPanel)
+                              _buildSpendingAnalyticsPanel(isDark, primary),
+                            if (_showAIInsightsPanel)
+                              _buildAIInsightsPanel(isDark, primary),
+                          ],
+                        )
+                      : Column(
+                          children: [
+                            _buildProjectedExpenseSection(isDark, primary),
+                            const SizedBox(height: 16),
+                            _buildSpendLeakageSection(isDark, primary),
+                          ],
+                        ),
+                ),
               ],
             ),
           ],
@@ -1263,6 +1262,12 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               ),
             ),
           ],
+
+          // ── Top 5 Projected Expenses ──
+          const SizedBox(height: 14),
+          Text('Top Projected Expenses', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.grey.shade700)),
+          const SizedBox(height: 8),
+          ..._buildTop5ProjectedExpenses(now, dailyRate, projectedOverBudget),
         ],
       ),
     );
@@ -1286,6 +1291,86 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildTop5ProjectedExpenses(DateTime now, double dailyRate, bool isOverBudget) {
+    // Find top recurring/largest expenses from current + recent months to project
+    final categoryHighest = <String, _ProjectedItem>{};
+    for (final e in _expenses) {
+      // Consider last 3 months of data
+      final monthsDiff = (now.year - e.date.year) * 12 + (now.month - e.date.month);
+      if (monthsDiff > 3) continue;
+      final existing = categoryHighest[e.category];
+      if (existing == null || e.amount > existing.amount) {
+        categoryHighest[e.category] = _ProjectedItem(
+          description: e.description,
+          category: e.category,
+          amount: e.amount,
+          date: e.date,
+        );
+      }
+    }
+
+    final items = categoryHighest.values.toList()
+      ..sort((a, b) => b.amount.compareTo(a.amount));
+    final top5 = items.take(5).toList();
+
+    if (top5.isEmpty) {
+      return [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text('No expense data to project', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+        ),
+      ];
+    }
+
+    final accent = isOverBudget ? Colors.orange.shade700 : Colors.green.shade700;
+    return top5.map((item) {
+      final dayStr = '${item.date.day}/${item.date.month}';
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.55),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                alignment: Alignment.center,
+                child: Text(dayStr, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: accent)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.description.length > 28 ? '${item.description.substring(0, 25)}…' : item.description,
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(item.category, style: TextStyle(fontSize: 9, color: Colors.grey.shade500)),
+                  ],
+                ),
+              ),
+              Text('₹${item.amount.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: accent)),
+            ],
+          ),
+        ),
+      );
+    }).toList();
   }
 
   // ── Spend Leakage Section ────────────────────────────────────────────────
@@ -4968,4 +5053,12 @@ class _LeakageItem {
   final IconData icon;
   final Color color;
   const _LeakageItem({required this.category, required this.amount, required this.reason, required this.severity, required this.icon, required this.color});
+}
+
+class _ProjectedItem {
+  final String description;
+  final String category;
+  final double amount;
+  final DateTime date;
+  const _ProjectedItem({required this.description, required this.category, required this.amount, required this.date});
 }

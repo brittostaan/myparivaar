@@ -588,7 +588,11 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
-                      const Spacer(),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
                       _buildViewTab('Current Month', Icons.calendar_month, true),
                       const SizedBox(width: 6),
                       _buildViewTab('Historical Performance', Icons.history, false, comingSoon: true),
@@ -623,6 +627,70 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             ],
             // Expense Category Widgets
             _buildExpenseCategoryGrid(isDark),
+            const SizedBox(height: 24),
+            // Transaction List
+            if (filtered.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(40),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceDark : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+                ),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(AppIcons.receiptOutlined, size: 48, color: Colors.grey[300]),
+                      const SizedBox(height: 12),
+                      Text('No transactions this month', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[500])),
+                      const SizedBox(height: 4),
+                      Text('Add your first expense to get started', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceDark : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Transactions',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${filtered.length}',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: primary),
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            'Total: ${_fmtCurrency(_monthlySpendTotal)}',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ...filtered.map((expense) => _buildWebTransactionRow(expense, isDark)),
+                  ],
+                ),
+              ),
           ],
         ),
       ),

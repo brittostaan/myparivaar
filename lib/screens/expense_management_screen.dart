@@ -39,6 +39,10 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   String? _smartInsights;
   String? _smartInsightsError;
 
+  // Web: category filter & inline add expense
+  String? _selectedCategoryFilter;
+  bool _showAddExpensePanel = false;
+
   @override
   void initState() {
     super.initState();
@@ -540,7 +544,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
   Widget _buildWebContent(
       BuildContext context, bool isDark, ThemeData theme, Color primary) {
-    final filtered = _filteredExpenses;
+    final filtered = _webFilteredExpenses;
     final previousMonthSpend = _previousMonthSpend;
     final spendDelta = _monthlySpendTotal - previousMonthSpend;
     final spendDeltaPct = previousMonthSpend > 0
@@ -573,32 +577,33 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      _buildActionChip(icon: Icons.auto_awesome, label: 'AI Insights', onTap: () => Navigator.of(context).pushNamed('/ai-features')),
-                      const SizedBox(width: 8),
-                      _buildActionChip(icon: Icons.upload_file, label: 'Import CSV', onTap: () => Navigator.of(context).pushNamed('/csv-import')),
-                      const SizedBox(width: 12),
-                      FilledButton.icon(
-                        onPressed: _addExpense,
-                        icon: const Icon(Icons.add_rounded, size: 18),
-                        label: const Text('Add Expense'),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildViewTab('Current Month', Icons.calendar_month, true),
+                        const SizedBox(width: 6),
+                        _buildViewTab('Historical Performance', Icons.history, false, comingSoon: true),
+                        const SizedBox(width: 6),
+                        _buildViewTab('Spending Analytics', Icons.insights, false, comingSoon: true),
+                        const SizedBox(width: 16),
+                        Container(width: 1, height: 24, color: const Color(0xFFE2E8F0)),
+                        const SizedBox(width: 16),
+                        _buildActionChip(icon: Icons.auto_awesome, label: 'AI Insights', onTap: () => Navigator.of(context).pushNamed('/ai-features')),
+                        const SizedBox(width: 8),
+                        _buildActionChip(icon: Icons.upload_file, label: 'Import CSV', onTap: () => Navigator.of(context).pushNamed('/csv-import')),
+                        const SizedBox(width: 12),
+                        FilledButton.icon(
+                          onPressed: () => setState(() => _showAddExpensePanel = !_showAddExpensePanel),
+                          icon: Icon(_showAddExpensePanel ? Icons.close_rounded : Icons.add_rounded, size: 18),
+                          label: Text(_showAddExpensePanel ? 'Close' : 'Add Expense'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      _buildViewTab('Current Month', Icons.calendar_month, true),
-                      const SizedBox(width: 6),
-                      _buildViewTab('Historical Performance', Icons.history, false, comingSoon: true),
-                      const SizedBox(width: 6),
-                      _buildViewTab('Spending Analytics', Icons.insights, false, comingSoon: true),
-                    ],
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -625,72 +630,50 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            // Expense Category Widgets
+            // Expense Category Chips (now filter transactions)
             _buildExpenseCategoryGrid(isDark),
-            const SizedBox(height: 24),
-            // Transaction List
-            if (filtered.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(40),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.surfaceDark : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
-                ),
-                child: Center(
-                  child: Column(
+            // Clear filter chip
+            if (_selectedCategoryFilter != null) ...[
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: () => setState(() => _selectedCategoryFilter = null),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(AppIcons.receiptOutlined, size: 48, color: Colors.grey[300]),
-                      const SizedBox(height: 12),
-                      Text('No transactions this month', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[500])),
-                      const SizedBox(height: 4),
-                      Text('Add your first expense to get started', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                      Icon(Icons.close, size: 14, color: primary),
+                      const SizedBox(width: 4),
+                      Text('Clear filter: $_selectedCategoryFilter', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primary)),
                     ],
                   ),
                 ),
-              )
-            else
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.surfaceDark : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                      child: Row(
-                        children: [
-                          Text(
-                            'Transactions',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '${filtered.length}',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: primary),
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            'Total: ${_fmtCurrency(_monthlySpendTotal)}',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[600]),
-                          ),
-                        ],
-                      ),
-                    ),
-                    ...filtered.map((expense) => _buildWebTransactionRow(expense, isDark)),
-                  ],
-                ),
               ),
+            ],
+            const SizedBox(height: 24),
+            // Two-column layout: Add Expense (left) + Transaction List (right)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Left: Inline Add Expense Panel
+                if (_showAddExpensePanel) ...[
+                  SizedBox(
+                    width: 380,
+                    child: _buildInlineAddExpensePanel(isDark, primary),
+                  ),
+                  const SizedBox(width: 24),
+                ],
+                // Right: Transaction List
+                Expanded(
+                  child: _buildWebTransactionList(filtered, isDark, primary),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -836,12 +819,17 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   }
 
   Widget _buildCategoryChip(_ExpenseCategoryItem cat, int count, double total) {
+    final isActive = _selectedCategoryFilter == cat.label;
     return Material(
-      color: cat.bgColor,
+      color: isActive ? cat.color.withOpacity(0.2) : cat.bgColor,
       borderRadius: BorderRadius.circular(22),
       child: InkWell(
         borderRadius: BorderRadius.circular(22),
-        onTap: () => _addExpense(),
+        onTap: () {
+          setState(() {
+            _selectedCategoryFilter = isActive ? null : cat.label;
+          });
+        },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
@@ -1479,6 +1467,14 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     }).toList();
   }
 
+  /// Filtered expenses for web layout, with optional category filter applied.
+  List<Expense> get _webFilteredExpenses {
+    final base = _filteredExpenses;
+    if (_selectedCategoryFilter == null) return base;
+    final lbl = _selectedCategoryFilter!.toLowerCase();
+    return base.where((e) => _matchesCategory(e, lbl)).toList();
+  }
+
   List<Expense> get _pendingEmailExpenses =>
       _filteredExpenses.where((e) => e.source == 'email' && !e.isApproved).toList();
 
@@ -1689,6 +1685,93 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     }
   }
 
+  // ── Web: Transaction List widget ─────────────────────────────────────────
+
+  Widget _buildWebTransactionList(List<Expense> filtered, bool isDark, Color primary) {
+    if (filtered.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceDark : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+        ),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(AppIcons.receiptOutlined, size: 48, color: Colors.grey[300]),
+              const SizedBox(height: 12),
+              Text(
+                _selectedCategoryFilter != null
+                    ? 'No $_selectedCategoryFilter transactions this month'
+                    : 'No transactions this month',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[500]),
+              ),
+              const SizedBox(height: 4),
+              Text('Add your first expense to get started', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final filteredTotal = filtered.fold<double>(0.0, (s, e) => s + e.amount);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Row(
+              children: [
+                Text(
+                  'Transactions',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${filtered.length}',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: primary),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  'Total: ${_fmtCurrency(filteredTotal)}',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+          ...filtered.map((expense) => _buildWebTransactionRow(expense, isDark)),
+        ],
+      ),
+    );
+  }
+
+  // ── Web: Inline Add Expense Panel ────────────────────────────────────────
+
+  Widget _buildInlineAddExpensePanel(bool isDark, Color primary) {
+    return _InlineAddExpensePanel(
+      onSaved: () {
+        setState(() => _showAddExpensePanel = false);
+        _loadExpenses();
+      },
+      onCancel: () => setState(() => _showAddExpensePanel = false),
+    );
+  }
+
   Widget _webTabChip({
     required String label,
     required IconData icon,
@@ -1739,6 +1822,218 @@ class _ExpenseCategoryItem {
     required this.color,
     required this.bgColor,
   });
+}
+
+// ── Inline Add Expense Panel (shown in web layout) ───────────────────────
+
+class _InlineAddExpensePanel extends StatefulWidget {
+  final VoidCallback onSaved;
+  final VoidCallback onCancel;
+
+  const _InlineAddExpensePanel({required this.onSaved, required this.onCancel});
+
+  @override
+  State<_InlineAddExpensePanel> createState() => _InlineAddExpensePanelState();
+}
+
+class _InlineAddExpensePanelState extends State<_InlineAddExpensePanel> {
+  final _amountController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _tagsController = TextEditingController();
+  String _selectedCategory = 'Groceries';
+  DateTime _selectedDate = DateTime.now();
+  bool _isSaving = false;
+
+  static const _categories = [
+    'Groceries', 'Entertainment', 'Education', 'Personal Care',
+    'Physical Wellness', 'Mental Wellness', 'Convenience Food',
+    'Senior Care', 'Pet Care', 'Vacation', 'Party',
+  ];
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _descriptionController.dispose();
+    _tagsController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final amount = double.tryParse(_amountController.text);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid amount')),
+      );
+      return;
+    }
+    final description = _descriptionController.text.trim();
+    if (description.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a description')),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      final auth = Provider.of<AuthService>(context, listen: false);
+      final tags = parseTags(_tagsController.text);
+      await ExpenseService().createExpense(
+        amount: amount,
+        category: _selectedCategory,
+        description: description,
+        date: _selectedDate,
+        tags: tags,
+        supabaseUrl: auth.supabaseUrl,
+        idToken: await auth.getIdToken(),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Expense added successfully')),
+        );
+        widget.onSaved();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickDate() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now(),
+    );
+    if (date != null && mounted) setState(() => _selectedDate = date);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('Add Expense', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Spacer(),
+              IconButton(
+                onPressed: widget.onCancel,
+                icon: const Icon(Icons.close, size: 20),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Amount
+          TextField(
+            controller: _amountController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'Amount (₹)',
+              prefixText: '₹ ',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          // Description
+          TextField(
+            controller: _descriptionController,
+            decoration: InputDecoration(
+              labelText: 'Description',
+              hintText: 'e.g. Weekly groceries',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Category dropdown
+          DropdownButtonFormField<String>(
+            value: _selectedCategory,
+            decoration: InputDecoration(
+              labelText: 'Category',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+            items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 14)))).toList(),
+            onChanged: (v) { if (v != null) setState(() => _selectedCategory = v); },
+          ),
+          const SizedBox(height: 12),
+          // Date
+          InkWell(
+            onTap: _pickDate,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey[400]!),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Tags
+          TextField(
+            controller: _tagsController,
+            decoration: InputDecoration(
+              labelText: 'Tags (optional)',
+              hintText: 'mom, school, medical',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+          ),
+          const SizedBox(height: 18),
+          // Save button
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _isSaving ? null : _save,
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: _isSaving
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check, size: 18),
+                        SizedBox(width: 6),
+                        Text('Save Transaction', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class AddEditExpenseScreen extends StatefulWidget {

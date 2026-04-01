@@ -52,6 +52,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   bool _showAnalyticsPanel = false;
   bool _showAIInsightsPanel = false;
   Expense? _selectedExpenseDetail;
+  bool _showLeakageFlip = false; // flip between Projected ↔ Leakage when panel active
 
   void _closeAllPanels() {
     _showAddExpensePanel = false;
@@ -723,20 +724,6 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             const SizedBox(height: 16),
             // ── Three info cards ─────────────────────────────────────
             _buildThreeInfoCards(isDark, primary),
-            // ── Projected Expense & Spend Leakage (collapsible) ──────
-            AnimatedCrossFade(
-              firstChild: Column(
-                children: [
-                  const SizedBox(height: 16),
-                  _buildProjectedExpenseSection(isDark, primary),
-                  const SizedBox(height: 16),
-                  _buildSpendLeakageSection(isDark, primary),
-                ],
-              ),
-              secondChild: const SizedBox.shrink(),
-              crossFadeState: _anyPanelOpen ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-              duration: const Duration(milliseconds: 300),
-            ),
             const SizedBox(height: 24),
             // Pending review banner
             if (_pendingEmailExpenses.isNotEmpty) ...[
@@ -792,54 +779,48 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                 Expanded(
                   child: _buildWebTransactionList(filtered, isDark, primary),
                 ),
-                // Right: Inline Add Expense Panel
-                if (_showAddExpensePanel) ...[
-                  const SizedBox(width: 24),
-                  SizedBox(
-                    width: 380,
-                    child: _buildInlineAddExpensePanel(isDark, primary),
+                // Right: Permanent AI sections + active control panel
+                const SizedBox(width: 24),
+                SizedBox(
+                  width: 380,
+                  child: Column(
+                    children: [
+                      // Projected / Leakage — stacked when no panel, flippable when panel active
+                      if (_anyPanelOpen) ...[
+                        _buildFlippableAISections(isDark, primary),
+                      ] else ...[
+                        _buildProjectedExpenseSection(isDark, primary),
+                        const SizedBox(height: 16),
+                        _buildSpendLeakageSection(isDark, primary),
+                      ],
+                      // Active control panel below
+                      if (_showAddExpensePanel) ...[
+                        const SizedBox(height: 16),
+                        _buildInlineAddExpensePanel(isDark, primary),
+                      ],
+                      if (_showImportPanel) ...[
+                        const SizedBox(height: 16),
+                        _buildInlineImportPanel(isDark, primary),
+                      ],
+                      if (_selectedExpenseDetail != null) ...[
+                        const SizedBox(height: 16),
+                        _buildInlineTransactionDetail(isDark, primary),
+                      ],
+                      if (_showHistoricalPanel) ...[
+                        const SizedBox(height: 16),
+                        _buildHistoricalPerformancePanel(isDark, primary),
+                      ],
+                      if (_showAnalyticsPanel) ...[
+                        const SizedBox(height: 16),
+                        _buildSpendingAnalyticsPanel(isDark, primary),
+                      ],
+                      if (_showAIInsightsPanel) ...[
+                        const SizedBox(height: 16),
+                        _buildAIInsightsPanel(isDark, primary),
+                      ],
+                    ],
                   ),
-                ],
-                // Right: Inline Import Panel
-                if (_showImportPanel) ...[
-                  const SizedBox(width: 24),
-                  SizedBox(
-                    width: 380,
-                    child: _buildInlineImportPanel(isDark, primary),
-                  ),
-                ],
-                // Right: Inline Transaction Detail Panel
-                if (_selectedExpenseDetail != null) ...[
-                  const SizedBox(width: 24),
-                  SizedBox(
-                    width: 380,
-                    child: _buildInlineTransactionDetail(isDark, primary),
-                  ),
-                ],
-                // Right: Historical Performance Panel
-                if (_showHistoricalPanel) ...[
-                  const SizedBox(width: 24),
-                  SizedBox(
-                    width: 380,
-                    child: _buildHistoricalPerformancePanel(isDark, primary),
-                  ),
-                ],
-                // Right: Spending Analytics Panel
-                if (_showAnalyticsPanel) ...[
-                  const SizedBox(width: 24),
-                  SizedBox(
-                    width: 380,
-                    child: _buildSpendingAnalyticsPanel(isDark, primary),
-                  ),
-                ],
-                // Right: AI Insights Panel
-                if (_showAIInsightsPanel) ...[
-                  const SizedBox(width: 24),
-                  SizedBox(
-                    width: 380,
-                    child: _buildAIInsightsPanel(isDark, primary),
-                  ),
-                ],
+                ),
               ],
             ),
           ],
@@ -1063,6 +1044,50 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                       ),
                     ],
                   ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Flippable AI Sections (when a control panel is active) ───────────────
+
+  Widget _buildFlippableAISections(bool isDark, Color primary) {
+    return Column(
+      children: [
+        // Header with flip arrow
+        AnimatedCrossFade(
+          firstChild: _buildProjectedExpenseSection(isDark, primary),
+          secondChild: _buildSpendLeakageSection(isDark, primary),
+          crossFadeState: _showLeakageFlip ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 300),
+          sizeCurve: Curves.easeInOut,
+        ),
+        const SizedBox(height: 8),
+        // Flip indicator
+        GestureDetector(
+          onTap: () => setState(() => _showLeakageFlip = !_showLeakageFlip),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _showLeakageFlip ? Icons.arrow_back_rounded : Icons.arrow_forward_rounded,
+                  size: 14,
+                  color: Colors.grey.shade600,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _showLeakageFlip ? 'Projected Expense' : 'Spend Leakage',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
                 ),
               ],
             ),

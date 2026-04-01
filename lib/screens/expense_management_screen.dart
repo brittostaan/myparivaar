@@ -722,8 +722,27 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // ── Three info cards ─────────────────────────────────────
-            _buildThreeInfoCards(isDark, primary),
+            // ── Top row: Info Cards | Projected Expense | Spend Leakage ──
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Left: 3 info cards stacked vertically
+                SizedBox(
+                  width: 260,
+                  child: _buildThreeInfoCards(isDark, primary),
+                ),
+                const SizedBox(width: 16),
+                // Middle: Projected Expense
+                Expanded(
+                  child: _buildProjectedExpenseSection(isDark, primary),
+                ),
+                const SizedBox(width: 16),
+                // Right: Spend Leakage
+                Expanded(
+                  child: _buildSpendLeakageSection(isDark, primary),
+                ),
+              ],
+            ),
             const SizedBox(height: 24),
             // Pending review banner
             if (_pendingEmailExpenses.isNotEmpty) ...[
@@ -771,56 +790,38 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               ),
             ],
             const SizedBox(height: 24),
-            // Two-column layout: Transaction List (left) + Side Panel (right)
+            // Two-column layout: Transaction List (left) + Control Panel (right)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Left: Transaction List
+                // Left: Transaction List (constrained width)
                 Expanded(
+                  flex: 3,
                   child: _buildWebTransactionList(filtered, isDark, primary),
                 ),
-                // Right: Permanent AI sections + active control panel
-                const SizedBox(width: 24),
-                SizedBox(
-                  width: 380,
-                  child: Column(
-                    children: [
-                      // Projected / Leakage — stacked when no panel, flippable when panel active
-                      if (_anyPanelOpen) ...[
-                        _buildFlippableAISections(isDark, primary),
-                      ] else ...[
-                        _buildProjectedExpenseSection(isDark, primary),
-                        const SizedBox(height: 16),
-                        _buildSpendLeakageSection(isDark, primary),
+                // Right: Active control panel only
+                if (_anyPanelOpen) ...[
+                  const SizedBox(width: 24),
+                  SizedBox(
+                    width: 380,
+                    child: Column(
+                      children: [
+                        if (_showAddExpensePanel)
+                          _buildInlineAddExpensePanel(isDark, primary),
+                        if (_showImportPanel)
+                          _buildInlineImportPanel(isDark, primary),
+                        if (_selectedExpenseDetail != null)
+                          _buildInlineTransactionDetail(isDark, primary),
+                        if (_showHistoricalPanel)
+                          _buildHistoricalPerformancePanel(isDark, primary),
+                        if (_showAnalyticsPanel)
+                          _buildSpendingAnalyticsPanel(isDark, primary),
+                        if (_showAIInsightsPanel)
+                          _buildAIInsightsPanel(isDark, primary),
                       ],
-                      // Active control panel below
-                      if (_showAddExpensePanel) ...[
-                        const SizedBox(height: 16),
-                        _buildInlineAddExpensePanel(isDark, primary),
-                      ],
-                      if (_showImportPanel) ...[
-                        const SizedBox(height: 16),
-                        _buildInlineImportPanel(isDark, primary),
-                      ],
-                      if (_selectedExpenseDetail != null) ...[
-                        const SizedBox(height: 16),
-                        _buildInlineTransactionDetail(isDark, primary),
-                      ],
-                      if (_showHistoricalPanel) ...[
-                        const SizedBox(height: 16),
-                        _buildHistoricalPerformancePanel(isDark, primary),
-                      ],
-                      if (_showAnalyticsPanel) ...[
-                        const SizedBox(height: 16),
-                        _buildSpendingAnalyticsPanel(isDark, primary),
-                      ],
-                      if (_showAIInsightsPanel) ...[
-                        const SizedBox(height: 16),
-                        _buildAIInsightsPanel(isDark, primary),
-                      ],
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ],
@@ -865,188 +866,169 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     // Random proverb based on day
     final proverb = _financeProverbs[DateTime.now().day % _financeProverbs.length];
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
       children: [
-        // Card 1: Budget vs Expense
-        Expanded(
-          child: Container(
-            height: 100,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: withinBudget
-                    ? [const Color(0xFF43A047), const Color(0xFF66BB6A)]
-                    : [const Color(0xFFE53935), const Color(0xFFEF5350)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(14),
+        // Card 1: AI Finance Proverb (Daily Wisdom)
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFF3E5F5), Color(0xFFE8EAF6)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('Budget vs Expense', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(_fmtCurrency(totalExpense), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
-                          Text(' / ${_fmtCurrency(totalBudget)}', style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: totalBudget > 0 ? (totalExpense / totalBudget).clamp(0, 1) : 0,
-                          backgroundColor: Colors.white24,
-                          color: Colors.white,
-                          minHeight: 5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.auto_awesome, size: 22, color: Colors.deepPurple[300]),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(withinBudget ? Icons.check_circle : Icons.warning_rounded, color: Colors.white, size: 28),
-                    const SizedBox(height: 2),
+                    Text('Daily Wisdom', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.deepPurple[300], letterSpacing: 0.5)),
+                    const SizedBox(height: 3),
                     Text(
-                      '${usagePct.toStringAsFixed(0)}%',
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                      '"$proverb"',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.deepPurple[700], fontStyle: FontStyle.italic, height: 1.3),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 16),
-        // Card 2: Over-budget bar graph
-        Expanded(
-          child: Container(
-            height: 100,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceDark : Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+        const SizedBox(height: 10),
+        // Card 2: Budget vs Expense
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: withinBudget
+                  ? [const Color(0xFF43A047), const Color(0xFF66BB6A)]
+                  : [const Color(0xFFE53935), const Color(0xFFEF5350)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.bar_chart_rounded, size: 14, color: Colors.red[400]),
-                    const SizedBox(width: 4),
-                    Text('Over Budget', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.red[400])),
-                    const Spacer(),
-                    Text('${overBudgetItems.length} items', style: TextStyle(fontSize: 10, color: Colors.grey[400])),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (overBudgetItems.isEmpty)
-                  Expanded(
-                    child: Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.thumb_up_alt_outlined, size: 16, color: Colors.green[400]),
-                          const SizedBox(width: 6),
-                          Text('All within budget!', style: TextStyle(fontSize: 12, color: Colors.green[600], fontWeight: FontWeight.w600)),
-                        ],
+                    const Text('Budget vs Expense', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text(_fmtCurrency(totalExpense), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+                    Text('/ ${_fmtCurrency(totalBudget)}', style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: totalBudget > 0 ? (totalExpense / totalBudget).clamp(0, 1) : 0,
+                        backgroundColor: Colors.white24,
+                        color: Colors.white,
+                        minHeight: 4,
                       ),
                     ),
-                  )
-                else
-                  Expanded(
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                children: [
+                  Icon(withinBudget ? Icons.check_circle : Icons.warning_rounded, color: Colors.white, size: 22),
+                  const SizedBox(height: 2),
+                  Text('${usagePct.toStringAsFixed(0)}%', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        // Card 3: Over-budget bar graph
+        Container(
+          height: 100,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceDark : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.bar_chart_rounded, size: 13, color: Colors.red[400]),
+                  const SizedBox(width: 4),
+                  Text('Over Budget', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.red[400])),
+                  const Spacer(),
+                  Text('${overBudgetItems.length}', style: TextStyle(fontSize: 9, color: Colors.grey[400])),
+                ],
+              ),
+              const SizedBox(height: 6),
+              if (overBudgetItems.isEmpty)
+                Expanded(
+                  child: Center(
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        ...overBudgetItems.take(5).map((item) {
-                          final maxVal = overBudgetItems.first.value;
-                          final fraction = maxVal > 0 ? (item.value / maxVal).clamp(0.15, 1.0) : 0.3;
-                          return Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 2),
-                              child: Tooltip(
-                                message: '${item.key}: +${_fmtCurrency(item.value)}',
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    Expanded(
-                                      child: FractionallySizedBox(
-                                        heightFactor: fraction.toDouble(),
-                                        alignment: Alignment.bottomCenter,
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color: Colors.red[300],
-                                            borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      item.key.length > 5 ? '${item.key.substring(0, 4)}…' : item.key,
-                                      style: TextStyle(fontSize: 8, color: Colors.grey[500]),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
+                        Icon(Icons.thumb_up_alt_outlined, size: 14, color: Colors.green[400]),
+                        const SizedBox(width: 4),
+                        Text('All within budget!', style: TextStyle(fontSize: 11, color: Colors.green[600], fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        // Card 3: AI Finance Proverb
-        Expanded(
-          child: Container(
-            height: 100,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFF3E5F5), Color(0xFFE8EAF6)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.auto_awesome, size: 24, color: Colors.deepPurple[300]),
-                const SizedBox(width: 12),
+                )
+              else
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('Daily Wisdom', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.deepPurple[300], letterSpacing: 0.5)),
-                      const SizedBox(height: 4),
-                      Text(
-                        '"$proverb"',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.deepPurple[700], fontStyle: FontStyle.italic, height: 1.3),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      ...overBudgetItems.take(4).map((item) {
+                        final maxVal = overBudgetItems.first.value;
+                        final fraction = maxVal > 0 ? (item.value / maxVal).clamp(0.15, 1.0) : 0.3;
+                        return Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 1),
+                            child: Tooltip(
+                              message: '${item.key}: +${_fmtCurrency(item.value)}',
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Expanded(
+                                    child: FractionallySizedBox(
+                                      heightFactor: fraction.toDouble(),
+                                      alignment: Alignment.bottomCenter,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.red[300],
+                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    item.key.length > 4 ? '${item.key.substring(0, 3)}…' : item.key,
+                                    style: TextStyle(fontSize: 7, color: Colors.grey[500]),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
                     ],
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
         ),
       ],

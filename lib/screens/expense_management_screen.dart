@@ -601,32 +601,6 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                    child: _webStatCard(
-                  isDark: isDark,
-                  primary: primary,
-                  icon: Icons.account_balance_wallet_outlined,
-                  label: 'Total Spent this Month',
-                  value: '${_fmtCurrency(_monthlySpendTotal)}.00',
-                  trendLabel:
-                      '${spendDelta >= 0 ? '+' : '-'}${spendDeltaPct.toStringAsFixed(0)}%',
-                  trendUp: spendDelta >= 0,
-                  footer: spendDelta == 0
-                      ? 'No change from last month'
-                      : '${_fmtCurrency(spendDelta.abs())} ${spendDelta >= 0 ? 'higher' : 'lower'} than last month',
-                )),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: _buildSmartInsightsCard(isDark, primary),
-                ),
-                const SizedBox(width: 20),
-                Expanded(child: _webCategoryDistCard(isDark, primary)),
-              ],
-            ),
-            const SizedBox(height: 30),
             // Pending review banner
             if (_pendingEmailExpenses.isNotEmpty) ...[
               Container(

@@ -1051,61 +1051,61 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
     // ── Build all 14 cards ──
     final allCards = <Widget>[
-      _aiCard('💧', 'Budget Leakage',
+      _aiCard('💧', 'Spend Leakage',
           leakyBudgets.isNotEmpty
               ? '${_fmtCurrency(leakyTotal)} allocated to ${leakyBudgets.map((b) => b.category).take(2).join(' and ')} but no spending.'
               : 'All budget categories are being utilized. No leaks detected!',
           leakyBudgets.isNotEmpty ? Colors.pink : Colors.green,
           leakyBudgets.isNotEmpty ? 'Reallocate' : 'Healthy'),
 
-      _aiCard('⚡', 'Impulse Budget Risk',
+      _aiCard('⚡', 'Impulse Risk',
           hasImpulseRisk
               ? '${impulseRiskBudgets.first.category} budget may trigger impulse spending.'
               : 'No impulse-risk budget categories detected!',
           hasImpulseRisk ? Colors.orange : Colors.green,
           hasImpulseRisk ? 'Watch closely' : 'Great control!'),
 
-      _aiCard('🔔', 'Recurring Budget Lock-in',
+      _aiCard('🔔', 'Recurring Lock-in',
           recurringTotal > 0
               ? '${_fmtCurrency(recurringTotal)} locked into monthly subscriptions.'
               : 'No recurring budget lock-ins detected.',
           recurringTotal > 0 ? Colors.red : Colors.green,
           recurringTotal > 0 ? 'Review subscriptions' : 'No lock-ins'),
 
-      _aiCard('🔍', 'Silent Budget Erosion',
+      _aiCard('🔍', 'Silent Erosion',
           smallBudgets.isNotEmpty
               ? '${smallBudgets.length} small allocations add up to ${_fmtCurrency(smallTotal)}.'
               : 'No small budget erosion detected.',
           smallBudgets.isNotEmpty ? Colors.indigo : Colors.green,
           smallBudgets.isNotEmpty ? 'Under ₹500 each' : 'Clean'),
 
-      _aiCard('📉', 'Budget Slippage',
+      _aiCard('📉', 'Slippage',
           slippageCat != null
               ? '${slippageCat} likely to exceed by ${_fmtCurrency(slippageAmount)} at current pace.'
               : 'All categories on pace. No slippage detected!',
           slippageCat != null ? Colors.red : Colors.green,
           slippageCat != null ? 'Adjust now' : 'On track'),
 
-      _aiCard('📊', 'Budget Instability',
+      _aiCard('📊', 'Instability',
           unstableCat != null && maxFluctuation > 20
               ? '${unstableCat} budget fluctuates ${maxFluctuation.toStringAsFixed(0)}% month to month.'
               : 'Budget allocations are stable month to month.',
           maxFluctuation > 20 ? Colors.amber : Colors.green,
           maxFluctuation > 20 ? 'Stabilize' : 'Stable'),
 
-      _aiCard('✅', 'Healthy Budget Mix',
+      _aiCard('✅', 'Healthy Mix',
           '${mixRatio.toStringAsFixed(0)}% of budget allocated to essentials & long-term needs.',
           mixRatio >= 60 ? Colors.green : Colors.orange,
           mixRatio >= 60 ? 'Great balance!' : 'Could improve'),
 
-      _aiCard('🏆', 'Budget Discipline Score',
+      _aiCard('🏆', 'Discipline Score',
           totalMonths > 0
               ? 'Score: ${disciplineScore.toStringAsFixed(1)} / 10\nWithin budget for $withinCount of $totalMonths months.'
               : 'Add budgets to start tracking discipline.',
           disciplineScore >= 7 ? Colors.green : disciplineScore >= 4 ? Colors.amber : Colors.red,
           '${disciplineScore.toStringAsFixed(1)}/10'),
 
-      _aiCard('💡', 'Smart Budget Recommendation',
+      _aiCard('💡', 'Smart Recommendation',
           smartRecCat != null
               ? 'Reducing ${smartRecCat} by 10% could increase savings by ${_fmtCurrency(smartRecSaving)}.'
               : 'Set non-essential budgets to get recommendations.',
@@ -1190,15 +1190,18 @@ class _BudgetScreenState extends State<BudgetScreen> {
               children: [
                 Row(
                   children: [
-                    Flexible(child: Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color))),
+                    Flexible(child: Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color), overflow: TextOverflow.ellipsis)),
                     const SizedBox(width: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
+                    Flexible(
+                      flex: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(badge, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: color), overflow: TextOverflow.ellipsis, maxLines: 1),
                       ),
-                      child: Text(badge, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: color)),
                     ),
                   ],
                 ),
@@ -1279,72 +1282,96 @@ class _BudgetScreenState extends State<BudgetScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Budget',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
-          ),
-          const SizedBox(height: 16),
-          _buildControlsRow(),
-          const SizedBox(height: 12),
-          // Category chips (outside the 3-col row, like expense screen)
-          _buildBudgetCategoryGrid(isDark),
-          const SizedBox(height: 12),
-          // ── Main 3-column layout ──
-          Expanded(
-            child: Row(
+          // ── Title Row ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Col 1: Budget list (always visible)
-                Expanded(
-                  flex: _anyPanelOpen ? 4 : 5,
-                  child: _buildWebBudgetList(summary, isDark, primary),
+                const Text(
+                  'Budget',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
                 ),
-                const SizedBox(width: 12),
-                // When a panel is open: Col2=InfoCards, Col3=Panel
-                if (_anyPanelOpen) ...[
-                  Expanded(
-                    flex: 4,
-                    child: _buildInfoCardsColumn(isDark, primary),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      children: [
-                        if (_showHistoricalPanel)
-                          Expanded(child: _buildHistoricalPerformanceSection(isDark, primary)),
-                        if (_showAnalyticsPanel)
-                          Expanded(child: _buildSpendingAnalyticsSection(isDark, primary)),
-                        if (_showAIInsightsPanel)
-                          Expanded(child: _BudgetAIInsightsPanel(
-                            onClose: () => setState(() => _showAIInsightsPanel = false),
-                          )),
-                        if (_showAddBudgetPanel || _showImportPanel)
-                          const Expanded(child: SizedBox()),
-                      ],
+                const SizedBox(height: 10),
+                _buildControlsRow(),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+          // ── Everything below controls: Stack so calendar can float ──
+          Expanded(
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Main content underneath
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Budget Category Chips
+                    _buildBudgetCategoryGrid(isDark),
+                    const SizedBox(height: 12),
+                    // ── Main 3-column layout ──
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Col 1: Budget list (always visible)
+                          Expanded(
+                            flex: _anyPanelOpen ? 4 : 5,
+                            child: _buildWebBudgetList(summary, isDark, primary),
+                          ),
+                          const SizedBox(width: 12),
+                          // When a panel is open: Col2=InfoCards, Col3=Panel
+                          if (_anyPanelOpen) ...[
+                            Expanded(
+                              flex: 4,
+                              child: _buildInfoCardsColumn(isDark, primary),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 3,
+                              child: Column(
+                                children: [
+                                  if (_showHistoricalPanel)
+                                    Expanded(child: _buildHistoricalPerformanceSection(isDark, primary)),
+                                  if (_showAnalyticsPanel)
+                                    Expanded(child: _buildSpendingAnalyticsSection(isDark, primary)),
+                                  if (_showAIInsightsPanel)
+                                    Expanded(child: _BudgetAIInsightsPanel(
+                                      onClose: () => setState(() => _showAIInsightsPanel = false),
+                                    )),
+                                  if (_showAddBudgetPanel || _showImportPanel)
+                                    const Expanded(child: SizedBox()),
+                                ],
+                              ),
+                            ),
+                          ]
+                          // Default: Col2=InfoCards, Col3=Rewards+AI Insights
+                          else ...[
+                            Expanded(
+                              flex: 4,
+                              child: _buildInfoCardsColumn(isDark, primary),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 3,
+                              child: Column(
+                                children: [
+                                  _buildRewardsRow(isDark),
+                                  const SizedBox(height: 8),
+                                  Expanded(child: _BudgetAIInsightsPanel(
+                                    onClose: () {},
+                                  )),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
-                ]
-                // Default: Col2=InfoCards, Col3=Rewards+AI Insights
-                else ...[
-                  Expanded(
-                    flex: 4,
-                    child: _buildInfoCardsColumn(isDark, primary),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      children: [
-                        _buildRewardsRow(isDark),
-                        const SizedBox(height: 8),
-                        Expanded(child: _BudgetAIInsightsPanel(
-                          onClose: () {},
-                        )),
-                      ],
-                    ),
-                  ),
-                ],
+                  ],
+                ),
+                // Calendar dropdown overlay (future)
               ],
             ),
           ),
@@ -2442,128 +2469,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
               style: TextStyle(fontSize: 11, color: Colors.grey[500]),
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWebBudgetRow(
-    Budget budget,
-    bool isDark, {
-    required VoidCallback onEdit,
-    required VoidCallback onDelete,
-  }) {
-    final percent = budget.usagePercent.clamp(0, 100).toDouble();
-    final isOver = budget.isOverBudget;
-    final statusColor = isOver
-        ? AppColors.error
-        : (percent >= 80 ? AppColors.warningDark : AppColors.success);
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: isDark ? AppColors.grey800 : const Color(0xFFF1F5F9),
-          ),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.14),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  _budgetCategoryIcon(budget.category),
-                  color: statusColor,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _titleCase(budget.category),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    Text(
-                      '₹${budget.amount.toStringAsFixed(0)} budgeted',
-                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                    ),
-                    if (budget.tags.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      TagWrap(tags: budget.tags),
-                    ],
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '₹${budget.spent.toStringAsFixed(0)}',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  Text(
-                    isOver
-                        ? 'Exceeded by ₹${budget.remaining.abs().toStringAsFixed(0)}'
-                        : percent >= 80
-                            ? '${percent.toStringAsFixed(0)}% utilized'
-                            : 'Under budget',
-                    style: TextStyle(fontSize: 11, color: statusColor),
-                  ),
-                ],
-              ),
-              IconButton(
-                onPressed: onEdit,
-                tooltip: 'Edit budget',
-                icon: const Icon(Icons.edit_outlined, size: 18),
-              ),
-              IconButton(
-                onPressed: onDelete,
-                tooltip: 'Delete budget',
-                icon: const Icon(Icons.delete_outline,
-                    size: 18, color: AppColors.error),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
-              value: percent / 100,
-              minHeight: 8,
-              backgroundColor: const Color(0xFFF1F5F9),
-              valueColor: AlwaysStoppedAnimation<Color>(statusColor),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                isOver
-                    ? 'Overspent: ${percent.toStringAsFixed(0)}%'
-                    : 'Spent: ${percent.toStringAsFixed(0)}%',
-                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-              ),
-              Text(
-                isOver
-                    ? 'Needs adjustment'
-                    : '₹${budget.remaining.toStringAsFixed(0)} left',
-                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-              ),
-            ],
-          ),
         ],
       ),
     );

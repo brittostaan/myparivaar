@@ -63,13 +63,12 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     _showImportPanel = false;
     _showHistoricalPanel = false;
     _showAnalyticsPanel = false;
-    _showAIInsightsPanel = false;
     _selectedExpenseDetail = null;
   }
 
   bool get _anyPanelOpen =>
       _showAddExpensePanel || _showImportPanel || _showHistoricalPanel ||
-      _showAnalyticsPanel || _showAIInsightsPanel || _selectedExpenseDetail != null;
+      _showAnalyticsPanel || _selectedExpenseDetail != null;
 
   @override
   void initState() {
@@ -742,17 +741,6 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                       }),
                     ),
                     _buildControlPill(
-                      icon: _showAIInsightsPanel ? Icons.close_rounded : Icons.auto_awesome,
-                      label: _showAIInsightsPanel ? 'Close' : 'AI Insights',
-                      color: const Color(0xFF9C27B0),
-                      active: _showAIInsightsPanel,
-                      onTap: () => setState(() {
-                        final opening = !_showAIInsightsPanel;
-                        _closeAllPanels();
-                        _showAIInsightsPanel = opening;
-                      }),
-                    ),
-                    _buildControlPill(
                       icon: _showImportPanel ? Icons.close_rounded : Icons.upload_file,
                       label: _showImportPanel ? 'Close' : 'Import',
                       color: const Color(0xFF43A047),
@@ -780,95 +768,116 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               ],
             ),
           ),
-          // ── Inline Calendar Dropdown ──
-          if (_showCalendarDropdown) ...[
-            _buildInlineCalendar(isDark, primary),
-            const SizedBox(height: 8),
-          ],
-          // Pending review banner
-          if (_pendingEmailExpenses.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.amber.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.amber.withOpacity(0.4)),
-              ),
-              child: Row(children: [
-                const Icon(Icons.pending_actions, color: Colors.amber, size: 22),
-                const SizedBox(width: 12),
-                Text(
-                  '${_pendingEmailExpenses.length} email transaction(s) pending your review',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                ),
-              ]),
-            ),
-            const SizedBox(height: 8),
-          ],
-          // Expense Category Chips
-          _buildExpenseCategoryGrid(isDark),
-          // Clear filter chip
-          if (_selectedCategoryFilter != null) ...[
-            const SizedBox(height: 8),
-            InkWell(
-              onTap: () => setState(() => _selectedCategoryFilter = null),
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: primary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.close, size: 14, color: primary),
-                    const SizedBox(width: 4),
-                    Text('Clear filter: $_selectedCategoryFilter', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primary)),
-                  ],
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          // ── Main Content: fills remaining viewport height ──
+          // ── Everything below controls: Stack so calendar can float ──
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Stack(
+              clipBehavior: Clip.none,
               children: [
-                // Col 1: Transaction List (internal scroll)
-                Expanded(
-                  flex: 5,
-                  child: _buildWebTransactionList(filtered, isDark, primary),
-                ),
-                const SizedBox(width: 12),
-                // Col 2: Rewards row + all 14 info cards (single column, with arrow navigation)
-                SizedBox(
-                  width: 280,
-                  child: _buildInfoCardsWithRewards(isDark, primary),
-                ),
-                const SizedBox(width: 12),
-                // Col 3: Control Panel (only when panel active)
-                if (_anyPanelOpen)
-                  SizedBox(
-                    width: 340,
-                    child: SingleChildScrollView(
-                      child: Column(
+                // Main content underneath
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Pending review banner
+                    if (_pendingEmailExpenses.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                        ),
+                        child: Row(children: [
+                          const Icon(Icons.pending_actions, color: Colors.amber, size: 22),
+                          const SizedBox(width: 12),
+                          Text(
+                            '${_pendingEmailExpenses.length} email transaction(s) pending your review',
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                          ),
+                        ]),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    // Expense Category Chips
+                    _buildExpenseCategoryGrid(isDark),
+                    // Clear filter chip
+                    if (_selectedCategoryFilter != null) ...[
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () => setState(() => _selectedCategoryFilter = null),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: primary.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.close, size: 14, color: primary),
+                              const SizedBox(width: 4),
+                              Text('Clear filter: $_selectedCategoryFilter', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primary)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    // ── Main Content: fills remaining viewport height ──
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (_showAddExpensePanel)
-                            _buildInlineAddExpensePanel(isDark, primary),
-                          if (_showImportPanel)
-                            _buildInlineImportPanel(isDark, primary),
-                          if (_selectedExpenseDetail != null)
-                            _buildInlineTransactionDetail(isDark, primary),
-                          if (_showHistoricalPanel)
-                            _buildHistoricalPerformancePanel(isDark, primary),
-                          if (_showAnalyticsPanel)
-                            _buildSpendingAnalyticsPanel(isDark, primary),
-                          if (_showAIInsightsPanel)
-                            _buildAIInsightsPanel(isDark, primary),
+                          // Col 1: Transaction List (always visible)
+                          Expanded(
+                            flex: 5,
+                            child: _buildWebTransactionList(filtered, isDark, primary),
+                          ),
+                          const SizedBox(width: 12),
+                          // Col 2: Info Cards (always visible)
+                          Expanded(
+                            flex: 4,
+                            child: _buildInfoCardsWithRewards(isDark, primary),
+                          ),
+                          const SizedBox(width: 12),
+                          // Col 3: AI Insights (default) OR Control Panel (when active)
+                          if (!_anyPanelOpen)
+                            Expanded(
+                              flex: 3,
+                              child: _buildAIInsightsPanel(isDark, primary),
+                            )
+                          else
+                            Expanded(
+                              flex: 3,
+                              child: Column(
+                                children: [
+                                  if (_showAddExpensePanel)
+                                    Expanded(child: _buildInlineAddExpensePanel(isDark, primary)),
+                                  if (_showImportPanel)
+                                    Expanded(child: _buildInlineImportPanel(isDark, primary)),
+                                  if (_selectedExpenseDetail != null)
+                                    Expanded(child: _buildInlineTransactionDetail(isDark, primary)),
+                                  if (_showHistoricalPanel)
+                                    Expanded(child: _buildHistoricalPerformancePanel(isDark, primary)),
+                                  if (_showAnalyticsPanel)
+                                    Expanded(child: _buildSpendingAnalyticsPanel(isDark, primary)),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
+                    ),
+                  ],
+                ),
+                // ── Floating Calendar Dropdown ──
+                if (_showCalendarDropdown)
+                  Positioned(
+                    top: 0,
+                    left: 20,
+                    child: Material(
+                      elevation: 8,
+                      borderRadius: BorderRadius.circular(16),
+                      child: _buildInlineCalendar(isDark, primary),
                     ),
                   ),
               ],
@@ -1366,34 +1375,59 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     final dailyRate = now.day > 0 ? totalSpend / now.day : 0.0;
     final projectedTotal = dailyRate * daysInMonth;
 
-    // Build all 14 cards in a single list
-    return Column(
+    // Over-budget count
+    final overBudgetCount = _budgets.where((b) => b.spent > b.amount).length;
+    final usagePct = totalBudget > 0 ? (totalSpend / totalBudget * 100).clamp(0, 999) : 0.0;
+    final withinBudget = totalSpend <= totalBudget;
+
+    // Spend leakage count
+    final leakageCount = catSpend.entries.where((entry) {
+      final budget = _budgets.where((b) => b.category == entry.key).firstOrNull;
+      if (budget != null && entry.value > budget.amount) return true;
+      final count = catCount[entry.key] ?? 0;
+      final avgTxn = count > 0 ? entry.value / count : 0.0;
+      if (count >= 3 && avgTxn < 1000) return true;
+      if (totalSpend > 0 && entry.value / totalSpend > 0.3) return true;
+      return false;
+    }).length;
+
+    // Build all 14 cards and distribute into 2 columns
+    final allCards = <Widget>[
+      _aiCard('💵', 'Budget vs Expense', '${_fmtCurrency(totalSpend)} / ${_fmtCurrency(totalBudget)} spent (${usagePct.toStringAsFixed(0)}%)', withinBudget ? Colors.green : Colors.red, withinBudget ? 'On track' : 'Over budget'),
+      _aiCard('📊', 'Over Budget', overBudgetCount > 0 ? '$overBudgetCount categor${overBudgetCount == 1 ? 'y' : 'ies'} over budget' : 'All within budget!', overBudgetCount > 0 ? Colors.red : Colors.green, '$overBudgetCount'),
+      _aiCard('💧', 'Spend Leakage', leakageCount > 0 ? '$leakageCount spending leak${leakageCount == 1 ? '' : 's'} detected' : 'No spending leaks detected! Your finances look healthy.', leakageCount > 0 ? Colors.pink : Colors.green, leakageCount > 0 ? 'Review' : 'Healthy'),
+      _aiCard('💰', 'Projected Expense', '₹${projectedTotal.toStringAsFixed(0)} projected this month', Colors.green, '₹${dailyRate.toStringAsFixed(0)}/day'),
+      _aiCard('🔔', 'Subscription Drain', currentMonthExpenses.isEmpty ? 'Connect email to track subscriptions' : '${catCount.length} active spending categories detected', Colors.red, 'Track recurring'),
+      _aiCard('⚡', 'Impulse Spend', impulseCount > 0 ? '$impulseCount impulse spend${impulseCount == 1 ? '' : 's'} detected this month' : 'No impulse spending detected!', Colors.orange, impulseCount > 0 ? 'Review spending' : 'Great control!'),
+      _aiCard('🔍', 'Silent Expenses', smallExpenses.isNotEmpty ? '${smallExpenses.length} small spends totaling ₹${smallTotal.toStringAsFixed(0)}' : 'No silent expenses detected', Colors.indigo, 'Under ₹200 each'),
+      _aiCard('📈', 'Lifestyle Creep', creepPct.abs() > 5 ? 'Spending ${creepPct > 0 ? 'up' : 'down'} ${creepPct.abs().toStringAsFixed(0)}% vs last quarter' : 'Spending stable vs last quarter', creepPct > 10 ? Colors.red : Colors.teal, 'Quarter comparison'),
+      _aiCard('🎯', 'Budget Drift', driftingCat != null ? '$driftingCat drifting—${driftPct.toStringAsFixed(0)}% used with ${(100 - monthPct).toStringAsFixed(0)}% of month left' : 'All categories on track', Colors.amber, 'Budget pace'),
+      _aiCard('⚠️', 'Category Overshoot', overshootCat != null ? '$overshootCat spend up ₹${overshootAmt.toStringAsFixed(0)} vs last month' : 'No unusual category spikes', overshootCat != null ? Colors.deepOrange : Colors.green, 'Category watch'),
+      _aiCard('📊', 'Spend Volatility', volatilityPct.abs() > 20 ? 'Weekend spending ${volatilityPct > 0 ? '${volatilityPct.toStringAsFixed(0)}% higher' : '${volatilityPct.abs().toStringAsFixed(0)}% lower'} than weekdays' : 'Spending pattern is stable', Colors.purple, 'Daily patterns'),
+      _aiCard('💡', 'Smart Saving', totalBudget > 0 && totalSpend < totalBudget ? 'Potential to save ₹${(totalBudget - totalSpend).toStringAsFixed(0)} this month' : 'Set budgets to unlock saving tips', Colors.blue, 'Opportunity'),
+      _aiCard('✅', 'Good Spend Ratio', '${goodRatio.toStringAsFixed(0)}% of spending on essentials & goals', goodRatio >= 70 ? Colors.green : Colors.orange, goodRatio >= 70 ? 'Healthy!' : 'Could improve'),
+      _aiCard('🛡️', 'Avoided Spend', avoidedCount > 0 ? 'You avoided $avoidedCount impulse spend${avoidedCount == 1 ? '' : 's'} vs last month' : prevImpulse == 0 ? 'Clean record both months!' : '${impulseCount - prevImpulse} more impulse spends than last month', avoidedCount > 0 ? Colors.green : Colors.grey, 'Habit tracking'),
+    ];
+
+    // Distribute cards alternately into 2 columns
+    final leftCards = <Widget>[];
+    final rightCards = <Widget>[];
+    for (int i = 0; i < allCards.length; i++) {
+      if (i.isEven) {
+        if (leftCards.isNotEmpty) leftCards.add(const SizedBox(height: 8));
+        leftCards.add(allCards[i]);
+      } else {
+        if (rightCards.isNotEmpty) rightCards.add(const SizedBox(height: 8));
+        rightCards.add(allCards[i]);
+      }
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildThreeInfoCards(isDark, primary),
-        const SizedBox(height: 8),
-        _buildSpendLeakageSection(isDark, primary),
-        const SizedBox(height: 8),
-        _aiCard('💰', 'Projected Expense', '₹${projectedTotal.toStringAsFixed(0)} projected this month', Colors.green, '₹${dailyRate.toStringAsFixed(0)}/day'),
-        const SizedBox(height: 8),
-        _aiCard('🔔', 'Subscription Drain', currentMonthExpenses.isEmpty ? 'Connect email to track subscriptions' : '${catCount.length} active spending categories detected', Colors.red, 'Track recurring'),
-        const SizedBox(height: 8),
-        _aiCard('⚡', 'Impulse Spend', impulseCount > 0 ? '$impulseCount impulse spend${impulseCount == 1 ? '' : 's'} detected this month' : 'No impulse spending detected!', Colors.orange, impulseCount > 0 ? 'Review spending' : 'Great control!'),
-        const SizedBox(height: 8),
-        _aiCard('🔍', 'Silent Expenses', smallExpenses.isNotEmpty ? '${smallExpenses.length} small spends totaling ₹${smallTotal.toStringAsFixed(0)}' : 'No silent expenses detected', Colors.indigo, 'Under ₹200 each'),
-        const SizedBox(height: 8),
-        _aiCard('📈', 'Lifestyle Creep', creepPct.abs() > 5 ? 'Spending ${creepPct > 0 ? 'up' : 'down'} ${creepPct.abs().toStringAsFixed(0)}% vs last quarter' : 'Spending stable vs last quarter', creepPct > 10 ? Colors.red : Colors.teal, 'Quarter comparison'),
-        const SizedBox(height: 8),
-        _aiCard('🎯', 'Budget Drift', driftingCat != null ? '$driftingCat drifting—${driftPct.toStringAsFixed(0)}% used with ${(100 - monthPct).toStringAsFixed(0)}% of month left' : 'All categories on track', Colors.amber, 'Budget pace'),
-        const SizedBox(height: 8),
-        _aiCard('⚠️', 'Category Overshoot', overshootCat != null ? '$overshootCat spend up ₹${overshootAmt.toStringAsFixed(0)} vs last month' : 'No unusual category spikes', overshootCat != null ? Colors.deepOrange : Colors.green, 'Category watch'),
-        const SizedBox(height: 8),
-        _aiCard('📊', 'Spend Volatility', volatilityPct.abs() > 20 ? 'Weekend spending ${volatilityPct > 0 ? '${volatilityPct.toStringAsFixed(0)}% higher' : '${volatilityPct.abs().toStringAsFixed(0)}% lower'} than weekdays' : 'Spending pattern is stable', Colors.purple, 'Daily patterns'),
-        const SizedBox(height: 8),
-        _aiCard('💡', 'Smart Saving', totalBudget > 0 && totalSpend < totalBudget ? 'Potential to save ₹${(totalBudget - totalSpend).toStringAsFixed(0)} this month' : 'Set budgets to unlock saving tips', Colors.blue, 'Opportunity'),
-        const SizedBox(height: 8),
-        _aiCard('✅', 'Good Spend Ratio', '${goodRatio.toStringAsFixed(0)}% of spending on essentials & goals', goodRatio >= 70 ? Colors.green : Colors.orange, goodRatio >= 70 ? 'Healthy!' : 'Could improve'),
-        const SizedBox(height: 8),
-        _aiCard('🛡️', 'Avoided Spend', avoidedCount > 0 ? 'You avoided $avoidedCount impulse spend${avoidedCount == 1 ? '' : 's'} vs last month' : prevImpulse == 0 ? 'Clean record both months!' : '${impulseCount - prevImpulse} more impulse spends than last month', avoidedCount > 0 ? Colors.green : Colors.grey, 'Habit tracking'),
+        Expanded(child: Column(children: leftCards)),
+        const SizedBox(width: 8),
+        Expanded(child: Column(children: rightCards)),
       ],
     );
   }
@@ -2914,14 +2948,24 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
   /// Filtered expenses for web layout, with optional category filter applied.
   List<Expense> get _webFilteredExpenses {
-    var base = _filteredExpenses;
-    // Date range filter
+    List<Expense> base;
+    // When date range is active, bypass current-month restriction
     if (_filterStartDate != null) {
       final start = DateTime(_filterStartDate!.year, _filterStartDate!.month, _filterStartDate!.day);
       final end = _filterEndDate != null
           ? DateTime(_filterEndDate!.year, _filterEndDate!.month, _filterEndDate!.day, 23, 59, 59)
           : DateTime(start.year, start.month, start.day, 23, 59, 59);
-      base = base.where((e) => !e.date.isBefore(start) && !e.date.isAfter(end)).toList();
+      base = _expenses.where((e) => !e.date.isBefore(start) && !e.date.isAfter(end)).toList();
+      // Apply search query if present
+      if (_searchQuery.isNotEmpty) {
+        final q = _searchQuery.toLowerCase();
+        base = base.where((e) =>
+            e.description.toLowerCase().contains(q) ||
+            e.category.toLowerCase().contains(q) ||
+            e.tags.any((tag) => tag.toLowerCase().contains(q))).toList();
+      }
+    } else {
+      base = _filteredExpenses;
     }
     if (_selectedCategoryFilter == null) return base;
     final lbl = _selectedCategoryFilter!.toLowerCase();

@@ -62,6 +62,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
   bool _isUploading = false;
 
   // Panel toggles
+  String? _selectedCategoryFilter;
   DateTime? _filterStartDate;
   DateTime? _filterEndDate;
   bool _showCalendarDropdown = false;
@@ -1309,6 +1310,28 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   children: [
                     // Budget Category Chips
                     _buildBudgetCategoryGrid(isDark),
+                    // Clear filter chip
+                    if (_selectedCategoryFilter != null) ...[                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () => setState(() => _selectedCategoryFilter = null),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: primary.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.close, size: 14, color: primary),
+                              const SizedBox(width: 4),
+                              Text('Clear filter: $_selectedCategoryFilter', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primary)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     // ── Main 3-column layout ──
                     Expanded(
@@ -1405,8 +1428,35 @@ class _BudgetScreenState extends State<BudgetScreen> {
     return _buildWebBudgetList(summary, isDark, primary);
   }
 
+  List<Budget> get _filteredBudgets {
+    if (_selectedCategoryFilter == null) return _budgets;
+    final lbl = _selectedCategoryFilter!.toLowerCase();
+    return _budgets.where((b) => _budgetMatchesCategory(b, lbl)).toList();
+  }
+
+  bool _budgetMatchesCategory(Budget budget, String label) {
+    final cat = budget.category.toLowerCase();
+    if (cat == label) return true;
+    if (cat.contains(label) || label.contains(cat)) return true;
+    switch (label) {
+      case 'entertainment': return cat == 'entertainment';
+      case 'groceries': return cat == 'groceries' || cat == 'grocery';
+      case 'mental wellness': return cat.contains('mental') || cat.contains('therapy') || cat.contains('counseling');
+      case 'physical wellness': return cat.contains('gym') || cat.contains('fitness') || cat.contains('yoga');
+      case 'party': return cat.contains('party') || cat.contains('celebration');
+      case 'personal care': return cat.contains('personal') || cat.contains('salon') || cat.contains('grooming');
+      case 'pet care': return cat.contains('pet') || cat.contains('vet');
+      case 'senior care': return cat.contains('senior') || cat.contains('elderly') || cat.contains('parent');
+      case 'education': return cat == 'education';
+      case 'vacation': return cat.contains('travel') || cat.contains('vacation') || cat.contains('trip');
+      case 'convenience food': return cat.contains('food delivery') || cat.contains('takeaway') || cat.contains('convenience');
+      default: return false;
+    }
+  }
+
   Widget _buildWebBudgetList(BudgetSummary summary, bool isDark, Color primary) {
-    if (_budgets.isEmpty) {
+    final filtered = _filteredBudgets;
+    if (filtered.isEmpty) {
       return Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.surfaceDark : Colors.white,
@@ -1418,7 +1468,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
             Icon(Icons.account_balance_wallet_outlined, size: 48, color: Colors.grey[300]),
             const SizedBox(height: 12),
             Text(
-              'No budgets this month',
+              _selectedCategoryFilter != null
+                  ? 'No $_selectedCategoryFilter budgets this month'
+                  : 'No budgets this month',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[500]),
             ),
             const SizedBox(height: 4),
@@ -1428,8 +1480,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
       );
     }
 
-    final totalBudget = summary.totalBudget;
-    final totalSpent = summary.totalSpent;
+    final totalBudget = filtered.fold<double>(0, (s, b) => s + b.amount);
+    final totalSpent = filtered.fold<double>(0, (s, b) => s + b.spent);
     final overallRatio = totalBudget > 0 ? (totalSpent / totalBudget).clamp(0.0, 1.0) : 0.0;
     final overallColor = overallRatio > 0.9 ? AppColors.error : overallRatio > 0.7 ? AppColors.warningDark : AppColors.successDark;
 
@@ -1456,7 +1508,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(color: primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                      child: Text('${_budgets.length}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: primary)),
+                      child: Text('${filtered.length}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: primary)),
                     ),
                     const Spacer(),
                     Container(
@@ -1509,7 +1561,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
           Expanded(
             child: SingleChildScrollView(
               child: Column(
-                children: _budgets.map((budget) => _buildWebBudgetRow(budget, isDark, primary)).toList(),
+                children: filtered.map((budget) => _buildWebBudgetRow(budget, isDark, primary)).toList(),
               ),
             ),
           ),
@@ -1827,18 +1879,17 @@ class _BudgetScreenState extends State<BudgetScreen> {
     final spent = hasBudget ? budget.spent : 0.0;
     final total = hasBudget ? budget.amount : 0.0;
     final ratio = total > 0 ? (spent / total).clamp(0.0, 1.0) : 0.0;
+    final isActive = _selectedCategoryFilter == cat.label;
 
     return Material(
-      color: cat.bgColor,
+      color: isActive ? cat.color.withOpacity(0.2) : cat.bgColor,
       borderRadius: BorderRadius.circular(22),
       child: InkWell(
         borderRadius: BorderRadius.circular(22),
         onTap: () {
-          if (hasBudget) {
-            _addOrEditBudget(existing: budget);
-          } else {
-            _addOrEditBudget();
-          }
+          setState(() {
+            _selectedCategoryFilter = isActive ? null : cat.label;
+          });
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

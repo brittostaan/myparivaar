@@ -1285,20 +1285,19 @@ class _BudgetScreenState extends State<BudgetScreen> {
           ),
           const SizedBox(height: 16),
           _buildControlsRow(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
+          // Category chips (outside the 3-col row, like expense screen)
+          _buildBudgetCategoryGrid(isDark),
+          const SizedBox(height: 12),
+          // ── Main 3-column layout ──
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Col 1: Budget categories (always visible)
+                // Col 1: Budget list (always visible)
                 Expanded(
-                  flex: 5,
-                  child: RefreshIndicator(
-                    onRefresh: _loadBudgets,
-                    child: SingleChildScrollView(
-                      child: _buildCurrentMonthSection(summary, isDark, primary),
-                    ),
-                  ),
+                  flex: _anyPanelOpen ? 4 : 5,
+                  child: _buildWebBudgetList(summary, isDark, primary),
                 ),
                 const SizedBox(width: 12),
                 // When a panel is open: Col2=InfoCards, Col3=Panel
@@ -1376,21 +1375,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Widget _buildCurrentMonthSection(BudgetSummary summary, bool isDark, Color primary) {
-    return Column(
-      children: [
-        // Budget Category Chips
-        _buildBudgetCategoryGrid(isDark),
-        const SizedBox(height: 16),
-        // Budget List
-        _buildWebBudgetList(summary, isDark, primary),
-      ],
-    );
+    return _buildWebBudgetList(summary, isDark, primary);
   }
 
   Widget _buildWebBudgetList(BudgetSummary summary, bool isDark, Color primary) {
     if (_budgets.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(40),
         decoration: BoxDecoration(
           color: isDark ? AppColors.surfaceDark : Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -1488,8 +1478,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ),
           ),
           const Divider(height: 1, color: Color(0xFFF1F5F9)),
-          // Budget rows
-          ..._budgets.map((budget) => _buildWebBudgetRow(budget, isDark, primary)),
+          // Budget rows (scrollable)
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: _budgets.map((budget) => _buildWebBudgetRow(budget, isDark, primary)).toList(),
+              ),
+            ),
+          ),
         ],
       ),
     );

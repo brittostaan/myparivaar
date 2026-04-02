@@ -837,19 +837,19 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                         children: [
                           // Col 1: Transaction List (always visible)
                           Expanded(
-                            flex: 5,
+                            flex: _selectedExpenseDetail != null ? 4 : 5,
                             child: _buildWebTransactionList(filtered, isDark, primary),
                           ),
                           const SizedBox(width: 12),
                           // When transaction detail is open: Col2=Detail, Col3=Rewards+InfoCards
                           if (_selectedExpenseDetail != null) ...[
                             Expanded(
-                              flex: 4,
+                              flex: 3,
                               child: _buildInlineTransactionDetail(isDark, primary),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              flex: 3,
+                              flex: 5,
                               child: Column(
                                 children: [
                                   _buildRewardsRow(isDark),
@@ -1197,7 +1197,18 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   // ── Info Cards column (without rewards) ──
 
   Widget _buildInfoCardsColumn(bool isDark, Color primary) {
-    return _buildAllInfoCards(isDark, primary);
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? const Color(0xFF333333) : const Color(0xFFE2E8F0)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: _buildAllInfoCards(isDark, primary),
+      ),
+    );
   }
 
   // ── All 14 AI Info Cards in a single scrollable column with arrow nav ──

@@ -1355,16 +1355,16 @@ class _BudgetScreenState extends State<BudgetScreen> {
                               flex: 3,
                               child: Column(
                                 children: [
-                                  if (_showHistoricalPanel)
-                                    Expanded(child: _buildHistoricalPerformanceSection(isDark, primary)),
-                                  if (_showAnalyticsPanel)
-                                    Expanded(child: _buildSpendingAnalyticsSection(isDark, primary)),
+                                  _buildRewardsRow(isDark),
+                                  const SizedBox(height: 8),
                                   if (_showAIInsightsPanel)
                                     Expanded(child: _BudgetAIInsightsPanel(
                                       onClose: () => setState(() => _showAIInsightsPanel = false),
+                                    ))
+                                  else
+                                    Expanded(child: _BudgetAIInsightsPanel(
+                                      onClose: () {},
                                     )),
-                                  if (_showAddBudgetPanel || _showImportPanel)
-                                    const Expanded(child: SizedBox()),
                                 ],
                               ),
                             ),

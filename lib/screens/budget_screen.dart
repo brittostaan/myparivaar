@@ -60,6 +60,29 @@ class _BudgetScreenState extends State<BudgetScreen> {
   // Excel upload
   bool _isUploading = false;
 
+  // Panel toggles
+  DateTime? _filterStartDate;
+  DateTime? _filterEndDate;
+  bool _showCalendarDropdown = false;
+  DateTime _calendarDisplayMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  bool _showAddBudgetPanel = false;
+  bool _showImportPanel = false;
+  bool _showHistoricalPanel = false;
+  bool _showAnalyticsPanel = false;
+  bool _showAIInsightsPanel = false;
+
+  void _closeAllPanels() {
+    _showAddBudgetPanel = false;
+    _showImportPanel = false;
+    _showHistoricalPanel = false;
+    _showAnalyticsPanel = false;
+    _showAIInsightsPanel = false;
+  }
+
+  bool get _anyPanelOpen =>
+      _showAddBudgetPanel || _showImportPanel || _showHistoricalPanel ||
+      _showAnalyticsPanel || _showAIInsightsPanel;
+
   // AI Budget Insights
   bool _isLoadingInsights = false;
   String? _aiAnalysis;
@@ -535,70 +558,29 @@ class _BudgetScreenState extends State<BudgetScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Action Pane ──────────────────────────────────────
+            // ── Header + Controls ──────────────────────────────
             Container(
               color: Colors.white,
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      const Text(
-                        'Budget',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
-                      const Spacer(),
-                      if (_backendAvailable) ...[
-                        _buildBudgetActionChip(
-                          icon: Icons.auto_awesome,
-                          label: 'AI Insights',
-                          onTap: () {},
-                        ),
-                        const SizedBox(width: 8),
-                        _buildBudgetActionChip(
-                          icon: Icons.upload_file,
-                          label: 'Upload Excel',
-                          onTap: _isUploading ? null : _uploadExcelBudget,
-                        ),
-                        const SizedBox(width: 12),
-                        FilledButton.icon(
-                          onPressed: () => _addOrEditBudget(),
-                          icon: const Icon(Icons.add_rounded, size: 18),
-                          label: const Text('Add Budget'),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                        ),
-                      ],
-                    ],
+                  const Text(
+                    'Budget',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      _buildBudgetViewTab('Current Month', Icons.calendar_month, true),
-                      const SizedBox(width: 6),
-                      _buildBudgetViewTab('Historical', Icons.history, false, comingSoon: true),
-                      const SizedBox(width: 6),
-                      _buildBudgetViewTab('Analytics', Icons.insights, false, comingSoon: true),
-                    ],
-                  ),
+                  _buildControlsRow(),
                   const SizedBox(height: 8),
                 ],
               ),
             ),
             const Divider(height: 1, color: Color(0xFFE2E8F0)),
             const SizedBox(height: 4),
-            _buildMonthSelector(),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: _SummaryCard(summary: summary),
-            ),
             Expanded(child: _buildBody()),
           ],
         ),
@@ -606,29 +588,136 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
-  Widget _buildBudgetActionChip({
+  Widget _buildControlPill({
     required IconData icon,
     required String label,
-    VoidCallback? onTap,
+    required Color color,
+    required VoidCallback onTap,
+    bool active = false,
+    bool locked = false,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: Colors.grey[600]),
-            const SizedBox(width: 5),
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey[700])),
-          ],
+    final bg = active ? color : color.withOpacity(0.08);
+    final fg = active ? Colors.white : color;
+    return Tooltip(
+      message: locked ? 'Coming soon' : '',
+      child: Material(
+        color: bg,
+        borderRadius: BorderRadius.circular(24),
+        elevation: active ? 2 : 0,
+        shadowColor: color.withOpacity(0.3),
+        child: InkWell(
+          onTap: locked ? null : onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 16, color: fg),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: fg,
+                  ),
+                ),
+                if (locked) ...[
+                  const SizedBox(width: 4),
+                  Icon(Icons.lock_outline, size: 11, color: fg.withOpacity(0.5)),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildControlsRow() {
+    final hasDateFilter = _filterStartDate != null || _filterEndDate != null;
+    String dateFilterLabel = 'Date Filter';
+    if (_filterStartDate != null && _filterEndDate != null) {
+      dateFilterLabel = '${_filterStartDate!.day}/${_filterStartDate!.month} – ${_filterEndDate!.day}/${_filterEndDate!.month}';
+    } else if (_filterStartDate != null) {
+      dateFilterLabel = 'From ${_filterStartDate!.day}/${_filterStartDate!.month}';
+    }
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _buildControlPill(
+          icon: Icons.date_range_rounded,
+          label: hasDateFilter ? dateFilterLabel : 'Date Filter',
+          color: const Color(0xFFE65100),
+          active: _showCalendarDropdown || hasDateFilter,
+          onTap: () => setState(() {
+            _showCalendarDropdown = !_showCalendarDropdown;
+            if (_showCalendarDropdown) {
+              _calendarDisplayMonth = _filterStartDate ?? DateTime(DateTime.now().year, DateTime.now().month);
+            }
+          }),
+        ),
+        _buildControlPill(
+          icon: Icons.calendar_month,
+          label: 'Current Month',
+          color: const Color(0xFF1565C0),
+          active: false,
+          onTap: () => setState(() {
+            _filterStartDate = null;
+            _filterEndDate = null;
+            _showCalendarDropdown = false;
+            _calendarDisplayMonth = DateTime(DateTime.now().year, DateTime.now().month);
+            _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
+            _loadBudgets();
+          }),
+        ),
+        _buildControlPill(
+          icon: _showHistoricalPanel ? Icons.close_rounded : Icons.history,
+          label: _showHistoricalPanel ? 'Close' : 'Historical Performance',
+          color: const Color(0xFF7C4DFF),
+          active: _showHistoricalPanel,
+          onTap: () => setState(() {
+            final opening = !_showHistoricalPanel;
+            _closeAllPanels();
+            _showHistoricalPanel = opening;
+          }),
+        ),
+        _buildControlPill(
+          icon: _showAnalyticsPanel ? Icons.close_rounded : Icons.insights,
+          label: _showAnalyticsPanel ? 'Close' : 'Budget Analytics',
+          color: const Color(0xFF00ACC1),
+          active: _showAnalyticsPanel,
+          onTap: () => setState(() {
+            final opening = !_showAnalyticsPanel;
+            _closeAllPanels();
+            _showAnalyticsPanel = opening;
+          }),
+        ),
+        _buildControlPill(
+          icon: _showImportPanel ? Icons.close_rounded : Icons.upload_file,
+          label: _showImportPanel ? 'Close' : 'Import',
+          color: const Color(0xFF43A047),
+          active: _showImportPanel,
+          onTap: () => setState(() {
+            final opening = !_showImportPanel;
+            _closeAllPanels();
+            _showImportPanel = opening;
+          }),
+        ),
+        _buildControlPill(
+          icon: _showAddBudgetPanel ? Icons.close_rounded : Icons.add_rounded,
+          label: _showAddBudgetPanel ? 'Close' : 'Add Budget',
+          color: const Color(0xFFFF6D00),
+          active: _showAddBudgetPanel,
+          onTap: () => setState(() {
+            final opening = !_showAddBudgetPanel;
+            _closeAllPanels();
+            _showAddBudgetPanel = opening;
+          }),
+        ),
+      ],
     );
   }
 
@@ -667,6 +756,54 @@ class _BudgetScreenState extends State<BudgetScreen> {
           ],
         ),
       ),
+      ),
+    );
+  }
+
+  // ── Rewards Row ──
+
+  Widget _buildRewardsRow(bool isDark) {
+    final rewards = <_BudgetRewardIcon>[
+      _BudgetRewardIcon(Icons.emoji_events_rounded, Colors.amber, 'Budget Champion'),
+      _BudgetRewardIcon(Icons.savings_rounded, Colors.green, 'Smart Saver'),
+      _BudgetRewardIcon(Icons.auto_graph_rounded, Colors.blue, 'Trend Watcher'),
+      _BudgetRewardIcon(Icons.favorite_rounded, Colors.pink, 'Impulse Control'),
+      _BudgetRewardIcon(Icons.shield_rounded, Colors.purple, 'No Leaks'),
+      _BudgetRewardIcon(Icons.star_rounded, Colors.orange, 'Consistent'),
+      _BudgetRewardIcon(Icons.diamond_rounded, Colors.teal, 'Goal Achiever'),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Text('Rewards', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.grey.shade500)),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: rewards.map((r) => Tooltip(
+              message: r.label,
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [r.color.withOpacity(0.15), r.color.withOpacity(0.05)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: r.color.withOpacity(0.3)),
+                ),
+                child: Icon(r.icon, size: 15, color: r.color),
+              ),
+            )).toList(),
+          ),
+        ],
       ),
     );
   }
@@ -733,102 +870,69 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Widget _buildWebContent(BudgetSummary summary, bool isDark, Color primary) {
-    return RefreshIndicator(
-      onRefresh: _loadBudgets,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(30),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        'Budget Analysis',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
-                      ),
-                      const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
-                      const Spacer(),
-                      _buildBudgetActionChip(icon: Icons.auto_awesome, label: 'AI Insights', onTap: () {}),
-                      const SizedBox(width: 8),
-                      _buildBudgetActionChip(
-                        icon: Icons.upload_file,
-                        label: _isUploading ? 'Processing...' : 'Upload Excel',
-                        onTap: _isUploading ? null : _uploadExcelBudget,
-                      ),
-                      const SizedBox(width: 12),
-                      FilledButton.icon(
-                        onPressed: () => _addOrEditBudget(),
-                        icon: const Icon(Icons.add_rounded, size: 18),
-                        label: const Text('Add Budget'),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                      ),
-                    ],
+    return Padding(
+      padding: const EdgeInsets.all(30),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Budget',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+          ),
+          const SizedBox(height: 16),
+          _buildControlsRow(),
+          const SizedBox(height: 20),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Col 1: Budget list (always visible)
+                Expanded(
+                  flex: 5,
+                  child: RefreshIndicator(
+                    onRefresh: _loadBudgets,
+                    child: SingleChildScrollView(
+                      child: _buildCurrentMonthSection(summary, isDark, primary),
+                    ),
                   ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      _buildBudgetViewTab(
-                        'Current Month', Icons.calendar_month,
-                        _selectedWebView == _BudgetWebView.currentMonth,
-                        onTap: () => setState(() => _selectedWebView = _BudgetWebView.currentMonth),
-                      ),
-                      const SizedBox(width: 6),
-                      _buildBudgetViewTab(
-                        'Historical Performance', Icons.history,
-                        _selectedWebView == _BudgetWebView.historicalPerformance,
-                        onTap: () => setState(() => _selectedWebView = _BudgetWebView.historicalPerformance),
-                      ),
-                      const SizedBox(width: 6),
-                      _buildBudgetViewTab(
-                        'Spending Analytics', Icons.insights,
-                        _selectedWebView == _BudgetWebView.spendingAnalytics,
-                        onTap: () => setState(() => _selectedWebView = _BudgetWebView.spendingAnalytics),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        tooltip: 'Previous month',
-                        onPressed: () => _moveMonth(-1),
-                        icon: const Icon(Icons.chevron_left, size: 20),
-                      ),
-                      Text(
-                        _monthLabel(_selectedMonth),
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                      ),
-                      IconButton(
-                        tooltip: 'Next month',
-                        onPressed: (_selectedMonth.year == DateTime.now().year &&
-                                _selectedMonth.month == DateTime.now().month)
-                            ? null
-                            : () => _moveMonth(1),
-                        icon: const Icon(Icons.chevron_right, size: 20),
-                      ),
-                    ],
+                ),
+                const SizedBox(width: 12),
+                // Col 2 & 3: depends on panel state
+                if (_anyPanelOpen) ...[
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      children: [
+                        if (_showHistoricalPanel)
+                          Expanded(child: _buildHistoricalPerformanceSection(isDark, primary)),
+                        if (_showAnalyticsPanel)
+                          Expanded(child: _buildSpendingAnalyticsSection(isDark, primary)),
+                        if (_showAIInsightsPanel)
+                          Expanded(child: _BudgetAIInsightsPanel(
+                            onClose: () => setState(() => _showAIInsightsPanel = false),
+                          )),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                ] else ...[
+                  // Default: Rewards + AI Insights
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      children: [
+                        _buildRewardsRow(isDark),
+                        const SizedBox(height: 8),
+                        Expanded(child: _BudgetAIInsightsPanel(
+                          onClose: () {},
+                        )),
+                      ],
+                    ),
+                  ),
                 ],
-              ),
+              ],
             ),
-            const SizedBox(height: 28),
-            if (_selectedWebView == _BudgetWebView.currentMonth)
-              _buildCurrentMonthSection(summary, isDark, primary)
-            else if (_selectedWebView == _BudgetWebView.historicalPerformance)
-              _buildHistoricalPerformanceSection(isDark, primary)
-            else
-              _buildSpendingAnalyticsSection(isDark, primary),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -855,70 +959,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Widget _buildCurrentMonthSection(BudgetSummary summary, bool isDark, Color primary) {
-    final remaining = summary.totalRemaining;
-    final projectedSavings = remaining > 0 ? remaining * 0.8 : 0.0;
-
     return Column(
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _buildBudgetComplianceCard(
-                isDark: isDark,
-                primary: primary,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildSmartBudgetInsightCard(
-                isDark: isDark,
-                primary: primary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 28),
-        // AI Budget Insights
-        _buildAIInsightsCard(isDark, primary),
-        const SizedBox(height: 28),
-        Row(
-          children: [
-            Expanded(
-              child: _budgetSummaryCard(
-                title: 'Total Monthly Budget',
-                value: '₹${summary.totalSpent.toStringAsFixed(0)}',
-                subtitle: '/ ₹${summary.totalBudget.toStringAsFixed(0)}',
-                progress: summary.totalBudget > 0
-                    ? (summary.totalSpent / summary.totalBudget).clamp(0.0, 1.0)
-                    : 0,
-                color: primary,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _budgetSummaryCard(
-                title: 'Remaining to Spend',
-                value: '₹${remaining.toStringAsFixed(0)}',
-                subtitle: remaining >= 0
-                    ? 'Safe to spend'
-                    : 'Exceeded current budget',
-                valueColor: remaining >= 0 ? AppColors.success : AppColors.error,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _budgetSummaryCard(
-                title: 'Projected Savings',
-                value: '₹${projectedSavings.toStringAsFixed(0)}',
-                subtitle: 'Projected from current trend',
-                valueColor: primary,
-                comingSoon: true,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 28),
         // Budget Category Widgets
         _buildBudgetCategoryGrid(isDark),
       ],
@@ -2706,4 +2748,261 @@ class _CategoryEditor extends StatelessWidget {
       },
     );
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Budget AI Insights Panel
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _BudgetAIInsightsPanel extends StatefulWidget {
+  final VoidCallback onClose;
+
+  const _BudgetAIInsightsPanel({required this.onClose});
+
+  @override
+  State<_BudgetAIInsightsPanel> createState() => _BudgetAIInsightsPanelState();
+}
+
+class _BudgetAIInsightsPanelState extends State<_BudgetAIInsightsPanel> {
+  bool _loading = false;
+  String? _analysis;
+  String? _error;
+
+  final _chatController = TextEditingController();
+  final List<_BudgetChatMessage> _chatMessages = [];
+  bool _chatLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAnalysis();
+  }
+
+  @override
+  void dispose() {
+    _chatController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchAnalysis() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final auth = Provider.of<AuthService>(context, listen: false);
+      final result = await AIService().getBudgetAnalysis(
+        supabaseUrl: auth.supabaseUrl,
+        idToken: await auth.getIdToken(),
+      );
+      if (mounted) setState(() { _analysis = result['analysis'] as String?; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  Future<void> _sendChat() async {
+    final msg = _chatController.text.trim();
+    if (msg.isEmpty) return;
+    _chatController.clear();
+    setState(() {
+      _chatMessages.add(_BudgetChatMessage(text: msg, isUser: true));
+      _chatLoading = true;
+    });
+    try {
+      final auth = Provider.of<AuthService>(context, listen: false);
+      final result = await AIService().sendChatMessage(
+        message: msg,
+        supabaseUrl: auth.supabaseUrl,
+        idToken: await auth.getIdToken(),
+      );
+      if (mounted) {
+        setState(() {
+          _chatMessages.add(_BudgetChatMessage(text: result['response'] as String? ?? 'No response', isUser: false));
+          _chatLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _chatMessages.add(_BudgetChatMessage(text: 'Error: $e', isUser: false));
+          _chatLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome, size: 20, color: Color(0xFF9C27B0)),
+              const SizedBox(width: 8),
+              const Text('AI Insights', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Spacer(),
+              IconButton(
+                onPressed: _loading ? null : _fetchAnalysis,
+                icon: const Icon(Icons.refresh, size: 18),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                tooltip: 'Refresh analysis',
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                onPressed: widget.onClose,
+                icon: const Icon(Icons.close, size: 20),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Budget Analysis section
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [Colors.purple.shade50, Colors.blue.shade50]),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.analytics_outlined, size: 16, color: Colors.purple[600]),
+                    const SizedBox(width: 6),
+                    Text('Budget Analysis', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.purple[700])),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (_loading)
+                  const Center(child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                  ))
+                else if (_error != null)
+                  Text(_error!, style: TextStyle(fontSize: 12, color: Colors.red[600]))
+                else if (_analysis != null)
+                  Text(_analysis!, style: const TextStyle(fontSize: 12, height: 1.5))
+                else
+                  Text('Tap refresh to generate AI analysis', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Chat section - fills remaining space
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.chat_bubble_outline, size: 16, color: Colors.purple[400]),
+                    const SizedBox(width: 6),
+                    Text('Ask AI', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.purple[600])),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Chat messages
+                if (_chatMessages.isNotEmpty) ...[
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(8),
+                        itemCount: _chatMessages.length,
+                        itemBuilder: (ctx, i) {
+                          final msg = _chatMessages[i];
+                          return Align(
+                            alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: msg.isUser ? Colors.purple[100] : Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: msg.isUser ? null : Border.all(color: Colors.grey[200]!),
+                              ),
+                              child: Text(msg.text, style: const TextStyle(fontSize: 12)),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  if (_chatLoading)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                          const SizedBox(width: 8),
+                          Text('Thinking...', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                ] else
+                  const Spacer(),
+
+                // Chat input
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _chatController,
+                        decoration: InputDecoration(
+                          hintText: 'Ask about your finances...',
+                          hintStyle: TextStyle(fontSize: 13, color: Colors.grey[400]),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          isDense: true,
+                        ),
+                        style: const TextStyle(fontSize: 13),
+                        onSubmitted: (_) => _sendChat(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: _chatLoading ? null : _sendChat,
+                      icon: Icon(Icons.send_rounded, color: Colors.purple[600]),
+                      tooltip: 'Send',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BudgetChatMessage {
+  final String text;
+  final bool isUser;
+  const _BudgetChatMessage({required this.text, required this.isUser});
+}
+
+class _BudgetRewardIcon {
+  final IconData icon;
+  final Color color;
+  final String label;
+  const _BudgetRewardIcon(this.icon, this.color, this.label);
 }

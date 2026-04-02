@@ -1378,10 +1378,305 @@ class _BudgetScreenState extends State<BudgetScreen> {
   Widget _buildCurrentMonthSection(BudgetSummary summary, bool isDark, Color primary) {
     return Column(
       children: [
-        // Budget Category Widgets
+        // Budget Category Chips
         _buildBudgetCategoryGrid(isDark),
+        const SizedBox(height: 16),
+        // Budget List
+        _buildWebBudgetList(summary, isDark, primary),
       ],
     );
+  }
+
+  Widget _buildWebBudgetList(BudgetSummary summary, bool isDark, Color primary) {
+    if (_budgets.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceDark : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+        ),
+        child: Center(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.account_balance_wallet_outlined, size: 48, color: Colors.grey[300]),
+            const SizedBox(height: 12),
+            Text(
+              'No budgets this month',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[500]),
+            ),
+            const SizedBox(height: 4),
+            Text('Add your first budget to get started', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+          ]),
+        ),
+      );
+    }
+
+    final totalBudget = summary.totalBudget;
+    final totalSpent = summary.totalSpent;
+    final overallRatio = totalBudget > 0 ? (totalSpent / totalBudget).clamp(0.0, 1.0) : 0.0;
+    final overallColor = overallRatio > 0.9 ? AppColors.error : overallRatio > 0.7 ? AppColors.warningDark : AppColors.successDark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with summary
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text('Budget vs Expense',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(color: primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                      child: Text('${_budgets.length}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: primary)),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: overallColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            overallRatio > 0.9 ? Icons.warning_amber_rounded : overallRatio > 0.7 ? Icons.trending_up : Icons.check_circle_outline,
+                            size: 14, color: overallColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${(overallRatio * 100).toStringAsFixed(0)}% used',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: overallColor),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Overall progress bar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: overallRatio,
+                    minHeight: 6,
+                    backgroundColor: isDark ? AppColors.grey800 : const Color(0xFFEEF2F6),
+                    valueColor: AlwaysStoppedAnimation<Color>(overallColor),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Spent: ${_fmtCurrency(totalSpent)}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[600])),
+                    Text('Budget: ${_fmtCurrency(totalBudget)}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[600])),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          // Budget rows
+          ..._budgets.map((budget) => _buildWebBudgetRow(budget, isDark, primary)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebBudgetRow(Budget budget, bool isDark, Color primary) {
+    final ratio = budget.amount > 0 ? (budget.spent / budget.amount).clamp(0.0, 1.5) : 0.0;
+    final clampedRatio = ratio.clamp(0.0, 1.0);
+    final isOver = budget.spent > budget.amount;
+    final isNearLimit = ratio >= 0.8 && !isOver;
+
+    final barColor = isOver
+        ? AppColors.error
+        : isNearLimit
+            ? AppColors.warningDark
+            : AppColors.successDark;
+
+    final statusIcon = isOver
+        ? Icons.error_outline_rounded
+        : isNearLimit
+            ? Icons.trending_up_rounded
+            : Icons.check_circle_outline_rounded;
+
+    final statusText = isOver
+        ? 'Over by ${_fmtCurrency(budget.spent - budget.amount)}'
+        : isNearLimit
+            ? '${(ratio * 100).toStringAsFixed(0)}% used'
+            : '${_fmtCurrency(budget.remaining)} left';
+
+    final catIcon = _budgetCategoryIcon(budget.category);
+    final catColor = _budgetCategoryColor(budget.category);
+
+    return InkWell(
+      onTap: () => _addOrEditBudget(existing: budget),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: isDark ? AppColors.grey800 : const Color(0xFFF1F5F9))),
+        ),
+        child: Row(
+          children: [
+            // Category icon bubble
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: catColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(catIcon, size: 22, color: catColor),
+            ),
+            const SizedBox(width: 14),
+            // Category + progress
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        _titleCase(budget.category),
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                      ),
+                      const SizedBox(width: 6),
+                      // Status badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: barColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(statusIcon, size: 10, color: barColor),
+                            const SizedBox(width: 3),
+                            Text(statusText, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: barColor)),
+                          ],
+                        ),
+                      ),
+                      if (budget.tags.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            budget.tags.take(2).join(', '),
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.purple[400]),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Progress bar
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: clampedRatio,
+                          minHeight: 8,
+                          backgroundColor: isDark ? AppColors.grey800 : const Color(0xFFEEF2F6),
+                          valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                        ),
+                      ),
+                      // Pace marker (where you should be based on day of month)
+                      Positioned(
+                        left: _monthPaceRatio() * (MediaQuery.of(context).size.width * 0.25),
+                        top: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 2,
+                          color: Colors.grey.withOpacity(0.4),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  // Spent vs Budget amounts
+                  Row(
+                    children: [
+                      Text(
+                        '${_fmtCurrency(budget.spent)} spent',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: barColor),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'of ${_fmtCurrency(budget.amount)}',
+                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Circular gauge
+            SizedBox(
+              width: 48, height: 48,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 48, height: 48,
+                    child: CircularProgressIndicator(
+                      value: clampedRatio,
+                      strokeWidth: 4,
+                      backgroundColor: isDark ? AppColors.grey800 : const Color(0xFFEEF2F6),
+                      valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                    ),
+                  ),
+                  Text(
+                    '${(ratio * 100).toStringAsFixed(0)}%',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: barColor),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  double _monthPaceRatio() {
+    final now = DateTime.now();
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    return (now.day / daysInMonth).clamp(0.0, 1.0);
+  }
+
+  Color _budgetCategoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'food': return const Color(0xFFFF5722);
+      case 'groceries': case 'grocery': return const Color(0xFF4CAF50);
+      case 'shopping': return const Color(0xFFE91E63);
+      case 'utilities': return const Color(0xFF2196F3);
+      case 'transport': return const Color(0xFF9C27B0);
+      case 'entertainment': return const Color(0xFFE91E63);
+      case 'healthcare': return const Color(0xFF00BCD4);
+      case 'education': return const Color(0xFF1565C0);
+      case 'party': return const Color(0xFFFF9800);
+      case 'vacation': case 'travel': return const Color(0xFF00ACC1);
+      default: return const Color(0xFF607D8B);
+    }
   }
 
   Widget _buildBudgetCategoryGrid(bool isDark) {

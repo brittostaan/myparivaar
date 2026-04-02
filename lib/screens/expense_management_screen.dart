@@ -49,6 +49,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   DateTime? _filterStartDate; // date range filter start
   DateTime? _filterEndDate; // date range filter end
   bool _showCalendarDropdown = false; // inline calendar dropdown
+  DateTime _calendarDisplayMonth = DateTime(DateTime.now().year, DateTime.now().month); // separate from filter dates
   bool _showAddExpensePanel = false;
   bool _showImportPanel = false;
   bool _showHistoricalPanel = false;
@@ -705,7 +706,12 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                       label: hasDateFilter ? dateFilterLabel : 'Date Filter',
                       color: const Color(0xFFE65100),
                       active: _showCalendarDropdown || hasDateFilter,
-                      onTap: () => setState(() => _showCalendarDropdown = !_showCalendarDropdown),
+                      onTap: () => setState(() {
+                        _showCalendarDropdown = !_showCalendarDropdown;
+                        if (_showCalendarDropdown) {
+                          _calendarDisplayMonth = _filterStartDate ?? DateTime(DateTime.now().year, DateTime.now().month);
+                        }
+                      }),
                     ),
                     _buildControlPill(
                       icon: Icons.calendar_month,
@@ -716,6 +722,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                         _filterStartDate = null;
                         _filterEndDate = null;
                         _showCalendarDropdown = false;
+                        _calendarDisplayMonth = DateTime(DateTime.now().year, DateTime.now().month);
                       }),
                     ),
                     _buildControlPill(
@@ -834,19 +841,31 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                             child: _buildWebTransactionList(filtered, isDark, primary),
                           ),
                           const SizedBox(width: 12),
-                          // Col 2: Info Cards (always visible)
-                          Expanded(
-                            flex: 4,
-                            child: _buildInfoCardsWithRewards(isDark, primary),
-                          ),
-                          const SizedBox(width: 12),
-                          // Col 3: AI Insights (default) OR Control Panel (when active)
-                          if (!_anyPanelOpen)
+                          // When transaction detail is open: Col2=Detail, Col3=Rewards+InfoCards
+                          if (_selectedExpenseDetail != null) ...[
+                            Expanded(
+                              flex: 4,
+                              child: _buildInlineTransactionDetail(isDark, primary),
+                            ),
+                            const SizedBox(width: 12),
                             Expanded(
                               flex: 3,
-                              child: _buildAIInsightsPanel(isDark, primary),
-                            )
-                          else
+                              child: Column(
+                                children: [
+                                  _buildRewardsRow(isDark),
+                                  const SizedBox(height: 8),
+                                  Expanded(child: _buildInfoCardsColumn(isDark, primary)),
+                                ],
+                              ),
+                            ),
+                          ]
+                          // When other panel is open: Col2=InfoCards, Col3=Panel
+                          else if (_anyPanelOpen) ...[
+                            Expanded(
+                              flex: 4,
+                              child: _buildInfoCardsColumn(isDark, primary),
+                            ),
+                            const SizedBox(width: 12),
                             Expanded(
                               flex: 3,
                               child: Column(
@@ -855,8 +874,6 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                                     Expanded(child: _buildInlineAddExpensePanel(isDark, primary)),
                                   if (_showImportPanel)
                                     Expanded(child: _buildInlineImportPanel(isDark, primary)),
-                                  if (_selectedExpenseDetail != null)
-                                    Expanded(child: _buildInlineTransactionDetail(isDark, primary)),
                                   if (_showHistoricalPanel)
                                     Expanded(child: _buildHistoricalPerformancePanel(isDark, primary)),
                                   if (_showAnalyticsPanel)
@@ -864,6 +881,25 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                                 ],
                               ),
                             ),
+                          ]
+                          // Default: Col2=InfoCards, Col3=Rewards+AI Insights
+                          else ...[
+                            Expanded(
+                              flex: 4,
+                              child: _buildInfoCardsColumn(isDark, primary),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 3,
+                              child: Column(
+                                children: [
+                                  _buildRewardsRow(isDark),
+                                  const SizedBox(height: 8),
+                                  Expanded(child: _buildAIInsightsPanel(isDark, primary)),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -910,9 +946,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   Widget _buildInlineCalendar(bool isDark, Color primary) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    // Use the start date's month/year for display, or current month
-    final displayMonth = _filterStartDate ?? now;
-    final calMonth = DateTime(displayMonth.year, displayMonth.month, 1);
+    final calMonth = DateTime(_calendarDisplayMonth.year, _calendarDisplayMonth.month, 1);
     final daysInMonth = DateTime(calMonth.year, calMonth.month + 1, 0).day;
     final firstWeekday = calMonth.weekday % 7; // Sunday=0
 
@@ -940,10 +974,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             children: [
               GestureDetector(
                 onTap: () {
-                  final prev = DateTime(calMonth.year, calMonth.month - 1, 1);
                   setState(() {
-                    _filterStartDate = prev;
-                    _filterEndDate = null;
+                    _calendarDisplayMonth = DateTime(calMonth.year, calMonth.month - 1, 1);
                   });
                 },
                 child: Container(
@@ -964,8 +996,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   final next = DateTime(calMonth.year, calMonth.month + 1, 1);
                   if (!next.isAfter(today)) {
                     setState(() {
-                      _filterStartDate = next;
-                      _filterEndDate = null;
+                      _calendarDisplayMonth = next;
                     });
                   }
                 },
@@ -1115,9 +1146,9 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // ── Info Cards with Rewards: single column, horizontal rewards row, arrow nav ──
+  // ── Rewards Row: extracted to reuse in Col 3 ──
 
-  Widget _buildInfoCardsWithRewards(bool isDark, Color primary) {
+  Widget _buildRewardsRow(bool isDark) {
     final rewards = <_RewardIcon>[
       _RewardIcon(Icons.emoji_events_rounded, Colors.amber, 'Budget Champion'),
       _RewardIcon(Icons.savings_rounded, Colors.green, 'Smart Saver'),
@@ -1128,49 +1159,45 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       _RewardIcon(Icons.diamond_rounded, Colors.teal, 'Goal Achiever'),
     ];
 
-    return Column(
-      children: [
-        // Horizontal Rewards Row
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: [
-              Text('Rewards', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.grey.shade500)),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: rewards.map((r) => Tooltip(
-                  message: r.label,
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [r.color.withOpacity(0.15), r.color.withOpacity(0.05)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: r.color.withOpacity(0.3)),
-                    ),
-                    child: Icon(r.icon, size: 15, color: r.color),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Text('Rewards', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.grey.shade500)),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: rewards.map((r) => Tooltip(
+              message: r.label,
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [r.color.withOpacity(0.15), r.color.withOpacity(0.05)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                )).toList(),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: r.color.withOpacity(0.3)),
+                ),
+                child: Icon(r.icon, size: 15, color: r.color),
               ),
-            ],
+            )).toList(),
           ),
-        ),
-        const SizedBox(height: 8),
-        // Info Cards — scrollable with up/down arrows
-        Expanded(
-          child: _buildAllInfoCards(isDark, primary),
-        ),
-      ],
+        ],
+      ),
     );
+  }
+
+  // ── Info Cards column (without rewards) ──
+
+  Widget _buildInfoCardsColumn(bool isDark, Color primary) {
+    return _buildAllInfoCards(isDark, primary);
   }
 
   // ── All 14 AI Info Cards in a single scrollable column with arrow nav ──
@@ -5512,7 +5539,6 @@ class _AIInsightsPanelState extends State<_AIInsightsPanel> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
           // Header
           Row(
@@ -5574,84 +5600,92 @@ class _AIInsightsPanelState extends State<_AIInsightsPanel> {
 
           const SizedBox(height: 16),
 
-          // Chat section
-          Row(
-            children: [
-              Icon(Icons.chat_bubble_outline, size: 16, color: Colors.purple[400]),
-              const SizedBox(width: 6),
-              Text('Ask AI', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.purple[600])),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          // Chat messages
-          if (_chatMessages.isNotEmpty) ...[
-            Container(
-              constraints: const BoxConstraints(maxHeight: 200),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: ListView.builder(
-                shrinkWrap: true,
-                padding: const EdgeInsets.all(8),
-                itemCount: _chatMessages.length,
-                itemBuilder: (ctx, i) {
-                  final msg = _chatMessages[i];
-                  return Align(
-                    alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: msg.isUser ? Colors.purple[100] : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: msg.isUser ? null : Border.all(color: Colors.grey[200]!),
-                      ),
-                      child: Text(msg.text, style: const TextStyle(fontSize: 12)),
-                    ),
-                  );
-                },
-              ),
-            ),
-            if (_chatLoading)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
+          // Chat section - fills remaining space
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                    const SizedBox(width: 8),
-                    Text('Thinking...', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                    Icon(Icons.chat_bubble_outline, size: 16, color: Colors.purple[400]),
+                    const SizedBox(width: 6),
+                    Text('Ask AI', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.purple[600])),
                   ],
                 ),
-              ),
-            const SizedBox(height: 8),
-          ],
+                const SizedBox(height: 8),
 
-          // Chat input
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _chatController,
-                  decoration: InputDecoration(
-                    hintText: 'Ask about your finances...',
-                    hintStyle: TextStyle(fontSize: 13, color: Colors.grey[400]),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    isDense: true,
+                // Chat messages
+                if (_chatMessages.isNotEmpty) ...[
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(8),
+                        itemCount: _chatMessages.length,
+                        itemBuilder: (ctx, i) {
+                          final msg = _chatMessages[i];
+                          return Align(
+                            alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: msg.isUser ? Colors.purple[100] : Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: msg.isUser ? null : Border.all(color: Colors.grey[200]!),
+                              ),
+                              child: Text(msg.text, style: const TextStyle(fontSize: 12)),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ),
-                  style: const TextStyle(fontSize: 13),
-                  onSubmitted: (_) => _sendChat(),
+                  if (_chatLoading)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                          const SizedBox(width: 8),
+                          Text('Thinking...', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                ] else
+                  const Spacer(),
+
+                // Chat input
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _chatController,
+                        decoration: InputDecoration(
+                          hintText: 'Ask about your finances...',
+                          hintStyle: TextStyle(fontSize: 13, color: Colors.grey[400]),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          isDense: true,
+                        ),
+                        style: const TextStyle(fontSize: 13),
+                        onSubmitted: (_) => _sendChat(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: _chatLoading ? null : _sendChat,
+                      icon: Icon(Icons.send_rounded, color: Colors.purple[600]),
+                      tooltip: 'Send',
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: _chatLoading ? null : _sendChat,
-                icon: Icon(Icons.send_rounded, color: Colors.purple[600]),
-                tooltip: 'Send',
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

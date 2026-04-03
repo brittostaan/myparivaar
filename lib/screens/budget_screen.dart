@@ -73,6 +73,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
   bool _showAnalyticsPanel = false;
   bool _showAIInsightsPanel = false;
 
+  // Sort & Group controls
+  bool _budgetSortAscending = false;
+  String _budgetGroupBy = 'none'; // 'none', 'category', 'tag'
+
   // Inline budget form
   Budget? _editingBudget;
   bool _showInlineBudgetForm = false;
@@ -647,8 +651,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       letterSpacing: -0.3,
                     ),
                   ),
-                  const Spacer(),
-                  ..._buildHeaderIcons(),
                 ],
               ),
             ),
@@ -1455,8 +1457,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   'Budget',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
                 ),
-                const Spacer(),
-                ..._buildHeaderIcons(),
               ],
             ),
           ),
@@ -1555,17 +1555,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     ),
                   ],
                 ),
-                // Calendar dropdown overlay — anchored below header icons on the right
-                if (_showCalendarDropdown)
-                  Positioned(
-                    top: 0,
-                    right: 20,
-                    child: Material(
-                      elevation: 8,
-                      borderRadius: BorderRadius.circular(16),
-                      child: _buildInlineCalendar(),
-                    ),
-                  ),
+                // Calendar overlay removed from here — now inside budget card
               ],
             ),
           ),
@@ -1808,9 +1798,27 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   List<Budget> get _filteredBudgets {
-    if (_selectedCategoryFilter == null) return _budgets;
-    final lbl = _selectedCategoryFilter!.toLowerCase();
-    return _budgets.where((b) => _budgetMatchesCategory(b, lbl)).toList();
+    var list = _selectedCategoryFilter == null
+        ? [..._budgets]
+        : _budgets.where((b) => _budgetMatchesCategory(b, _selectedCategoryFilter!.toLowerCase())).toList();
+    // Apply sort
+    list.sort((a, b) => _budgetSortAscending
+        ? a.amount.compareTo(b.amount)
+        : b.amount.compareTo(a.amount));
+    return list;
+  }
+
+  Map<String, List<Budget>> get _groupedBudgets {
+    final filtered = _filteredBudgets;
+    if (_budgetGroupBy == 'none') return {'': filtered};
+    final map = <String, List<Budget>>{};
+    for (final b in filtered) {
+      final key = _budgetGroupBy == 'category'
+          ? _titleCase(b.category)
+          : b.tags.isNotEmpty ? b.tags.first : 'Untagged';
+      (map[key] ??= []).add(b);
+    }
+    return map;
   }
 
   bool _budgetMatchesCategory(Budget budget, String label) {
@@ -1946,8 +1954,141 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
+  Widget _buildBudgetListControls() {
+    final hasDateFilter = _filterStartDate != null || _filterEndDate != null;
+    final hasCatFilter = _selectedCategoryFilter != null;
+
+    final allCategoryLabels = [
+      'Entertainment', 'Groceries', 'Mental Wellness', 'Physical Wellness',
+      'Party', 'Personal Care', 'Pet Care', 'Senior Care', 'Education',
+      'Vacation', 'Convenience Food',
+    ];
+
+    const iconColor = Color(0xFF64748B);
+    const activeColor = Color(0xFFE65100);
+    const iconSize = 20.0;
+    const btnConstraints = BoxConstraints(minWidth: 34, minHeight: 34);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 1. Filter by Category
+        PopupMenuButton<String?>(
+          tooltip: hasCatFilter ? 'Filtered: $_selectedCategoryFilter' : 'Filter by Category',
+          icon: Icon(Icons.filter_list_rounded, color: hasCatFilter ? activeColor : iconColor, size: iconSize),
+          constraints: btnConstraints,
+          padding: EdgeInsets.zero,
+          onSelected: (value) => setState(() => _selectedCategoryFilter = value),
+          itemBuilder: (context) => [
+            PopupMenuItem<String?>(
+              value: null,
+              child: Row(children: [
+                Icon(Icons.clear_all_rounded, size: 16, color: Colors.grey[600]),
+                const SizedBox(width: 8),
+                const Text('All Categories', style: TextStyle(fontSize: 13)),
+              ]),
+            ),
+            const PopupMenuDivider(),
+            ...allCategoryLabels.map((cat) => PopupMenuItem<String?>(
+              value: cat,
+              child: Row(children: [
+                if (_selectedCategoryFilter == cat)
+                  const Icon(Icons.check_rounded, size: 16, color: activeColor)
+                else
+                  const SizedBox(width: 16),
+                const SizedBox(width: 8),
+                Text(cat, style: const TextStyle(fontSize: 13)),
+              ]),
+            )),
+          ],
+        ),
+        // 2. Group By
+        PopupMenuButton<String>(
+          tooltip: _budgetGroupBy == 'none' ? 'Group By' : 'Grouped: ${_titleCase(_budgetGroupBy)}',
+          icon: Icon(Icons.workspaces_outlined, color: _budgetGroupBy != 'none' ? activeColor : iconColor, size: iconSize),
+          constraints: btnConstraints,
+          padding: EdgeInsets.zero,
+          onSelected: (value) => setState(() => _budgetGroupBy = value),
+          itemBuilder: (context) => [
+            PopupMenuItem(value: 'none', child: Row(children: [
+              if (_budgetGroupBy == 'none') const Icon(Icons.check_rounded, size: 16, color: activeColor) else const SizedBox(width: 16),
+              const SizedBox(width: 8),
+              const Text('No Grouping', style: TextStyle(fontSize: 13)),
+            ])),
+            PopupMenuItem(value: 'category', child: Row(children: [
+              if (_budgetGroupBy == 'category') const Icon(Icons.check_rounded, size: 16, color: activeColor) else const SizedBox(width: 16),
+              const SizedBox(width: 8),
+              const Text('By Category', style: TextStyle(fontSize: 13)),
+            ])),
+            PopupMenuItem(value: 'tag', child: Row(children: [
+              if (_budgetGroupBy == 'tag') const Icon(Icons.check_rounded, size: 16, color: activeColor) else const SizedBox(width: 16),
+              const SizedBox(width: 8),
+              const Text('By Tag', style: TextStyle(fontSize: 13)),
+            ])),
+          ],
+        ),
+        // 3. Sort by Amount
+        Tooltip(
+          message: _budgetSortAscending ? 'Sort: Low → High' : 'Sort: High → Low',
+          child: IconButton(
+            icon: Icon(
+              _budgetSortAscending ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+              color: iconColor, size: iconSize,
+            ),
+            onPressed: () => setState(() => _budgetSortAscending = !_budgetSortAscending),
+            constraints: btnConstraints,
+            padding: EdgeInsets.zero,
+            splashRadius: 18,
+          ),
+        ),
+        // 4. Date Filter
+        Tooltip(
+          message: hasDateFilter ? 'Date Filter active' : 'Date Filter',
+          child: IconButton(
+            icon: Icon(Icons.date_range_rounded, color: (_showCalendarDropdown || hasDateFilter) ? activeColor : iconColor, size: iconSize),
+            onPressed: () => setState(() {
+              _showCalendarDropdown = !_showCalendarDropdown;
+              if (_showCalendarDropdown) {
+                _calendarDisplayMonth = _filterStartDate ?? DateTime(DateTime.now().year, DateTime.now().month);
+              }
+            }),
+            constraints: btnConstraints,
+            padding: EdgeInsets.zero,
+            splashRadius: 18,
+          ),
+        ),
+        // 5. Import Excel
+        Tooltip(
+          message: 'Import Excel',
+          child: IconButton(
+            icon: const Icon(Icons.upload_file, color: iconColor, size: iconSize),
+            onPressed: _uploadExcelBudget,
+            constraints: btnConstraints,
+            padding: EdgeInsets.zero,
+            splashRadius: 18,
+          ),
+        ),
+        // 6. Add Budget
+        Tooltip(
+          message: 'Add Budget',
+          child: IconButton(
+            icon: Icon(Icons.add_rounded, color: _showInlineBudgetForm ? activeColor : iconColor, size: iconSize),
+            onPressed: () {
+              if (_showInlineBudgetForm) { _closeBudgetForm(); } else { _openBudgetForm(); }
+            },
+            constraints: btnConstraints,
+            padding: EdgeInsets.zero,
+            splashRadius: 18,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildWebBudgetList(BudgetSummary summary, bool isDark, Color primary) {
     final filtered = _filteredBudgets;
+    final controls = _buildBudgetListControls();
+
     if (filtered.isEmpty) {
       return Stack(
         clipBehavior: Clip.none,
@@ -1958,27 +2099,43 @@ class _BudgetScreenState extends State<BudgetScreen> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
             ),
-            child: Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.account_balance_wallet_outlined, size: 48, color: Colors.grey[300]),
-                const SizedBox(height: 12),
-                Text(
-                  _selectedCategoryFilter != null
-                      ? 'No $_selectedCategoryFilter budgets this month'
-                      : 'No budgets this month',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[500]),
+            child: Column(
+              children: [
+                // Controls row at top-right
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 8, 0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [controls],
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text('Add your first budget to get started', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
-              ]),
+                Expanded(
+                  child: Center(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.account_balance_wallet_outlined, size: 48, color: Colors.grey[300]),
+                      const SizedBox(height: 12),
+                      Text(
+                        _selectedCategoryFilter != null
+                            ? 'No $_selectedCategoryFilter budgets this month'
+                            : 'No budgets this month',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[500]),
+                      ),
+                      const SizedBox(height: 4),
+                      Text('Add your first budget to get started', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                    ]),
+                  ),
+                ),
+              ],
             ),
           ),
           // Inline budget form overlay
           if (_showInlineBudgetForm)
+            Positioned(top: 48, right: 8, child: _buildInlineBudgetForm()),
+          // Calendar overlay inside card
+          if (_showCalendarDropdown)
             Positioned(
-              top: 8,
-              right: 8,
-              child: _buildInlineBudgetForm(),
+              top: 48, right: 8,
+              child: Material(elevation: 8, borderRadius: BorderRadius.circular(16), child: _buildInlineCalendar()),
             ),
         ],
       );
@@ -1988,6 +2145,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
     final totalSpent = filtered.fold<double>(0, (s, b) => s + b.spent);
     final overallRatio = totalBudget > 0 ? (totalSpent / totalBudget).clamp(0.0, 1.0) : 0.0;
     final overallColor = overallRatio > 0.9 ? AppColors.error : overallRatio > 0.7 ? AppColors.warningDark : AppColors.successDark;
+
+    // Build grouped rows
+    final grouped = _groupedBudgets;
+    final showGroupHeaders = _budgetGroupBy != 'none';
 
     return Stack(
       clipBehavior: Clip.none,
@@ -2001,9 +2162,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header with summary
+              // Header with summary + controls
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                padding: const EdgeInsets.fromLTRB(20, 16, 8, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -2018,27 +2179,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                           child: Text('${filtered.length}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: primary)),
                         ),
                         const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: overallColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                overallRatio > 0.9 ? Icons.warning_amber_rounded : overallRatio > 0.7 ? Icons.trending_up : Icons.check_circle_outline,
-                                size: 14, color: overallColor,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${(overallRatio * 100).toStringAsFixed(0)}% used',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: overallColor),
-                              ),
-                            ],
-                          ),
-                        ),
+                        controls,
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -2064,11 +2205,31 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 ),
               ),
               const Divider(height: 1, color: Color(0xFFF1F5F9)),
-              // Budget rows (scrollable)
+              // Budget rows (scrollable) — grouped or flat
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
-                    children: filtered.map((budget) => _buildWebBudgetRow(budget, isDark, primary)).toList(),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final entry in grouped.entries) ...[
+                        if (showGroupHeaders && entry.key.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+                            child: Row(children: [
+                              Container(width: 3, height: 14, decoration: BoxDecoration(color: primary, borderRadius: BorderRadius.circular(2))),
+                              const SizedBox(width: 8),
+                              Text(entry.key, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey[600], letterSpacing: 0.3)),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8)),
+                                child: Text('${entry.value.length}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.grey[500])),
+                              ),
+                            ]),
+                          ),
+                        ...entry.value.map((budget) => _buildWebBudgetRow(budget, isDark, primary)),
+                      ],
+                    ],
                   ),
                 ),
               ),
@@ -2077,10 +2238,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
         ),
         // Inline budget form overlay
         if (_showInlineBudgetForm)
+          Positioned(top: 48, right: 8, child: _buildInlineBudgetForm()),
+        // Calendar overlay inside card
+        if (_showCalendarDropdown)
           Positioned(
-            top: 8,
-            right: 8,
-            child: _buildInlineBudgetForm(),
+            top: 48, right: 8,
+            child: Material(elevation: 8, borderRadius: BorderRadius.circular(16), child: _buildInlineCalendar()),
           ),
       ],
     );

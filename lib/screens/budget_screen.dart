@@ -3646,6 +3646,8 @@ class _EditableRow {
   final double amount;
   final bool isValid;
   final String? validationError;
+  bool aiCategorized;
+  String aiConfidence;
 
   _EditableRow({
     required this.category,
@@ -3653,6 +3655,8 @@ class _EditableRow {
     required this.amount,
     this.isValid = true,
     this.validationError,
+    this.aiCategorized = false,
+    this.aiConfidence = '',
   });
 
   factory _EditableRow.fromBudgetRow(BudgetRow row, String mappedCategory) {
@@ -3684,6 +3688,9 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
   late int _selectedYear;
   late int _selectedMonth;
   late List<_EditableRow> _editableRows;
+  bool _isCategorizingWithAI = false;
+  bool _aiCategorizationDone = false;
+  String? _aiError;
 
   static const _validCategories = [
     'food',
@@ -3737,6 +3744,55 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
     _editableRows = widget.rows.map((row) {
       return _EditableRow.fromBudgetRow(row, _mapToValidCategory(row.category));
     }).toList();
+
+    // Trigger AI categorization
+    _runAICategorization();
+  }
+
+  Future<void> _runAICategorization() async {
+    if (!mounted) return;
+    setState(() {
+      _isCategorizingWithAI = true;
+      _aiError = null;
+    });
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final validRows = _editableRows.where((r) => r.isValid).toList();
+      if (validRows.isEmpty) return;
+
+      final items = validRows.map((r) => {
+        'description': r.subcategory.isNotEmpty ? '${r.subcategory} (${r.category})' : r.category,
+        'amount': r.amount,
+      }).toList();
+
+      final results = await AIService().categorizeBudgetItems(
+        items: items,
+        supabaseUrl: authService.supabaseUrl,
+        idToken: await authService.getIdToken(),
+      );
+
+      if (!mounted) return;
+      setState(() {
+        int ri = 0;
+        for (final row in _editableRows) {
+          if (row.isValid && ri < results.length) {
+            row.category = results[ri]['category'] ?? row.category;
+            row.aiConfidence = results[ri]['confidence'] ?? 'low';
+            row.aiCategorized = true;
+            ri++;
+          }
+        }
+        _isCategorizingWithAI = false;
+        _aiCategorizationDone = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isCategorizingWithAI = false;
+        _aiError = 'AI categorization failed. Using keyword matching.';
+      });
+    }
   }
 
   String get _monthKey =>
@@ -3848,6 +3904,29 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
               'Items are grouped by category during import. You can change categories below.',
               style: TextStyle(fontSize: 11, color: Colors.grey[500], fontStyle: FontStyle.italic),
             ),
+            if (_isCategorizingWithAI)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(children: [
+                  const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                  const SizedBox(width: 8),
+                  Text('AI is categorizing items...', style: TextStyle(fontSize: 11, color: Colors.deepPurple[400], fontWeight: FontWeight.w600)),
+                ]),
+              ),
+            if (_aiCategorizationDone)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(children: [
+                  Icon(Icons.auto_awesome, size: 14, color: Colors.deepPurple[400]),
+                  const SizedBox(width: 6),
+                  Text('AI categorized. Review & correct if needed.', style: TextStyle(fontSize: 11, color: Colors.deepPurple[400], fontWeight: FontWeight.w600)),
+                ]),
+              ),
+            if (_aiError != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(_aiError!, style: const TextStyle(fontSize: 11, color: AppColors.warningDark)),
+              ),
             const SizedBox(height: 8),
             // Table
             Expanded(
@@ -3919,14 +3998,36 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
                             ),
                           ),
                           _TableCell(
-                            Icon(
-                              row.isValid
-                                  ? Icons.check_circle
-                                  : Icons.error,
-                              color: row.isValid
-                                  ? AppColors.success
-                                  : AppColors.error,
-                              size: 15,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  row.isValid
+                                      ? Icons.check_circle
+                                      : Icons.error,
+                                  color: row.isValid
+                                      ? AppColors.success
+                                      : AppColors.error,
+                                  size: 15,
+                                ),
+                                if (row.aiCategorized) ...[
+                                  const SizedBox(width: 3),
+                                  Tooltip(
+                                    message: 'AI: ${row.aiConfidence} confidence',
+                                    child: Container(
+                                      width: 7, height: 7,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: row.aiConfidence == 'high'
+                                            ? AppColors.success
+                                            : row.aiConfidence == 'medium'
+                                                ? AppColors.warningDark
+                                                : AppColors.error,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                         ],

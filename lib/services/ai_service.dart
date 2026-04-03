@@ -130,6 +130,39 @@ class AIService {
     }
   }
 
+  /// Batch-categorize budget items using AI.
+  /// Returns a list of {category, confidence} maps, one per input item.
+  Future<List<Map<String, String>>> categorizeBudgetItems({
+    required List<Map<String, dynamic>> items,
+    required String supabaseUrl,
+    required String idToken,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$supabaseUrl/functions/v1/ai-categorize'),
+        headers: {
+          'Authorization': 'Bearer $idToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'items': items}),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['categories'] != null) {
+        return (data['categories'] as List)
+            .map((c) => <String, String>{
+                  'category': (c['category'] ?? 'other').toString(),
+                  'confidence': (c['confidence'] ?? 'low').toString(),
+                })
+            .toList();
+      }
+      throw AIException(data['error'] ?? 'Failed to categorize items');
+    } catch (e) {
+      if (e is AIException) rethrow;
+      throw AIException('Network error: Unable to categorize budget items');
+    }
+  }
+
   /// Get AI-driven budget analysis and suggestions
   Future<Map<String, dynamic>> getBudgetAnalysis({
     required String supabaseUrl,

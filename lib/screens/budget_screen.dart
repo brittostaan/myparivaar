@@ -518,6 +518,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
         builder: (context) => _ExcelPreviewDialog(
           rows: rows,
           initialMonth: _monthKey,
+          authService: authService,
         ),
       );
 
@@ -3674,10 +3675,12 @@ class _EditableRow {
 class _ExcelPreviewDialog extends StatefulWidget {
   final List<BudgetRow> rows;
   final String initialMonth;
+  final AuthService authService;
 
   const _ExcelPreviewDialog({
     required this.rows,
     required this.initialMonth,
+    required this.authService,
   });
 
   @override
@@ -3759,7 +3762,7 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
     });
 
     try {
-      final authService = Provider.of<AuthService>(context, listen: false);
+      final authService = widget.authService;
       final validRows = _editableRows.where((r) => r.isValid).toList();
       if (validRows.isEmpty) return;
 

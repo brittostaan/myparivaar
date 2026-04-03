@@ -52,7 +52,7 @@ const supabaseClient = createClient(
 
 // ─── Selected columns returned to the client ───────────────────────────────
 const USER_COLS =
-  "id, firebase_uid, email, phone, role, household_id, display_name, first_name, last_name, date_of_birth, photo_url, notifications_enabled, voice_enabled, created_at";
+  "id, firebase_uid, email, phone, role, household_id, staff_role, staff_scope, admin_permissions, display_name, first_name, last_name, date_of_birth, photo_url, notifications_enabled, voice_enabled, created_at";
 const HOUSEHOLD_COLS = "id, name, admin_firebase_uid, owner_user_id, created_at";
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -124,6 +124,18 @@ Deno.serve(async (req: Request) => {
     if (lookupErr) throw lookupErr;
 
     if (existingUser) {
+      if (!existingUser.email && email && email != 'no-email@placeholder.com') {
+        const { data: repairedUser, error: repairErr } = await supabase
+          .from("users")
+          .update({ email })
+          .eq("id", existingUser.id)
+          .select(USER_COLS)
+          .single();
+
+        if (repairErr) throw repairErr;
+        existingUser.email = repairedUser.email;
+      }
+
       // Fetch household if linked
       let household = null;
       if (existingUser.household_id) {
@@ -136,6 +148,21 @@ Deno.serve(async (req: Request) => {
         if (hhErr) throw hhErr;
         household = hh;
       }
+
+      // Record login history (best-effort, don't block response)
+      const forwarded = req.headers.get("x-forwarded-for");
+      const ipAddress = forwarded ? forwarded.split(",")[0]?.trim() : null;
+      const userAgent = req.headers.get("user-agent");
+      supabase
+        .from("login_history")
+        .insert({
+          user_id: existingUser.id,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+        })
+        .then(({ error: logErr }) => {
+          if (logErr) console.error("login_history insert error:", logErr);
+        });
 
       return json({ user: existingUser, household }, 200);
     }

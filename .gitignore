@@ -30,3 +30,6 @@ Thumbs.db
 # Local font/source bundles not used by app assets
 Fonts/
 FONT_SETUP.md
+
+.vercel
+.env*.local

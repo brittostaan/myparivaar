@@ -31,6 +31,20 @@
 
   <title>myparivaar</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Inter font via CDN — avoids bundling ~1.3 MB of .ttf files in debug builds -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-2GVN4C6HCX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-2GVN4C6HCX');
+  </script>
 </head>
 <body>
   <!--
@@ -41,6 +55,23 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <!-- Crawlable links for Google verification — visible until Flutter loads -->
+  <div id="preload-links" style="text-align:center;padding:40px;font-family:sans-serif;color:#475569">
+    <p style="font-size:13px">
+      <a href="/privacy" style="color:#2563EB">Privacy Policy</a> &middot;
+      <a href="/terms" style="color:#2563EB">Terms of Service</a>
+    </p>
+  </div>
+
   <script src="flutter_bootstrap.js" async></script>
+
+  <!-- Fallback for JS-disabled crawlers -->
+  <noscript>
+    <div style="text-align:center;padding:40px;font-family:sans-serif">
+      <h1>myParivaar</h1>
+      <p>AI-powered family finance management for Indian households.</p>
+      <p><a href="/privacy">Privacy Policy</a> | <a href="/terms">Terms of Service</a></p>
+    </div>
+  </noscript>
 </body>
 </html>

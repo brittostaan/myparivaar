@@ -1,10 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { verifyFirebaseToken } from '../_shared/firebase.ts'
+import { routeAIRequest, type ChatMessage } from '../_shared/ai-router.ts'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const openaiApiKey = Deno.env.get('OPENAI_API_KEY')!
 
 interface ChatRequest {
   message: string
@@ -150,6 +150,7 @@ Deno.serve(async (req: Request) => {
 
     // Generate AI response
     const response = await generateChatResponse(
+      supabase,
       message, 
       transactions || [], 
       budgets || [], 
@@ -197,16 +198,13 @@ Deno.serve(async (req: Request) => {
 })
 
 async function generateChatResponse(
+  supabase: ReturnType<typeof createClient>,
   userMessage: string,
   transactions: any[],
   budgets: any[],
   savings: any[],
   householdName: string
 ): Promise<string> {
-  if (!openaiApiKey) {
-    return "AI chat is temporarily unavailable. Please try again later or check your spending manually in the app."
-  }
-
   // Calculate spending summaries
   const totalSpent = transactions.reduce((sum, t) => sum + t.amount, 0)
   
@@ -245,19 +243,10 @@ ${savings
   .join('\n')}
 `
 
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a helpful financial assistant for Indian families using the myParivaar app. Answer questions about their spending, budgets, and savings based on the provided data. 
+  const messages: ChatMessage[] = [
+    {
+      role: 'system',
+      content: `You are a helpful financial assistant for Indian families using the myParivaar app. Answer questions about their spending, budgets, and savings based on the provided data. 
 
 IMPORTANT RULES:
 - Provide insights and observations only, never financial advice
@@ -268,27 +257,22 @@ IMPORTANT RULES:
 - Be encouraging but realistic
 - If asked about something not in the data, say you don't have that information
 - Focus on spending patterns, budget tracking, and goal progress only`
-          },
-          {
-            role: 'user',
-            content: `Based on my family's financial data:\n\n${contextData}\n\nQuestion: ${userMessage}`
-          }
-        ],
-        max_tokens: 250,
-        temperature: 0.7
-      })
-    })
-
-    const data = await response.json()
-    
-    if (data.choices && data.choices[0]?.message?.content) {
-      return data.choices[0].message.content.trim()
-    } else {
-      throw new Error('Invalid OpenAI response')
+    },
+    {
+      role: 'user',
+      content: `Based on my family's financial data:\n\n${contextData}\n\nQuestion: ${userMessage}`
     }
+  ]
+
+  try {
+    const result = await routeAIRequest(supabase, 'financial_chat', messages, {
+      max_tokens: 250,
+      temperature: 0.7,
+    })
+    return result.content
 
   } catch (error) {
-    console.error('OpenAI API error:', error)
+    console.error('AI router error:', error)
     
     // Fallback responses based on common question patterns
     const lowerMessage = userMessage.toLowerCase()

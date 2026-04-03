@@ -12,6 +12,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 export interface FirebaseClaims {
   uid: string;
   phone_number: string | undefined;
+  email: string | undefined;
 }
 
 /**
@@ -28,11 +29,23 @@ export async function verifyFirebaseToken(
   const { data: { user }, error } = await supabase.auth.getUser(idToken);
 
   if (error || !user) {
-    throw new Error(error?.message ?? "Invalid or expired token");
+    const errorMsg = error?.message ?? "Invalid or expired token";
+    const errorCode = (error as any)?.code ?? "UNKNOWN_ERROR";
+    console.error("[firebase.ts] Token verification failed", {
+      errorCode,
+      errorMsg,
+      hasUser: !!user,
+      supabaseUrl: SUPABASE_URL,
+      tokenLength: idToken.length,
+    });
+    throw new Error(errorMsg);
   }
+
+  console.log("[firebase.ts] Token verified successfully for user", { uid: user.id });
 
   return {
     uid: user.id,
     phone_number: user.phone ?? undefined,
+    email: user.email ?? undefined,
   };
 }

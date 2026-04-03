@@ -1,5 +1,5 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -49,11 +49,29 @@ class AuthService extends ChangeNotifier {
   final String _supabaseUrl;
   final SupabaseClient _supabase;
   final http.Client _http;
+  StreamSubscription<AuthState>? _authSubscription;
 
   // ── In-memory state ────────────────────────────────────────────────────────
   AppUser? _currentUser;
   Household? _currentHousehold;
   bool _isLoading = false;
+
+  /// Start listening to auth state changes from Supabase.
+  /// Call once after the service is created.
+  void listenToAuthChanges() {
+    _authSubscription?.cancel();
+    _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+      debugPrint('[AuthService] onAuthStateChange: $event');
+
+      if (event == AuthChangeEvent.signedOut) {
+        _currentUser = null;
+        _currentHousehold = null;
+        notifyListeners();
+      }
+      // tokenRefreshed — session stays alive, no action needed.
+    });
+  }
 
   // ── Public read-only state ─────────────────────────────────────────────────
   AppUser? get currentUser => _currentUser;
@@ -66,14 +84,21 @@ class AuthService extends ChangeNotifier {
 
   // ── Public methods ─────────────────────────────────────────────────────────
 
-  /// Get the current Supabase JWT token
+  /// Get the current Supabase JWT token, auto-refreshing if expired or stale.
   Future<String> getIdToken([bool forceRefresh = false]) async {
     final session = _supabase.auth.currentSession;
     if (session == null) {
       throw const AppAuthException('User not authenticated');
     }
 
-    if (forceRefresh) {
+    // Auto-refresh if:
+    //  - expiresAt is unknown (can't trust the token)
+    //  - token is within 60 seconds of expiry (or already expired)
+    final expiresAt = session.expiresAt;
+    final isExpired = expiresAt == null ||
+        DateTime.now().millisecondsSinceEpoch ~/ 1000 >= expiresAt - 60;
+
+    if (forceRefresh || isExpired) {
       final response = await _supabase.auth.refreshSession();
       if (response.session == null) {
         throw const AppAuthException('Unable to refresh token');
@@ -111,6 +136,10 @@ class AuthService extends ChangeNotifier {
       }
 
       await _bootstrap();
+      // Admin users don't require a household to proceed
+      if (_currentUser?.isPlatformAdmin == true) {
+        return AuthStatus.ready;
+      }
       return hasHousehold ? AuthStatus.ready : AuthStatus.needsHousehold;
     } on AppAuthException {
       rethrow;
@@ -159,6 +188,10 @@ class AuthService extends ChangeNotifier {
 
       // Bootstrap with optional family name
       await _bootstrap(familyName: familyName);
+      // Admin users don't require a household to proceed
+      if (_currentUser?.isPlatformAdmin == true) {
+        return AuthStatus.ready;
+      }
       return hasHousehold ? AuthStatus.ready : AuthStatus.needsHousehold;
     } on AppAuthException {
       rethrow;
@@ -183,7 +216,24 @@ class AuthService extends ChangeNotifier {
   /// Returns [AuthStatus.ready], [AuthStatus.needsHousehold], or null if the
   /// user has no active Supabase session.
   Future<AuthStatus?> refreshSession() async {
-    final session = _supabase.auth.currentSession;
+    // On web, Supabase may still be recovering the session from localStorage.
+    // Wait briefly for the initial session if currentSession is null.
+    var session = _supabase.auth.currentSession;
+    if (session == null) {
+      try {
+        final authState = await _supabase.auth.onAuthStateChange
+            .firstWhere(
+              (s) => s.event == AuthChangeEvent.initialSession ||
+                     s.event == AuthChangeEvent.signedIn ||
+                     s.event == AuthChangeEvent.tokenRefreshed,
+            )
+            .timeout(const Duration(seconds: 3));
+        session = authState.session;
+      } on TimeoutException {
+        // No session recovered within 3s — user is not logged in.
+        debugPrint('[AuthService] No session recovered from storage.');
+      }
+    }
     if (session == null) return null;
 
     _setLoading(true);
@@ -194,6 +244,10 @@ class AuthService extends ChangeNotifier {
         actionLabel: 'refresh session',
       );
       await _bootstrap();
+      // Admin users don't require a household to proceed
+      if (_currentUser?.isPlatformAdmin == true) {
+        return AuthStatus.ready;
+      }
       return hasHousehold ? AuthStatus.ready : AuthStatus.needsHousehold;
     } on AppAuthException catch (e) {
       debugPrint('refreshSession app auth error: ${e.message}');
@@ -222,6 +276,12 @@ class AuthService extends ChangeNotifier {
     _currentUser = null;
     _currentHousehold = null;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
   }
 
   // ── Profile update ─────────────────────────────────────────────────────────
@@ -343,12 +403,22 @@ class AuthService extends ChangeNotifier {
         m.contains('missing authorization') ||
         m.contains('not authenticated') ||
         m.contains('token verification failed') ||
-        m.contains('jwt');
+        m.contains('invalid jwt') ||
+        m.contains('jwt expired');
   }
 
   bool _looksLikeTerminalAuthError(String message) {
     final m = message.toLowerCase();
-    return m.contains('auth') || m.contains('jwt') || m.contains('token');
+    // Match only specific, well-known terminal auth error strings to avoid
+    // signing out users on unrelated errors that happen to contain 'auth',
+    // 'jwt', or 'token' (e.g. network proxy errors, 503 response bodies).
+    return m.contains('invalid or expired token') ||
+        m.contains('missing authorization') ||
+        m.contains('not authenticated') ||
+        m.contains('token verification failed') ||
+        m.contains('invalid jwt') ||
+        m.contains('jwt expired') ||
+        m.contains('user not found');
   }
 
   Future<T> _withRetry<T>(
@@ -362,8 +432,6 @@ class AuthService extends ChangeNotifier {
       try {
         return await operation();
       } on AuthRetryableFetchException catch (e) {
-        lastError = e;
-      } on SocketException catch (e) {
         lastError = e;
       } on http.ClientException catch (e) {
         lastError = e;

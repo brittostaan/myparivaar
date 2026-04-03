@@ -44,6 +44,7 @@ class BudgetService {
     required String category,
     required double amount,
     required String month,
+    List<String>? tags,
   }) async {
     final response = await _post(
       supabaseUrl: supabaseUrl,
@@ -53,6 +54,7 @@ class BudgetService {
         'category': category,
         'amount': amount,
         'month': month,
+        'tags': tags,
       },
     );
 

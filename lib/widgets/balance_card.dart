@@ -79,7 +79,7 @@ class BalanceCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Expense vs Budget',
+                      'Total Balance',
                       style: AppTextStyles.cardSubtitle(AppColors.textPrimaryDark.withOpacity(0.9)),
                     ),
                     Icon(

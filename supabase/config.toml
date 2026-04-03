@@ -26,7 +26,15 @@ file_size_limit = "50MiB"
 
 [auth]
 enabled = true
-site_url = "http://127.0.0.1:3000"
+site_url = "https://www.myparivaar.ai"
+additional_redirect_urls = [
+	"https://www.myparivaar.ai",
+	"https://www.myparivaar.ai/login",
+	"https://www.myparivaar.ai/auth/callback",
+	"https://myparivaar.ai",
+	"https://myparivaar.ai/login",
+	"https://myparivaar.ai/auth/callback"
+]
 jwt_expiry = 3600
 enable_signup = false
 

@@ -19,35 +19,89 @@ class MoreScreen extends StatelessWidget {
                 avatarIcon: AppIcons.expandMore,
               ),
               Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.more_horiz,
-                        size: 64,
-                        color: Theme.of(context).primaryColor.withOpacity(0.5),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'More Options',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Content coming soon...',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  children: [
+                    _MoreTile(
+                      icon: AppIcons.mic,
+                      label: 'Voice Expense',
+                      subtitle: 'Add an expense by speaking',
+                      onTap: () => Navigator.of(context).pushNamed('/voice-expense'),
+                    ),
+                    _MoreTile(
+                      icon: AppIcons.notifications,
+                      label: 'Notifications',
+                      subtitle: 'View your alerts and reminders',
+                      onTap: () => Navigator.of(context).pushReplacementNamed('/notifications'),
+                    ),
+                    _MoreTile(
+                      icon: AppIcons.upload,
+                      label: 'Import CSV',
+                      subtitle: 'Import expenses from a spreadsheet',
+                      onTap: () => Navigator.of(context).pushReplacementNamed('/csv-import'),
+                    ),
+                    _MoreTile(
+                      icon: Icons.savings_outlined,
+                      label: 'Savings Goals',
+                      subtitle: 'Track your savings and targets',
+                      onTap: () => Navigator.of(context).pushReplacementNamed('/savings'),
+                    ),
+                    _MoreTile(
+                      icon: Icons.query_stats,
+                      label: 'Investments',
+                      subtitle: 'Track portfolio and due dates',
+                      onTap: () => Navigator.of(context).pushReplacementNamed('/investments'),
+                    ),
+                    _MoreTile(
+                      icon: Icons.account_balance_outlined,
+                      label: 'Assets',
+                      subtitle: 'Manage family assets and properties',
+                      onTap: () => Navigator.of(context).pushReplacementNamed('/assets'),
+                    ),
+                    _MoreTile(
+                      icon: Icons.contacts_outlined,
+                      label: 'Key Contacts',
+                      subtitle: 'Lawyer, auditor, doctor and more',
+                      onTap: () => Navigator.of(context).pushReplacementNamed('/key-contacts'),
+                    ),
+                    _MoreTile(
+                      icon: AppIcons.smartToy,
+                      label: 'AI Features',
+                      subtitle: 'Smart insights and suggestions',
+                      onTap: () => Navigator.of(context).pushReplacementNamed('/ai'),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MoreTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _MoreTile({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
+      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
     );
   }
 }

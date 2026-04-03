@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
+import { getOAuthCredentials } from '../_shared/oauth.ts'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -83,31 +84,32 @@ Deno.serve(async (req: Request) => {
     let userInfo: any
 
     if (oauthState.provider === 'gmail') {
-      const clientId = Deno.env.get('GOOGLE_CLIENT_ID')
-      const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET')
+      const creds = await getOAuthCredentials('google')
       const redirectUri = `${supabaseUrl}/functions/v1/email-oauthCallback`
 
-      if (!clientId || !clientSecret) {
+      if (!creds) {
         throw new Error('Gmail OAuth credentials not configured')
       }
 
       // Exchange code for tokens
+      console.log('[oauthCallback] Gmail: exchanging code for tokens, redirectUri:', creds.redirectUri || redirectUri)
       const tokenReq = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
+          client_id: creds.clientId,
+          client_secret: creds.clientSecret,
           code,
           grant_type: 'authorization_code',
-          redirect_uri: redirectUri,
+          redirect_uri: creds.redirectUri || redirectUri,
         }),
       })
 
       tokenResponse = await tokenReq.json()
+      console.log('[oauthCallback] Gmail token response status:', tokenReq.status, 'has access_token:', !!tokenResponse.access_token, 'error:', tokenResponse.error, tokenResponse.error_description)
       
       if (!tokenResponse.access_token) {
-        throw new Error('Failed to get access token from Google')
+        throw new Error(`Failed to get access token from Google: ${tokenResponse.error ?? 'unknown'} - ${tokenResponse.error_description ?? ''}`)
       }
 
       // Get user info
@@ -118,32 +120,33 @@ Deno.serve(async (req: Request) => {
       userInfo = await userInfoReq.json()
       
     } else { // outlook
-      const clientId = Deno.env.get('MICROSOFT_CLIENT_ID')
-      const clientSecret = Deno.env.get('MICROSOFT_CLIENT_SECRET')
+      const creds = await getOAuthCredentials('microsoft')
       const redirectUri = `${supabaseUrl}/functions/v1/email-oauthCallback`
 
-      if (!clientId || !clientSecret) {
+      if (!creds) {
         throw new Error('Outlook OAuth credentials not configured')
       }
 
       // Exchange code for tokens
+      console.log('[oauthCallback] Outlook: exchanging code for tokens, redirectUri:', creds.redirectUri || redirectUri)
       const tokenReq = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
+          client_id: creds.clientId,
+          client_secret: creds.clientSecret,
           code,
           grant_type: 'authorization_code',
-          redirect_uri: redirectUri,
+          redirect_uri: creds.redirectUri || redirectUri,
           scope: 'https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/User.Read offline_access',
         }),
       })
 
       tokenResponse = await tokenReq.json()
+      console.log('[oauthCallback] Outlook token response status:', tokenReq.status, 'has access_token:', !!tokenResponse.access_token, 'error:', tokenResponse.error, tokenResponse.error_description)
       
       if (!tokenResponse.access_token) {
-        throw new Error('Failed to get access token from Microsoft')
+        throw new Error(`Failed to get access token from Microsoft: ${tokenResponse.error ?? 'unknown'} - ${tokenResponse.error_description ?? ''}`)
       }
 
       // Get user info
@@ -159,6 +162,16 @@ Deno.serve(async (req: Request) => {
       ? new Date(Date.now() + (tokenResponse.expires_in * 1000)).toISOString()
       : null
 
+    // Resolve email: Google returns `email`, Microsoft Graph returns `mail` or `userPrincipalName`
+    const emailAddress = oauthState.provider === 'gmail'
+      ? userInfo.email
+      : (userInfo.mail || userInfo.userPrincipalName)
+
+    if (!emailAddress) {
+      console.error('Could not resolve email from userInfo:', JSON.stringify(userInfo))
+      throw new Error('Could not determine email address from provider')
+    }
+
     // Store email account in database
     const { error: insertError } = await supabasePublic
       .from('email_accounts')
@@ -166,7 +179,7 @@ Deno.serve(async (req: Request) => {
         household_id: oauthState.household_id,
         user_id: appUser.id,
         provider: oauthState.provider,
-        email_address: userInfo.email,
+        email_address: emailAddress,
         access_token: tokenResponse.access_token,
         refresh_token: tokenResponse.refresh_token || null,
         token_expires_at: expiresAt,
@@ -196,7 +209,7 @@ Deno.serve(async (req: Request) => {
       <body>
         <div class="success">
           <h1>✓ Email Account Connected</h1>
-          <p><strong>${userInfo.email}</strong> has been connected successfully!</p>
+          <p><strong>${emailAddress}</strong> has been connected successfully!</p>
         </div>
         <div class="info">
           <p>You can now close this window and return to the myParivaar app.</p>
@@ -211,7 +224,8 @@ Deno.serve(async (req: Request) => {
     )
 
   } catch (error) {
-    console.error('email-oauthCallback error:', error)
+    const errMsg = error instanceof Error ? error.message : String(error)
+    console.error('email-oauthCallback error:', errMsg, error)
     
     return new Response(
       `<!DOCTYPE html>
@@ -221,13 +235,15 @@ Deno.serve(async (req: Request) => {
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; text-align: center; margin: 50px; }
           .error { color: #ef4444; }
+          .details { color: #6b7280; font-size: 14px; margin-top: 20px; padding: 12px; background: #f3f4f6; border-radius: 8px; text-align: left; display: inline-block; max-width: 600px; word-break: break-all; }
         </style>
       </head>
       <body>
         <div class="error">
           <h1>Email Connection Failed</h1>
           <p>There was an error connecting your email account.</p>
-          <p>Please close this window and try again.</p>
+          <div class="details"><strong>Error:</strong> ${errMsg}</div>
+          <p style="margin-top:20px">Please close this window and try again.</p>
         </div>
       </body>
       </html>`,

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'ai_service.dart';
 
 /// Mock voice recognition service for MVP
 /// In production, this would use speech_to_text package or similar
@@ -60,14 +61,44 @@ class VoiceService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Parses voice input using AI, falling back to local regex
+  Future<ExpenseFromVoice?> parseExpenseFromVoiceAI(
+    String voiceText, {
+    required String supabaseUrl,
+    required String idToken,
+  }) async {
+    try {
+      final result = await AIService().processVoiceText(
+        transcription: voiceText,
+        supabaseUrl: supabaseUrl,
+        idToken: idToken,
+      );
+      final amount = (result['amount'] as num?)?.toDouble();
+      if (amount == null || amount <= 0) return parseExpenseFromVoice(voiceText);
+      return ExpenseFromVoice(
+        amount: amount,
+        description: result['description'] as String? ?? 'Voice expense',
+        category: result['category'] as String? ?? 'Other',
+        originalText: voiceText,
+      );
+    } catch (_) {
+      // Fallback to local regex parsing
+      return parseExpenseFromVoice(voiceText);
+    }
+  }
+
   /// Parses voice input to extract expense details
   ExpenseFromVoice? parseExpenseFromVoice(String voiceText) {
     try {
       final text = voiceText.toLowerCase();
       
-      // Extract amount
-      RegExp amountRegex = RegExp(r'(\d+(?:\.\d{1,2})?)\s*(?:rupees?|rs\.?|inr)?');
-      final amountMatch = amountRegex.firstMatch(text);
+      // Extract amount — prefer the number closest to (immediately before) a
+      // currency keyword so "bought 2 coffees at 150 rupees" captures 150, not 2.
+      RegExp amountWithCurrency = RegExp(r'(\d+(?:\.\d{1,2})?)\s*(?:rupees?|rs\.?|inr)');
+      RegExp amountAny = RegExp(r'(\d+(?:\.\d{1,2})?)');
+
+      RegExpMatch? amountMatch = amountWithCurrency.firstMatch(text);
+      amountMatch ??= amountAny.allMatches(text).lastOrNull;
       if (amountMatch == null) return null;
       
       final amount = double.parse(amountMatch.group(1)!);

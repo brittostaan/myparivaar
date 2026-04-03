@@ -7,6 +7,7 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 interface ApproveExpenseRequest {
   expense_id?: string
+  action?: 'approve' | 'reject'
 }
 
 Deno.serve(async (req: Request) => {
@@ -40,6 +41,14 @@ Deno.serve(async (req: Request) => {
     const body = await req.json() as ApproveExpenseRequest
     if (!body.expense_id) {
       return new Response(JSON.stringify({ error: 'expense_id is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const action = body.action || 'approve'
+    if (action !== 'approve' && action !== 'reject') {
+      return new Response(JSON.stringify({ error: 'Invalid action. Must be approve or reject' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -84,15 +93,17 @@ Deno.serve(async (req: Request) => {
       })
     }
 
+    const newStatus = action === 'reject' ? 'rejected' : 'approved'
+
     const { data: updatedExpense, error: updateError } = await supabase
       .from('transactions')
-      .update({ status: 'approved' })
+      .update({ status: newStatus })
       .eq('id', body.expense_id)
       .select('*')
       .single()
 
     if (updateError) {
-      return new Response(JSON.stringify({ error: 'Failed to approve expense' }), {
+      return new Response(JSON.stringify({ error: `Failed to ${action} expense` }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })

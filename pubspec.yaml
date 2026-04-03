@@ -22,11 +22,16 @@ dependencies:
   # File picking — used with withData: true for web-safe CSV reading
   file_picker: ^8.1.2
 
+  # Excel (.xlsx) parsing — archive for zip, xml for sheet data
+  archive: ^4.0.4
+  xml: ^6.5.0
+
   # Localisation and date/number formatting
   intl: ^0.19.0
 
   # Material icons (conventional Flutter default)
   cupertino_icons: ^1.0.8
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
@@ -35,16 +40,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
-  # ── Fonts ─────────────────────────────────────────────────────────────────
-  fonts:
-    - family: Inter
-      fonts:
-        - asset: assets/fonts/Inter-Regular.ttf
-          weight: 400
-        - asset: assets/fonts/Inter-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/Inter-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/Inter-Bold.ttf
-          weight: 700
+  # Inter font is loaded via Google Fonts CDN in web/index.html.
+  # Bundled .ttf files have been removed to speed up debug hot restart (~1.3 MB saved).
+  # To restore bundled fonts for release (offline-capable), re-add the fonts: section
+  # and remove the <link> tag from web/index.html.

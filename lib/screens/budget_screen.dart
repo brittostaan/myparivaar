@@ -3761,8 +3761,8 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
       final validRows = _editableRows.where((r) => r.isValid).toList();
       if (validRows.isEmpty) return;
 
-      final items = validRows.map((r) => {
-        'description': r.subcategory.isNotEmpty ? '${r.subcategory} (${r.category})' : r.category,
+      final items = validRows.map((r) => <String, dynamic>{
+        'description': r.subcategory.isNotEmpty ? r.subcategory : r.category,
         'amount': r.amount,
       }).toList();
 
@@ -3790,7 +3790,7 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
       if (!mounted) return;
       setState(() {
         _isCategorizingWithAI = false;
-        _aiError = 'AI categorization failed. Using keyword matching.';
+        _aiError = 'AI categorization failed: $e';
       });
     }
   }

@@ -27,7 +27,7 @@ file_size_limit = "50MiB"
 [auth]
 enabled = true
 site_url = "https://www.myparivaar.ai"
-redirect_urls = [
+additional_redirect_urls = [
 	"https://www.myparivaar.ai",
 	"https://www.myparivaar.ai/login",
 	"https://www.myparivaar.ai/auth/callback",

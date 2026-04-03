@@ -11,6 +11,34 @@ interface CreateExpenseRequest {
   description: string
   date: string // YYYY-MM-DD format
   notes?: string
+  tags?: string[]
+}
+
+function sanitizeTags(tags?: string[]): string[] {
+  if (!Array.isArray(tags)) return []
+
+  const seen = new Set<string>()
+  const output: string[] = []
+
+  for (const rawTag of tags) {
+    if (typeof rawTag !== 'string') continue
+    const normalized = rawTag.trim().replace(/\s+/g, ' ')
+    if (!normalized) continue
+    if (normalized.length > 40) {
+      throw new Error('Each tag must be 40 characters or less')
+    }
+    const key = normalized.toLowerCase()
+    if (!seen.has(key)) {
+      seen.add(key)
+      output.push(normalized)
+    }
+  }
+
+  if (output.length > 15) {
+    throw new Error('You can add up to 15 tags')
+  }
+
+  return output
 }
 
 /**
@@ -49,7 +77,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Parse and validate request body
-    const { amount, category, description, date, notes }: CreateExpenseRequest = await req.json()
+    const { amount, category, description, date, notes, tags }: CreateExpenseRequest = await req.json()
 
     if (!amount || typeof amount !== 'number' || amount <= 0 || amount > 99999999.99) {
       return new Response(JSON.stringify({ error: 'Invalid amount' }), {
@@ -58,17 +86,16 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    const normalizedCategory = (category || '').toLowerCase().trim()
-    const validCategories = ['food', 'transport', 'shopping', 'utilities', 'healthcare', 'entertainment', 'education', 'other']
-    if (!normalizedCategory || !validCategories.includes(normalizedCategory)) {
-      return new Response(JSON.stringify({ error: 'Invalid category' }), {
+    const normalizedCategory = (category || '').trim()
+    if (!normalizedCategory || normalizedCategory.length > 50) {
+      return new Response(JSON.stringify({ error: 'Category must be 1-50 characters' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    if (!description || typeof description !== 'string' || description.trim().length < 3 || description.length > 100) {
-      return new Response(JSON.stringify({ error: 'Description must be 3-100 characters' }), {
+    if (!description || typeof description !== 'string' || description.trim().length < 1 || description.length > 200) {
+      return new Response(JSON.stringify({ error: 'Description must be 1-200 characters' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -81,8 +108,18 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    if (notes && (typeof notes !== 'string' || notes.length > 200)) {
-      return new Response(JSON.stringify({ error: 'Notes cannot exceed 200 characters' }), {
+    if (notes && (typeof notes !== 'string' || notes.length > 500)) {
+      return new Response(JSON.stringify({ error: 'Notes cannot exceed 500 characters' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    let sanitizedTags: string[]
+    try {
+      sanitizedTags = sanitizeTags(tags)
+    } catch (error) {
+      return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Invalid tags' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -96,11 +133,12 @@ Deno.serve(async (req: Request) => {
     // Get user's household
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('household_id')
+      .select('id, household_id')
       .eq('firebase_uid', decodedToken.uid)
       .single()
 
     if (userError || !userData?.household_id) {
+      console.error('User lookup error:', userError, 'uid:', decodedToken.uid)
       return new Response(JSON.stringify({ error: 'User not found or not active' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -126,11 +164,13 @@ Deno.serve(async (req: Request) => {
       .from('transactions')
       .insert({
         household_id: userData.household_id,
+        created_by_user_id: userData.id,
         amount,
         category: normalizedCategory,
         description: description.trim(),
         date,
         notes: notes?.trim() || null,
+        tags: sanitizedTags,
         source: 'manual',
         status: 'approved',
       })
@@ -139,7 +179,7 @@ Deno.serve(async (req: Request) => {
 
     if (createError) {
       console.error('Database error:', createError)
-      return new Response(JSON.stringify({ error: 'Failed to create expense' }), {
+      return new Response(JSON.stringify({ error: `Failed to create expense: ${createError.message}` }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })

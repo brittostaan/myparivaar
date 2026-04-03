@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -8,19 +9,36 @@ import 'screens/savings_goals_screen.dart';
 import 'screens/family_management_screen.dart';
 import 'screens/expense_management_screen.dart';
 import 'screens/budget_screen.dart';
+import 'screens/investments_screen.dart';
+import 'screens/upcoming_bills_screen.dart';
+import 'screens/reports_screen.dart';
+import 'screens/family_planner_screen.dart';
+import 'screens/kids_dashboard_screen.dart';
+import 'screens/parents_dashboard_screen.dart';
+import 'screens/assets_screen.dart';
+import 'screens/key_contacts_screen.dart';
 import 'screens/ai_features_screen.dart';
 import 'screens/email_settings_screen.dart';
 import 'screens/user_settings_screen.dart';
 import 'screens/admin_settings_screen.dart';
+import 'screens/admin_center_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/more_screen.dart';
 import 'screens/voice_expense_screen.dart';
+import 'screens/anomaly_detection_screen.dart';
+import 'screens/financial_simulator_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/legal_page_screen.dart';
+import 'screens/landing_page_screen.dart';
+import 'screens/idea_board_screen.dart';
+import 'screens/subscription_screen.dart';
+import 'services/admin_service.dart';
 import 'services/auth_service.dart';
 import 'services/family_service.dart';
 import 'services/import_service.dart';
 import 'widgets/navigation_shell.dart';
+import 'widgets/global_header_actions.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_icons.dart';
 
@@ -38,8 +56,85 @@ const _kSupabaseAnonKey = String.fromEnvironment(
 );
 const _kAppEnv = String.fromEnvironment('APP_ENV', defaultValue: '');
 
-bool get _isDevEnvironment =>
-    kDebugMode || _kAppEnv.toLowerCase().trim() == 'dev';
+bool get _isPreviewEnvironment => _kAppEnv.toLowerCase().trim() == 'preview';
+
+const Set<String> _authenticatedRoutes = {
+  '/home',
+  '/expenses',
+  '/budget',
+  '/investments',
+  '/bills',
+  '/reports',
+  '/family-planner',
+  '/kids-dashboard',
+  '/parents-dashboard',
+  '/ai',
+  '/email-settings',
+  '/user-settings',
+  '/admin-settings',
+  '/admin-center',
+  '/more',
+  '/notifications',
+  '/savings',
+  '/voice-expense',
+  '/profile',
+  '/family',
+  '/csv-import',
+  '/featureboard',
+  '/subscription',
+  '/assets',
+  '/key-contacts',
+};
+
+const Set<String> _publicRoutes = {
+  '/',
+  '/privacy',
+  '/terms',
+  '/login',
+};
+
+/// Captured once at startup so that _AppRouter can determine the original
+/// URL even after Flutter's Navigator may have updated the browser address
+/// bar to the [initialRoute] value.
+late final String _capturedInitialPath;
+
+String _captureInitialPath() {
+  final uri = Uri.base;
+  final path = uri.path.isEmpty ? '/' : uri.path;
+  String candidate = path;
+
+  // Legacy hash-based deep links (e.g. /#/privacy)
+  if ((candidate == '/' || candidate.isEmpty) && uri.fragment.startsWith('/')) {
+    candidate = '/${uri.fragment.substring(1).split('?').first}';
+  }
+
+  if (candidate.length > 1 && candidate.endsWith('/')) {
+    candidate = candidate.substring(0, candidate.length - 1);
+  }
+
+  return candidate;
+}
+
+String _routeFromEndpoint() {
+  final candidate = _capturedInitialPath;
+
+  if (_authenticatedRoutes.contains(candidate)) {
+    return candidate;
+  }
+  // Never return public routes (like /login) for post-auth navigation
+  // Root URL with no hash fragment → landing page (only used for public routing)
+  if (candidate == '/' || candidate.isEmpty) return '/';
+  return '/home';
+}
+
+/// Returns the initial route for MaterialApp.
+/// Public routes are served directly (no splash/auth guard).
+/// Everything else goes through [_AppRouter] for session restore.
+String _computeInitialRoute() {
+  final candidate = _capturedInitialPath;
+  if (_publicRoutes.contains(candidate)) return candidate;
+  return '/_init';
+}
 
 // ── View Mode (Responsive Design) ────────────────────────────────────────────
 
@@ -59,13 +154,39 @@ enum ViewMode {
   final double? width;
 }
 
+ViewMode viewModeFromWidth(double width) {
+  if (width >= 1024) {
+    return ViewMode.desktop;
+  }
+  if (width >= 700) {
+    return ViewMode.tablet;
+  }
+  return ViewMode.mobile;
+}
+
 class ViewModeProvider extends ChangeNotifier {
   ViewMode _mode = ViewMode.mobile;
+  bool _isManualOverride = false;
 
   ViewMode get mode => _mode;
+  bool get isManualOverride => _isManualOverride;
 
   void setMode(ViewMode mode) {
+    _isManualOverride = true;
+    if (_mode == mode) return;
     _mode = mode;
+    notifyListeners();
+  }
+
+  void syncAutoMode(ViewMode mode) {
+    if (_isManualOverride || _mode == mode) return;
+    _mode = mode;
+    notifyListeners();
+  }
+
+  void clearManualOverride() {
+    if (!_isManualOverride) return;
+    _isManualOverride = false;
     notifyListeners();
   }
 }
@@ -74,6 +195,8 @@ class ViewModeProvider extends ChangeNotifier {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  usePathUrlStrategy(); // Clean URLs: /privacy instead of /#/privacy
+  _capturedInitialPath = _captureInitialPath(); // snapshot before Navigator touches the URL
 
   // Validate config before initialising Supabase. On failure, show a
   // human-readable error screen instead of crashing before runApp().
@@ -111,7 +234,15 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
-            create: (_) => AuthService(supabaseUrl: _kSupabaseUrl)),
+            create: (_) => AuthService(supabaseUrl: _kSupabaseUrl)
+              ..listenToAuthChanges()),
+        ChangeNotifierProvider(
+          create: (context) => AdminService(
+            supabaseUrl: _kSupabaseUrl,
+            supabaseAnonKey: _kSupabaseAnonKey,
+            authService: context.read<AuthService>(),
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => ViewModeProvider()),
       ],
       child: const MyParivaaarApp(),
@@ -153,7 +284,8 @@ class MyParivaaarApp extends StatelessWidget {
               child: child!,
             );
           },
-          home: const _AppRouter(),
+          home: null,
+          initialRoute: _computeInitialRoute(),
           onGenerateRoute: _onGenerateRoute,
         );
       },
@@ -201,7 +333,13 @@ class MyParivaaarApp extends StatelessWidget {
           return MaterialPageRoute(
             settings: settings,
             builder: (_) => Scaffold(
-              appBar: AppBar(title: const Text('Import')),
+              appBar: AppBar(
+                title: const Text('Import'),
+                actions: const [
+                  GlobalHeaderActions(showLogout: true),
+                  SizedBox(width: 8),
+                ],
+              ),
               body: const Center(
                 child: Padding(
                   padding: EdgeInsets.all(24),
@@ -277,6 +415,78 @@ class MyParivaaarApp extends StatelessWidget {
           ),
         );
 
+      case '/investments':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const InvestmentsScreen(),
+          ),
+        );
+
+      case '/bills':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const UpcomingBillsScreen(),
+          ),
+        );
+
+      case '/reports':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const ReportsScreen(),
+          ),
+        );
+
+      case '/family-planner':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const FamilyPlannerScreen(),
+          ),
+        );
+
+      case '/kids-dashboard':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const KidsDashboardScreen(),
+          ),
+        );
+
+      case '/parents-dashboard':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const ParentsDashboardScreen(),
+          ),
+        );
+
+      case '/assets':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const AssetsScreen(),
+          ),
+        );
+
+      case '/key-contacts':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const KeyContactsScreen(),
+          ),
+        );
+
       case '/ai':
         return MaterialPageRoute(
           settings: settings,
@@ -304,6 +514,15 @@ class MyParivaaarApp extends StatelessWidget {
           ),
         );
 
+      case '/subscription':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: SubscriptionScreen(supabaseUrl: _kSupabaseUrl),
+          ),
+        );
+
       case '/admin-settings':
         return MaterialPageRoute(
           settings: settings,
@@ -311,6 +530,18 @@ class MyParivaaarApp extends StatelessWidget {
             currentRoute: routeName,
             child: const AdminSettingsScreen(),
           ),
+        );
+
+      case '/admin-center':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => const AdminCenterScreen(),
+        );
+
+      case '/featureboard':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => const IdeaBoardScreen(supabaseUrl: _kSupabaseUrl),
         );
 
       case '/more':
@@ -340,14 +571,38 @@ class MyParivaaarApp extends StatelessWidget {
       case '/voice-expense':
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => const VoiceExpenseScreen(),
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const VoiceExpenseScreen(),
+          ),
+        );
+
+      case '/anomaly-detection':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const AnomalyDetectionScreen(),
+          ),
+        );
+
+      case '/financial-simulator':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const FinancialSimulatorScreen(),
+          ),
         );
 
       case '/profile':
         return PageRouteBuilder(
           settings: settings,
           pageBuilder: (context, animation, secondaryAnimation) {
-            return const ProfileScreen();
+            return NavigationShell(
+              currentRoute: routeName,
+              child: const ProfileScreen(),
+            );
           },
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             const begin = Offset(-1.0, 0.0);
@@ -369,8 +624,30 @@ class MyParivaaarApp extends StatelessWidget {
           transitionDuration: const Duration(milliseconds: 300),
         );
 
+      case '/landing':
+      case '/':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => const LandingPageScreen(),
+        );
+
+      case '/privacy':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => LegalPageScreen.privacy(),
+        );
+
+      case '/terms':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => LegalPageScreen.terms(),
+        );
+
       default:
-        return MaterialPageRoute(builder: (_) => const _AppRouter());
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => const _AppRouter(),
+        );
     }
   }
 }
@@ -395,6 +672,14 @@ class _AppRouterState extends State<_AppRouter> {
   }
 
   Future<void> _restoreSession() async {
+    // Check for public routes first — no auth needed
+    final targetRoute = _routeFromEndpoint();
+    if (_publicRoutes.contains(targetRoute)) {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed(targetRoute);
+      return;
+    }
+
     final auth = context.read<AuthService>();
     AuthStatus? status;
     try {
@@ -407,7 +692,16 @@ class _AppRouterState extends State<_AppRouter> {
 
     switch (status) {
       case AuthStatus.ready:
-        Navigator.of(context).pushReplacementNamed('/home');
+        // Admin-only users (no household) always land on admin center
+        if (auth.currentUser?.isPlatformAdmin == true &&
+            !auth.hasHousehold) {
+          Navigator.of(context).pushReplacementNamed('/admin-center');
+          return;
+        }
+        final dest = _authenticatedRoutes.contains(_capturedInitialPath)
+            ? _capturedInitialPath
+            : '/home';
+        Navigator.of(context).pushReplacementNamed(dest);
       case AuthStatus.needsHousehold:
         Navigator.of(context).pushReplacementNamed('/household-setup');
       case null:
@@ -529,15 +823,30 @@ class _LoginScreenState extends State<_LoginScreen> {
   }
 
   void _navigateByStatus(AuthStatus status) {
-    final route = status == AuthStatus.ready ? '/home' : '/household-setup';
-    Navigator.of(context).pushReplacementNamed(route);
+    if (status == AuthStatus.ready) {
+      final authService = context.read<AuthService>();
+      // Admin-only users (no household) always land on admin center
+      if (authService.currentUser?.isPlatformAdmin == true &&
+          !authService.hasHousehold) {
+        Navigator.of(context).pushReplacementNamed('/admin-center');
+        return;
+      }
+      // Only deep-link to an authenticated route the user originally
+      // requested (e.g. bookmarked /expenses). Otherwise default to /home.
+      final target = _authenticatedRoutes.contains(_capturedInitialPath)
+          ? _capturedInitialPath
+          : '/home';
+      Navigator.of(context).pushReplacementNamed(target);
+    } else {
+      Navigator.of(context).pushReplacementNamed('/household-setup');
+    }
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final showDevLabel = _isDevEnvironment;
+    final showPreviewLabel = _isPreviewEnvironment;
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
 
@@ -580,11 +889,11 @@ class _LoginScreenState extends State<_LoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    if (showDevLabel)
+                    if (showPreviewLabel)
                       const Padding(
                         padding: EdgeInsets.only(bottom: 8),
                         child: Text(
-                          'DEV',
+                          'Preview Environment',
                           style: TextStyle(
                             color: Colors.red,
                             fontWeight: FontWeight.bold,
@@ -963,35 +1272,9 @@ class _LoginScreenState extends State<_LoginScreen> {
             top: 16,
             right: 16,
             child: SafeArea(
-              child: Consumer<ViewModeProvider>(
-                builder: (context, viewModeProvider, _) {
-                  final currentMode = viewModeProvider.mode;
-                  return PopupMenuButton<ViewMode>(
-                    tooltip: 'View Mode',
-                    icon: Icon(currentMode.icon, color: Colors.grey[500]),
-                    onSelected: viewModeProvider.setMode,
-                    itemBuilder: (context) => ViewMode.values.map((mode) {
-                      return PopupMenuItem<ViewMode>(
-                        value: mode,
-                        child: Row(
-                          children: [
-                            Icon(mode.icon,
-                                color: mode == currentMode ? primary : null),
-                            const SizedBox(width: 12),
-                            Text(
-                              mode.label,
-                              style: TextStyle(
-                                fontWeight: mode == currentMode
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  );
-                },
+              child: GlobalHeaderActions(
+                showLogout: false,
+                iconColor: Colors.grey[500],
               ),
             ),
           ),
@@ -1074,6 +1357,10 @@ class _NeedsHouseholdScreenState extends State<_NeedsHouseholdScreen> {
       appBar: AppBar(
         title: const Text('Join Household'),
         automaticallyImplyLeading: false, // Remove back button
+        actions: const [
+          GlobalHeaderActions(showLogout: true),
+          SizedBox(width: 8),
+        ],
       ),
       resizeToAvoidBottomInset: true,
       body: SingleChildScrollView(
@@ -1138,18 +1425,6 @@ class _NeedsHouseholdScreenState extends State<_NeedsHouseholdScreen> {
                   ? const _SmallSpinner()
                   : const Text('Join household'),
             ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: _isBusy
-                  ? null
-                  : () async {
-                      await context.read<AuthService>().signOut();
-                      if (context.mounted) {
-                        Navigator.of(context).pushReplacementNamed('/login');
-                      }
-                    },
-              child: const Text('Sign out'),
-            ),
           ],
         ),
       ),
@@ -1185,8 +1460,16 @@ class _ResponsiveWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final detectedMode = viewModeFromWidth(MediaQuery.of(context).size.width);
+    final modeProvider = context.read<ViewModeProvider>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      context.read<ViewModeProvider>().syncAutoMode(detectedMode);
+    });
+    final activeMode = modeProvider.isManualOverride ? viewMode : detectedMode;
+
     // Desktop mode - full width
-    if (viewMode == ViewMode.desktop) {
+    if (activeMode == ViewMode.desktop) {
       return child;
     }
 
@@ -1196,7 +1479,7 @@ class _ResponsiveWrapper extends StatelessWidget {
       color: bgColor,
       child: Center(
         child: Container(
-          width: viewMode.width,
+          width: activeMode.width,
           decoration: BoxDecoration(
             color: bgColor,
             boxShadow: [

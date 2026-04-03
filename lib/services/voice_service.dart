@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'ai_service.dart';
 
 /// Mock voice recognition service for MVP
 /// In production, this would use speech_to_text package or similar
@@ -58,6 +59,32 @@ class VoiceService extends ChangeNotifier {
     _mockTimer = null;
     _isListening = false;
     notifyListeners();
+  }
+
+  /// Parses voice input using AI, falling back to local regex
+  Future<ExpenseFromVoice?> parseExpenseFromVoiceAI(
+    String voiceText, {
+    required String supabaseUrl,
+    required String idToken,
+  }) async {
+    try {
+      final result = await AIService().processVoiceText(
+        transcription: voiceText,
+        supabaseUrl: supabaseUrl,
+        idToken: idToken,
+      );
+      final amount = (result['amount'] as num?)?.toDouble();
+      if (amount == null || amount <= 0) return parseExpenseFromVoice(voiceText);
+      return ExpenseFromVoice(
+        amount: amount,
+        description: result['description'] as String? ?? 'Voice expense',
+        category: result['category'] as String? ?? 'Other',
+        originalText: voiceText,
+      );
+    } catch (_) {
+      // Fallback to local regex parsing
+      return parseExpenseFromVoice(voiceText);
+    }
   }
 
   /// Parses voice input to extract expense details

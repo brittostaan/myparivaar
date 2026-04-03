@@ -1,29 +1,25 @@
-# Team SOP: Release in 3 Steps
+# Team SOP: Release in 2 Steps
 
 ## Goal
 Move changes through:
 
-1. Dev: dev.myparivaar.ai
-2. Preview: preview.myparivaar.ai
-3. Production: myparivaar.ai
+1. Preview: preview.myparivaar.ai
+2. Production: myparivaar.ai
 
 ## Branch Flow
-1. develop drives Dev
-2. staging drives Preview
-3. main drives Production
+1. staging drives Preview
+2. main drives Production
 
 ## What to Say
-1. Commit and push changes to dev.
-2. Commit and push changes to preview.
-3. Commit and push changes to production.
+1. Commit and push changes to preview.
+2. Commit and push changes to production.
 
 ## Approval Rule
-1. Only promote to next stage after testing and approval in current stage.
+1. Only promote to production after testing and approval in preview.
 
 ## If You Do Not Like a Change
-1. On Dev: Revert the last dev commit and push to develop.
-2. Or: Revert commit <commit-id> on develop and push.
-3. Same pattern for staging and main.
+1. On Preview: Revert commit <commit-id> on staging and push.
+2. On Production: Revert commit <commit-id> on main and push.
 
 ## Team Safety
 1. No direct production pushes without explicit approval.

@@ -12,6 +12,34 @@ interface UpdateExpenseRequest {
   description: string
   date: string // YYYY-MM-DD format
   notes?: string
+  tags?: string[]
+}
+
+function sanitizeTags(tags?: string[]): string[] {
+  if (!Array.isArray(tags)) return []
+
+  const seen = new Set<string>()
+  const output: string[] = []
+
+  for (const rawTag of tags) {
+    if (typeof rawTag !== 'string') continue
+    const normalized = rawTag.trim().replace(/\s+/g, ' ')
+    if (!normalized) continue
+    if (normalized.length > 40) {
+      throw new Error('Each tag must be 40 characters or less')
+    }
+    const key = normalized.toLowerCase()
+    if (!seen.has(key)) {
+      seen.add(key)
+      output.push(normalized)
+    }
+  }
+
+  if (output.length > 15) {
+    throw new Error('You can add up to 15 tags')
+  }
+
+  return output
 }
 
 /**
@@ -50,7 +78,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Parse and validate request body
-    const { expense_id, amount, category, description, date, notes }: UpdateExpenseRequest = await req.json()
+    const { expense_id, amount, category, description, date, notes, tags }: UpdateExpenseRequest = await req.json()
 
     if (!expense_id || typeof expense_id !== 'string') {
       return new Response(JSON.stringify({ error: 'Expense ID is required' }), {
@@ -91,6 +119,16 @@ Deno.serve(async (req: Request) => {
 
     if (notes && (typeof notes !== 'string' || notes.length > 200)) {
       return new Response(JSON.stringify({ error: 'Notes cannot exceed 200 characters' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    let sanitizedTags: string[]
+    try {
+      sanitizedTags = sanitizeTags(tags)
+    } catch (error) {
+      return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Invalid tags' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -161,6 +199,7 @@ Deno.serve(async (req: Request) => {
         description: description.trim(),
         date,
         notes: notes?.trim() || null,
+        tags: sanitizedTags,
       })
       .eq('id', expense_id)
       .select()

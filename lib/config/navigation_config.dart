@@ -54,6 +54,12 @@ class NavigationConfig {
     '/home': _mainNavigation,
     '/expenses': _mainNavigation,
     '/budget': _mainNavigation,
+    '/investments': _mainNavigation,
+    '/bills': _mainNavigation,
+    '/reports': _mainNavigation,
+    '/family-planner': _mainNavigation,
+    '/kids-dashboard': _mainNavigation,
+    '/parents-dashboard': _mainNavigation,
     '/ai': _mainNavigation,
     '/user-settings': _mainNavigation,
     '/more': _mainNavigation,
@@ -63,6 +69,8 @@ class NavigationConfig {
     '/notifications': _mainNavigation,
     '/csv-import': _mainNavigation,
     '/savings': _mainNavigation,
+    '/assets': _mainNavigation,
+    '/key-contacts': _mainNavigation,
   };
 
   /// Standard navigation shown on main screens

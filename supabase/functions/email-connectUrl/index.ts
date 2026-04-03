@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { verifyFirebaseToken } from '../_shared/firebase.ts'
+import { getOAuthCredentials } from '../_shared/oauth.ts'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -60,16 +61,41 @@ Deno.serve(async (req: Request) => {
       db: { schema: "app" },
     })
 
-    // Get user's household
-    const { data: userData, error: userError } = await supabase
+    // Get user's household. Primary lookup by firebase_uid, fallback by email
+    // for legacy users created before firebase_uid mapping stabilization.
+    let { data: userData, error: userError } = await supabase
       .from('users')
-      .select('household_id, is_active')
+      .select('id, household_id, is_active, firebase_uid, email')
       .eq('firebase_uid', decodedToken.uid)
       .eq('is_active', true)
-      .single()
+      .maybeSingle()
+
+    if ((!userData || !userData.household_id) && decodedToken.email) {
+      const fallback = await supabase
+        .from('users')
+        .select('id, household_id, is_active, firebase_uid, email')
+        .eq('email', decodedToken.email)
+        .eq('is_active', true)
+        .maybeSingle()
+
+      if (!fallback.error && fallback.data?.household_id) {
+        userData = fallback.data
+        userError = null
+
+        // Self-heal firebase_uid mapping for future requests.
+        if (userData.firebase_uid !== decodedToken.uid) {
+          await supabase
+            .from('users')
+            .update({ firebase_uid: decodedToken.uid })
+            .eq('id', userData.id)
+        }
+      }
+    }
 
     if (userError || !userData?.household_id) {
-      return new Response(JSON.stringify({ error: 'User not found or not active' }), {
+      return new Response(JSON.stringify({
+        error: 'User profile not linked to an active household. Please sign out/in and retry.',
+      }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -90,18 +116,19 @@ Deno.serve(async (req: Request) => {
     }
 
     // Generate OAuth URLs
-    const defaultRedirectUri = redirect_uri || `${supabaseUrl}/functions/v1/email-oauthCallback`
     let authUrl: string
     let scopes: string[]
 
     if (provider === 'gmail') {
-      const clientId = Deno.env.get('GOOGLE_CLIENT_ID')
-      if (!clientId) {
-        return new Response(JSON.stringify({ error: 'Gmail OAuth not configured' }), {
+      const creds = await getOAuthCredentials('google')
+      if (!creds) {
+        return new Response(JSON.stringify({ error: 'Gmail OAuth not configured. Admin must set up Google credentials in Admin Center → Email Admin.' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
+      const clientId = creds.clientId
+      const defaultRedirectUri = creds.redirectUri || redirect_uri || `${supabaseUrl}/functions/v1/email-oauthCallback`
 
       scopes = [
         'https://www.googleapis.com/auth/gmail.readonly',
@@ -125,13 +152,15 @@ Deno.serve(async (req: Request) => {
       authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
       
     } else { // outlook
-      const clientId = Deno.env.get('MICROSOFT_CLIENT_ID')
-      if (!clientId) {
-        return new Response(JSON.stringify({ error: 'Outlook OAuth not configured' }), {
+      const creds = await getOAuthCredentials('microsoft')
+      if (!creds) {
+        return new Response(JSON.stringify({ error: 'Outlook OAuth not configured. Admin must set up Microsoft credentials in Admin Center → Email Admin.' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
+      const clientId = creds.clientId
+      const defaultRedirectUri = creds.redirectUri || redirect_uri || `${supabaseUrl}/functions/v1/email-oauthCallback`
 
       scopes = [
         'https://graph.microsoft.com/Mail.Read',
@@ -169,9 +198,19 @@ Deno.serve(async (req: Request) => {
     )
 
   } catch (error) {
-    console.error('email-connectUrl error:', error)
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('email-connectUrl error:', {
+      message: errorMsg,
+      stack: error instanceof Error ? error.stack : undefined,
+      errorType: typeof error,
+    });
+    
+    // Return real error message to help client diagnose
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ 
+        error: errorMsg || 'Internal server error',
+        details: 'See function logs for more information'
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

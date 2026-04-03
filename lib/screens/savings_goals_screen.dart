@@ -304,20 +304,58 @@ class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
     final totalTarget = _goals.fold<double>(0, (s, g) => s + g.targetAmount);
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _addOrEditGoal(),
-        child: const Icon(AppIcons.add),
-      ),
       body: SafeArea(
         child: Column(
           children: [
-            const AppHeader(
-              title: 'Savings Goals',
-              avatarIcon: Icons.savings_outlined,
+            // ── Action Pane ──────────────────────────────────────
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+              child: Row(
+                children: [
+                  const Text(
+                    'Savings Goals',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+                  const Spacer(),
+                  if (!_isLoading && _errorInfo == null && _goals.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withAlpha(20),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${_goals.length} goal${_goals.length == 1 ? '' : 's'}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 12),
+                  FilledButton.icon(
+                    onPressed: () => _addOrEditGoal(),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add Goal'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ],
+              ),
             ),
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
             if (!_isLoading && _errorInfo == null && _goals.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: _SummaryCard(
                     totalSaved: totalSaved, totalTarget: totalTarget),
               ),

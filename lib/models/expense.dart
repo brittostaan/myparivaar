@@ -5,6 +5,7 @@ class Expense {
   final String description;
   final DateTime date;
   final String? notes;
+  final List<String> tags;
   final String source; // 'manual', 'csv', 'email'
   final bool isApproved; // For email-sourced transactions
   final DateTime createdAt;
@@ -17,6 +18,7 @@ class Expense {
     required this.description,
     required this.date,
     this.notes,
+    this.tags = const [],
     required this.source,
     required this.isApproved,
     required this.createdAt,
@@ -41,6 +43,10 @@ class Expense {
       description: json['description']?.toString() ?? '',
       date:        _parseDate(json['date']?.toString()),
       notes:       json['notes']?.toString(),
+      tags:        (json['tags'] as List<dynamic>? ?? const [])
+          .map((tag) => tag.toString())
+          .where((tag) => tag.trim().isNotEmpty)
+          .toList(),
       source:      json['source']?.toString() ?? 'manual',
       isApproved:  (json['status']?.toString() == 'approved') ||
                    (json['status'] != null && json['status']?.toString() != 'pending'),
@@ -57,6 +63,7 @@ class Expense {
       'description': description,
       'date': date.toIso8601String().split('T')[0], // Date only
       'notes': notes,
+      'tags': tags,
       'source': source,
       'status': isApproved ? 'approved' : 'pending',
       'created_at': createdAt.toIso8601String(),
@@ -71,6 +78,7 @@ class Expense {
     String? description,
     DateTime? date,
     String? notes,
+    List<String>? tags,
     String? source,
     bool? isApproved,
     DateTime? createdAt,
@@ -83,6 +91,7 @@ class Expense {
       description: description ?? this.description,
       date: date ?? this.date,
       notes: notes ?? this.notes,
+      tags: tags ?? this.tags,
       source: source ?? this.source,
       isApproved: isApproved ?? this.isApproved,
       createdAt: createdAt ?? this.createdAt,

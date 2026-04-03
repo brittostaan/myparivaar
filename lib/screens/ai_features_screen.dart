@@ -128,10 +128,42 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              const AppHeader(
-                title: 'AI Insights',
-                avatarIcon: AppIcons.smartToy,
+              // ── Action Pane ──────────────────────────────────────
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          'AI Insights',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+                        const Spacer(),
+                        _buildAIActionChip(
+                          icon: Icons.warning_amber_rounded,
+                          label: 'Anomaly Detection',
+                          onTap: () => Navigator.pushNamed(context, '/anomaly-detection'),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildAIActionChip(
+                          icon: Icons.trending_up,
+                          label: 'Financial Simulator',
+                          onTap: () => Navigator.pushNamed(context, '/financial-simulator'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
               ),
+              const Divider(height: 1, color: Color(0xFFE2E8F0)),
               const TabBar(
                 tabs: [
                   Tab(icon: Icon(AppIcons.summarize), text: 'Weekly Summary'),
@@ -148,6 +180,35 @@ class _AIFeaturesScreenState extends State<AIFeaturesScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAIActionChip({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: Colors.grey[600]),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+            ),
+          ],
         ),
       ),
     );

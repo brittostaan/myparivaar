@@ -1,10 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { verifyFirebaseToken } from '../_shared/firebase.ts'
+import { routeAIRequest, type ChatMessage } from '../_shared/ai-router.ts'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const openaiApiKey = Deno.env.get('OPENAI_API_KEY')!
 
 /**
  * Generate weekly AI summary for household finances
@@ -146,7 +146,7 @@ Deno.serve(async (req: Request) => {
       .eq('month', new Date().toISOString().substring(0, 7))
 
     // Generate AI summary
-    const summary = await generateFinancialSummary(transactions || [], budgets || [], household.name)
+    const summary = await generateFinancialSummary(supabase, transactions || [], budgets || [], household.name)
 
     // Store the summary
     await supabase.from('ai_summaries').insert({
@@ -187,11 +187,7 @@ Deno.serve(async (req: Request) => {
   }
 })
 
-async function generateFinancialSummary(transactions: any[], budgets: any[], householdName: string) {
-  if (!openaiApiKey) {
-    return "AI summary temporarily unavailable. Please check your spending patterns manually."
-  }
-
+async function generateFinancialSummary(supabase: ReturnType<typeof createClient>, transactions: any[], budgets: any[], householdName: string) {
   // Calculate spending by category
   const categorySpending: { [key: string]: number } = {}
   let totalSpent = 0
@@ -239,39 +235,25 @@ ${transactions.slice(0, 5)
   .join('\n')}
 `
 
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a helpful financial insights assistant for Indian families. Provide a brief, friendly weekly spending summary in 3-4 sentences. Focus on spending patterns, budget performance, and general observations. Do NOT give financial advice, predict outcomes, or recommend products. Use Indian Rupees (₹) and be encouraging but realistic.`
-          },
-          {
-            role: 'user',
-            content: `Generate a weekly summary for this family's spending:\n\n${dataString}`
-          }
-        ],
-        max_tokens: 300,
-        temperature: 0.7
-      })
-    })
-
-    const data = await response.json()
-    
-    if (data.choices && data.choices[0]?.message?.content) {
-      return data.choices[0].message.content.trim()
-    } else {
-      throw new Error('Invalid OpenAI response')
+  const messages: ChatMessage[] = [
+    {
+      role: 'system',
+      content: `You are a helpful financial insights assistant for Indian families. Provide a brief, friendly weekly spending summary in 3-4 sentences. Focus on spending patterns, budget performance, and general observations. Do NOT give financial advice, predict outcomes, or recommend products. Use Indian Rupees (₹) and be encouraging but realistic.`
+    },
+    {
+      role: 'user',
+      content: `Generate a weekly summary for this family's spending:\n\n${dataString}`
     }
+  ]
+
+  try {
+    const result = await routeAIRequest(supabase, 'weekly_summary', messages, {
+      max_tokens: 300,
+      temperature: 0.7,
+    })
+    return result.content
   } catch (error) {
-    console.error('OpenAI API error:', error)
+    console.error('AI router error:', error)
     
     // Fallback to simple template-based summary
     const topCategory = Object.entries(categorySpending)

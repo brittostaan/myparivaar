@@ -676,28 +676,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
           }),
         ),
         _buildControlPill(
-          icon: _showHistoricalPanel ? Icons.close_rounded : Icons.history,
-          label: _showHistoricalPanel ? 'Close' : 'Historical Performance',
-          color: const Color(0xFF7C4DFF),
-          active: _showHistoricalPanel,
-          onTap: () => setState(() {
-            final opening = !_showHistoricalPanel;
-            _closeAllPanels();
-            _showHistoricalPanel = opening;
-          }),
-        ),
-        _buildControlPill(
-          icon: _showAnalyticsPanel ? Icons.close_rounded : Icons.insights,
-          label: _showAnalyticsPanel ? 'Close' : 'Budget Analytics',
-          color: const Color(0xFF00ACC1),
-          active: _showAnalyticsPanel,
-          onTap: () => setState(() {
-            final opening = !_showAnalyticsPanel;
-            _closeAllPanels();
-            _showAnalyticsPanel = opening;
-          }),
-        ),
-        _buildControlPill(
           icon: _showImportPanel ? Icons.close_rounded : Icons.upload_file,
           label: _showImportPanel ? 'Close' : 'Import',
           color: const Color(0xFF43A047),

@@ -3649,10 +3649,68 @@ class _BudgetAIInsightsPanelState extends State<_BudgetAIInsightsPanel> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 10),
+                // Quick-start prompt cards
+                Row(
+                  children: [
+                    Expanded(
+                      child: _quickPromptCard(
+                        icon: Icons.history_rounded,
+                        label: 'Historical Performance',
+                        color: const Color(0xFF7C4DFF),
+                        prompt: 'Show me my historical budget performance over the last 6 months. How many months did I stay within budget? What are the trends?',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _quickPromptCard(
+                        icon: Icons.insights_rounded,
+                        label: 'Budget Analytics',
+                        color: const Color(0xFF00ACC1),
+                        prompt: 'Analyze my budget categories. Which categories am I overspending on? What is my average monthly spend and which category is most volatile?',
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _quickPromptCard({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required String prompt,
+  }) {
+    return Material(
+      color: color.withOpacity(0.06),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () {
+          _chatController.text = prompt;
+          _sendChat();
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            children: [
+              Icon(icon, size: 15, color: color),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

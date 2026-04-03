@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -41,6 +42,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
     'shopping',
     'healthcare',
     'entertainment',
+    'bank',
     'other',
   ];
 
@@ -1811,171 +1813,200 @@ class _BudgetScreenState extends State<BudgetScreen> {
       case 'education': return cat == 'education';
       case 'vacation': return cat.contains('travel') || cat.contains('vacation') || cat.contains('trip');
       case 'convenience food': return cat.contains('food delivery') || cat.contains('takeaway') || cat.contains('convenience');
+      case 'bank': return cat == 'bank' || cat.contains('bank') || cat.contains('saving') || cat.contains('deposit');
       default: return false;
     }
   }
 
   Widget _buildInlineBudgetForm() {
     final isEditing = _editingBudget != null;
-    return Container(
-      width: 380,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, 6)),
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
-        ],
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header — matches Excel Import Preview style
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
-            ),
-            child: Row(
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          border: Border(
+            bottom: BorderSide(color: const Color(0xFFE2E8F0)),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Compact header row
+            Row(
               children: [
                 Icon(
                   isEditing ? Icons.edit_note_rounded : Icons.add_chart_rounded,
                   color: AppColors.primary,
-                  size: 22,
+                  size: 18,
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Text(
                   isEditing ? 'Edit Budget' : 'Add Budget',
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF334155)),
                 ),
                 const Spacer(),
                 IconButton(
                   onPressed: _closeBudgetForm,
-                  icon: const Icon(Icons.close_rounded, size: 18),
+                  icon: const Icon(Icons.close_rounded, size: 16),
                   style: IconButton.styleFrom(
                     foregroundColor: const Color(0xFF94A3B8),
-                    backgroundColor: const Color(0xFFF1F5F9),
-                    minimumSize: const Size(32, 32),
+                    minimumSize: const Size(28, 28),
                     padding: EdgeInsets.zero,
                   ),
                 ),
               ],
             ),
-          ),
-          // Form body
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 8),
+            // Form fields in a compact row layout
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 // Category
-                Text('Category', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[600])),
-                const SizedBox(height: 6),
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: DropdownButtonFormField<String>(
-                    value: _formCategory,
-                    items: _categories
-                        .map((value) => DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(_titleCase(value), style: const TextStyle(fontSize: 14)),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) setState(() => _formCategory = value);
-                    },
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    ),
-                    dropdownColor: Colors.white,
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Category', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey[500])),
+                      const SizedBox(height: 4),
+                      SizedBox(
+                        height: 34,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: DropdownButtonFormField<String>(
+                            value: _formCategory,
+                            items: _categories
+                                .map((value) => DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(_titleCase(value), style: const TextStyle(fontSize: 12)),
+                                    ))
+                                .toList(),
+                            onChanged: (value) {
+                              if (value != null) setState(() => _formCategory = value);
+                            },
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                              isDense: true,
+                            ),
+                            dropdownColor: Colors.white,
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF334155)),
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(width: 10),
                 // Amount
-                Text('Monthly Budget', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[600])),
-                const SizedBox(height: 6),
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: TextField(
-                    controller: _formAmountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    style: const TextStyle(fontSize: 14),
-                    decoration: const InputDecoration(
-                      hintText: '₹ 0.00',
-                      hintStyle: TextStyle(color: Color(0xFFCBD5E1)),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    ),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Amount', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey[500])),
+                      const SizedBox(height: 4),
+                      SizedBox(
+                        height: 34,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: TextField(
+                            controller: _formAmountController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            style: const TextStyle(fontSize: 12),
+                            decoration: const InputDecoration(
+                              hintText: '₹ 0.00',
+                              hintStyle: TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(width: 10),
                 // Tags
-                Text('Tags (optional)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[600])),
-                const SizedBox(height: 6),
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: TextField(
-                    controller: _formTagsController,
-                    style: const TextStyle(fontSize: 14),
-                    decoration: const InputDecoration(
-                      hintText: 'e.g. mom, school, travel',
-                      hintStyle: TextStyle(color: Color(0xFFCBD5E1)),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    ),
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Tags', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey[500])),
+                      const SizedBox(height: 4),
+                      SizedBox(
+                        height: 34,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: TextField(
+                            controller: _formTagsController,
+                            style: const TextStyle(fontSize: 12),
+                            decoration: const InputDecoration(
+                              hintText: 'e.g. mom, school',
+                              hintStyle: TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  'Tag this budget with family members or intent.',
-                  style: TextStyle(fontSize: 10, color: Colors.grey[400], fontStyle: FontStyle.italic),
-                ),
-                const SizedBox(height: 20),
-                // Actions
+                const SizedBox(width: 10),
+                // Action buttons
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Spacer(),
                     TextButton(
                       onPressed: _closeBudgetForm,
                       style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF64748B),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        foregroundColor: const Color(0xFF94A3B8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        minimumSize: const Size(0, 34),
+                        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                       ),
-                      child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                      child: const Text('Cancel'),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     FilledButton.icon(
                       onPressed: _saveBudgetForm,
-                      icon: Icon(isEditing ? Icons.check_rounded : Icons.add_rounded, size: 16),
-                      label: Text(isEditing ? 'Update' : 'Save'),
+                      icon: Icon(isEditing ? Icons.check_rounded : Icons.add_rounded, size: 14),
+                      label: Text(isEditing ? 'Update' : 'Save', style: const TextStyle(fontSize: 12)),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        minimumSize: const Size(0, 34),
                       ),
                     ),
                   ],
                 ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1987,7 +2018,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
     final allCategoryLabels = [
       'Entertainment', 'Groceries', 'Mental Wellness', 'Physical Wellness',
       'Party', 'Personal Care', 'Pet Care', 'Senior Care', 'Education',
-      'Vacation', 'Convenience Food',
+      'Vacation', 'Convenience Food', 'Bank',
     ];
 
     const iconColor = Color(0xFF64748B);
@@ -1998,32 +2029,40 @@ class _BudgetScreenState extends State<BudgetScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 1. Filter by Category
+        // 1. Filter by Category — compact glass-style popup
         PopupMenuButton<String?>(
           tooltip: hasCatFilter ? 'Filtered: $_selectedCategoryFilter' : 'Filter by Category',
           icon: Icon(Icons.filter_list_rounded, color: hasCatFilter ? activeColor : iconColor, size: iconSize),
           constraints: btnConstraints,
           padding: EdgeInsets.zero,
           onSelected: (value) => setState(() => _selectedCategoryFilter = value),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          color: Colors.white.withOpacity(0.92),
+          elevation: 6,
+          menuPadding: EdgeInsets.zero,
           itemBuilder: (context) => [
             PopupMenuItem<String?>(
               value: null,
+              height: 32,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(children: [
-                Icon(Icons.clear_all_rounded, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 8),
-                const Text('All Categories', style: TextStyle(fontSize: 13)),
+                Icon(Icons.clear_all_rounded, size: 14, color: Colors.grey[600]),
+                const SizedBox(width: 6),
+                const Text('All', style: TextStyle(fontSize: 12)),
               ]),
             ),
-            const PopupMenuDivider(),
+            const PopupMenuDivider(height: 1),
             ...allCategoryLabels.map((cat) => PopupMenuItem<String?>(
               value: cat,
+              height: 30,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(children: [
                 if (_selectedCategoryFilter == cat)
-                  const Icon(Icons.check_rounded, size: 16, color: activeColor)
+                  const Icon(Icons.check_rounded, size: 14, color: activeColor)
                 else
-                  const SizedBox(width: 16),
-                const SizedBox(width: 8),
-                Text(cat, style: const TextStyle(fontSize: 13)),
+                  const SizedBox(width: 14),
+                const SizedBox(width: 6),
+                Text(cat, style: const TextStyle(fontSize: 12)),
               ]),
             )),
           ],
@@ -2135,6 +2174,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     children: [controls],
                   ),
                 ),
+                // Inline budget form slides down here
+                if (_showInlineBudgetForm)
+                  _buildInlineBudgetForm(),
                 Expanded(
                   child: Center(
                     child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -2154,9 +2196,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
               ],
             ),
           ),
-          // Inline budget form overlay
-          if (_showInlineBudgetForm)
-            Positioned(top: 48, right: 8, child: _buildInlineBudgetForm()),
           // Calendar overlay inside card
           if (_showCalendarDropdown)
             Positioned(
@@ -2231,6 +2270,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 ),
               ),
               const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              // Inline budget form slides down, pushing budget rows
+              if (_showInlineBudgetForm)
+                _buildInlineBudgetForm(),
               // Budget rows (scrollable) — grouped or flat
               Expanded(
                 child: SingleChildScrollView(
@@ -2262,9 +2304,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ],
           ),
         ),
-        // Inline budget form overlay
-        if (_showInlineBudgetForm)
-          Positioned(top: 48, right: 8, child: _buildInlineBudgetForm()),
         // Calendar overlay inside card
         if (_showCalendarDropdown)
           Positioned(
@@ -3719,6 +3758,8 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
   bool _isCategorizingWithAI = false;
   bool _aiCategorizationDone = false;
   String? _aiError;
+  // User-added categories tracked during this import session
+  final List<String> _userAddedCategories = [];
 
   static const _validCategories = [
     'food',
@@ -3727,7 +3768,21 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
     'shopping',
     'healthcare',
     'entertainment',
+    'bank',
     'other',
+  ];
+
+  // Indian banks knowledge base — maps bank names/abbreviations to 'bank' category
+  static const _indianBanks = <String>[
+    'iob', 'sbi', 'hdfc', 'icici', 'axis', 'kotak', 'pnb', 'bob', 'boi',
+    'canara', 'union', 'idbi', 'yes bank', 'indusind', 'rbl', 'federal',
+    'bandhan', 'au bank', 'au small', 'idfc', 'idfc first', 'cbi',
+    'indian overseas', 'uco', 'allahabad', 'syndicate', 'andhra bank',
+    'vijaya', 'dena', 'oriental', 'corporation bank', 'mahanagar',
+    'city union', 'karur vysya', 'kvb', 'south indian', 'tamilnad mercantile',
+    'tmb', 'lakshmi vilas', 'dhanlaxmi', 'j&k bank', 'karnataka bank',
+    'nainital', 'saraswat', 'fino', 'paytm', 'airtel payments', 'jio payments',
+    'nps', 'ppf', 'mutual fund', 'mf', 'lic', 'bajaj', 'tata capital',
   ];
 
   /// Map raw Excel category to the closest valid backend category
@@ -3735,6 +3790,11 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
     final lower = raw.toLowerCase().trim();
     if (lower.isEmpty) return 'other';
     if (_validCategories.contains(lower)) return lower;
+
+    // Check against Indian banks knowledge base first
+    for (final bank in _indianBanks) {
+      if (lower.contains(bank) || bank.contains(lower)) return 'bank';
+    }
 
     const mapping = <String, List<String>>{
       'food': ['food', 'grocery', 'groceries', 'meal', 'dining', 'provisions',
@@ -3751,6 +3811,9 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
       'entertainment': ['entertainment', 'movie', 'netflix', 'subscription',
         'hobby', 'game', 'sport', 'outing', 'party', 'fun', 'leisure',
         'class', 'classes', 'yoga', 'violin', 'cello', 'music'],
+      'bank': ['bank', 'neft', 'imps', 'rtgs', 'upi', 'transfer', 'deposit',
+        'withdrawal', 'atm', 'cheque', 'saving', 'current account', 'fd',
+        'fixed deposit', 'rd', 'recurring'],
     };
 
     for (final entry in mapping.entries) {
@@ -3962,12 +4025,13 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
             Expanded(
               child: SingleChildScrollView(
                 child: Table(
-                  columnWidths: {
+                  columnWidths: <int, TableColumnWidth>{
                     0: const FixedColumnWidth(32),
                     1: const FlexColumnWidth(1.6),
                     if (hasSubcategories) 2: const FlexColumnWidth(1.8),
                     (hasSubcategories ? 3 : 2): const FlexColumnWidth(1),
-                    (hasSubcategories ? 4 : 3): const FixedColumnWidth(40),
+                    (hasSubcategories ? 4 : 3): const FixedColumnWidth(36),
+                    (hasSubcategories ? 5 : 4): const FixedColumnWidth(36),
                   },
                   border: TableBorder.all(
                     color: AppColors.grey200,
@@ -3985,15 +4049,14 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
                         const _TableHeader('Category'),
                         if (hasSubcategories) const _TableHeader('Item'),
                         const _TableHeader('Amount'),
-                        const _TableHeader(''),
+                        const _TableHeader(''),   // status icon
+                        const _TableHeader(''),   // delete
                       ],
                     ),
-                    ..._editableRows.asMap().entries.map((entry) {
-                      final idx = entry.key;
-                      final row = entry.value;
-                      return TableRow(
+                    for (int idx = 0; idx < _editableRows.length; idx++)
+                      TableRow(
                         decoration: BoxDecoration(
-                          color: row.isValid
+                          color: _editableRows[idx].isValid
                               ? null
                               : AppColors.error.withValues(alpha: 0.06),
                         ),
@@ -4004,26 +4067,34 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
                           ),
                           _TableCell(
                             _CategoryEditor(
-                              value: row.category,
-                              enabled: row.isValid,
+                              value: _editableRows[idx].category,
+                              enabled: _editableRows[idx].isValid,
+                              extraCategories: _userAddedCategories,
                               onChanged: (v) {
-                                setState(() => row.category = v);
+                                setState(() {
+                                  _editableRows[idx].category = v;
+                                  // Track new categories added by the user
+                                  if (!_ExcelPreviewDialogState._validCategories.contains(v) &&
+                                      !_userAddedCategories.contains(v)) {
+                                    _userAddedCategories.add(v);
+                                  }
+                                });
                               },
                             ),
                           ),
                           if (hasSubcategories)
                             _TableCell(
-                              Text(row.subcategory,
+                              Text(_editableRows[idx].subcategory,
                                   style: const TextStyle(fontSize: 12)),
                             ),
                           _TableCell(
                             Text(
-                              row.isValid
-                                  ? '₹${row.amount.toStringAsFixed(0)}'
-                                  : row.validationError ?? 'Invalid',
+                              _editableRows[idx].isValid
+                                  ? '₹${_editableRows[idx].amount.toStringAsFixed(0)}'
+                                  : _editableRows[idx].validationError ?? 'Invalid',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: row.isValid ? null : AppColors.error,
+                                color: _editableRows[idx].isValid ? null : AppColors.error,
                               ),
                             ),
                           ),
@@ -4032,25 +4103,25 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  row.isValid
+                                  _editableRows[idx].isValid
                                       ? Icons.check_circle
                                       : Icons.error,
-                                  color: row.isValid
+                                  color: _editableRows[idx].isValid
                                       ? AppColors.success
                                       : AppColors.error,
                                   size: 15,
                                 ),
-                                if (row.aiCategorized) ...[
+                                if (_editableRows[idx].aiCategorized) ...[
                                   const SizedBox(width: 3),
                                   Tooltip(
-                                    message: 'AI: ${row.aiConfidence} confidence',
+                                    message: 'AI: ${_editableRows[idx].aiConfidence} confidence',
                                     child: Container(
                                       width: 7, height: 7,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: row.aiConfidence == 'high'
+                                        color: _editableRows[idx].aiConfidence == 'high'
                                             ? AppColors.success
-                                            : row.aiConfidence == 'medium'
+                                            : _editableRows[idx].aiConfidence == 'medium'
                                                 ? AppColors.warningDark
                                                 : AppColors.error,
                                       ),
@@ -4060,9 +4131,19 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
                               ],
                             ),
                           ),
+                          // Delete button
+                          _TableCell(
+                            Tooltip(
+                              message: 'Remove row',
+                              child: InkWell(
+                                onTap: () => setState(() => _editableRows.removeAt(idx)),
+                                borderRadius: BorderRadius.circular(4),
+                                child: const Icon(Icons.close_rounded, size: 14, color: Color(0xFF94A3B8)),
+                              ),
+                            ),
+                          ),
                         ],
-                      );
-                    }),
+                      ),
                   ],
                 ),
               ),
@@ -4070,7 +4151,7 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
             if (invalidRows.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(
-                'Invalid rows will be skipped during import.',
+                'Invalid rows will be skipped. You can correct or delete them.',
                 style: TextStyle(
                   fontSize: 11,
                   color: Colors.grey[600],
@@ -4156,94 +4237,227 @@ class _TableCell extends StatelessWidget {
 }
 
 /// Editable category field with autocomplete suggestions + custom input.
-class _CategoryEditor extends StatelessWidget {
+class _CategoryEditor extends StatefulWidget {
   final String value;
   final bool enabled;
   final ValueChanged<String> onChanged;
+  final List<String>? extraCategories;
 
   const _CategoryEditor({
     required this.value,
     required this.enabled,
     required this.onChanged,
+    this.extraCategories,
   });
 
-  static const _suggestions = [
+  static const _defaultCategories = [
     'food', 'transport', 'utilities', 'shopping',
-    'healthcare', 'entertainment', 'other',
+    'healthcare', 'entertainment', 'bank', 'other',
   ];
+
+  @override
+  State<_CategoryEditor> createState() => _CategoryEditorState();
+}
+
+class _CategoryEditorState extends State<_CategoryEditor> {
+  late TextEditingController _controller;
+  late FocusNode _focusNode;
+  final LayerLink _layerLink = LayerLink();
+  OverlayEntry? _overlayEntry;
+
+  List<String> get _allCategories {
+    final cats = [..._CategoryEditor._defaultCategories];
+    if (widget.extraCategories != null) {
+      for (final c in widget.extraCategories!) {
+        if (!cats.contains(c.toLowerCase())) cats.add(c.toLowerCase());
+      }
+    }
+    return cats;
+  }
 
   String _titleCase(String s) =>
       s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 
   @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: _titleCase(widget.value));
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _CategoryEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value) {
+      _controller.text = _titleCase(widget.value);
+    }
+  }
+
+  @override
+  void dispose() {
+    _removeOverlay();
+    _focusNode.removeListener(_onFocusChanged);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onFocusChanged() {
+    if (_focusNode.hasFocus) {
+      _showOverlay();
+    } else {
+      // Delay removal to allow tap on overlay item
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (!_focusNode.hasFocus) _removeOverlay();
+      });
+    }
+  }
+
+  void _showOverlay() {
+    _removeOverlay();
+    final overlay = Overlay.of(context);
+    _overlayEntry = OverlayEntry(builder: (ctx) => _buildOverlay());
+    overlay.insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  void _selectCategory(String cat) {
+    _controller.text = _titleCase(cat);
+    widget.onChanged(cat.toLowerCase().trim());
+    _removeOverlay();
+    _focusNode.unfocus();
+  }
+
+  void _addNewCategory() {
+    final text = _controller.text.trim().toLowerCase();
+    if (text.isNotEmpty) {
+      widget.onChanged(text);
+      _removeOverlay();
+      _focusNode.unfocus();
+    }
+  }
+
+  Widget _buildOverlay() {
+    final query = _controller.text.toLowerCase().trim();
+    final filtered = _allCategories
+        .where((c) => query.isEmpty || c.contains(query))
+        .toList();
+    final showAddNew = query.isNotEmpty && !_allCategories.contains(query);
+
+    return Positioned(
+      width: 180,
+      child: CompositedTransformFollower(
+        link: _layerLink,
+        showWhenUnlinked: false,
+        offset: const Offset(0, 34),
+        child: Material(
+          elevation: 8,
+          borderRadius: BorderRadius.circular(10),
+          color: Colors.transparent,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Container(
+                constraints: const BoxConstraints(maxHeight: 180),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.82),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE2E8F0).withValues(alpha: 0.5)),
+                ),
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  shrinkWrap: true,
+                  children: [
+                    ...filtered.map((cat) => InkWell(
+                      onTap: () => _selectCategory(cat),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        child: Row(
+                          children: [
+                            Text(_titleCase(cat), style: const TextStyle(fontSize: 12)),
+                            if (cat == widget.value.toLowerCase()) ...[
+                              const Spacer(),
+                              const Icon(Icons.check_rounded, size: 14, color: AppColors.primary),
+                            ],
+                          ],
+                        ),
+                      ),
+                    )),
+                    if (showAddNew) ...[
+                      const Divider(height: 1),
+                      InkWell(
+                        onTap: _addNewCategory,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.add_rounded, size: 14, color: AppColors.primary),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Add "${_titleCase(query)}"',
+                                  style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Autocomplete<String>(
-      initialValue: TextEditingValue(text: _titleCase(value)),
-      optionsBuilder: (textEditingValue) {
-        final query = textEditingValue.text.toLowerCase().trim();
-        if (query.isEmpty) return _suggestions;
-        return _suggestions
-            .where((s) => s.contains(query))
-            .toList();
-      },
-      displayStringForOption: (s) => _titleCase(s),
-      fieldViewBuilder: (context, controller, focusNode, onSubmit) {
-        return SizedBox(
-          height: 30,
-          child: TextField(
-            controller: controller,
-            focusNode: focusNode,
-            enabled: enabled,
-            style: const TextStyle(fontSize: 12),
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: AppColors.grey200),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: AppColors.grey200),
-              ),
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: SizedBox(
+        height: 30,
+        child: TextField(
+          controller: _controller,
+          focusNode: _focusNode,
+          enabled: widget.enabled,
+          style: const TextStyle(fontSize: 12),
+          onChanged: (_) {
+            // Refresh overlay when typing
+            if (_overlayEntry != null) {
+              _overlayEntry!.markNeedsBuild();
+            }
+          },
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16),
+            suffixIconConstraints: const BoxConstraints(maxWidth: 24, maxHeight: 30),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(color: AppColors.grey200),
             ),
-            onSubmitted: (_) {
-              final text = controller.text.toLowerCase().trim();
-              if (text.isNotEmpty) onChanged(text);
-            },
-          ),
-        );
-      },
-      onSelected: (selection) {
-        onChanged(selection.toLowerCase().trim());
-      },
-      optionsViewBuilder: (context, onSelected, options) {
-        return Align(
-          alignment: Alignment.topLeft,
-          child: Material(
-            elevation: 4,
-            borderRadius: BorderRadius.circular(8),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 200, maxWidth: 200),
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final option = options.elementAt(index);
-                  return InkWell(
-                    onTap: () => onSelected(option),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: Text(_titleCase(option), style: const TextStyle(fontSize: 13)),
-                    ),
-                  );
-                },
-              ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(color: AppColors.grey200),
             ),
           ),
-        );
-      },
+          onSubmitted: (_) {
+            final text = _controller.text.toLowerCase().trim();
+            if (text.isNotEmpty) widget.onChanged(text);
+          },
+        ),
+      ),
     );
   }
 }

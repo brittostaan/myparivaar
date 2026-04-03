@@ -3745,8 +3745,10 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
       return _EditableRow.fromBudgetRow(row, _mapToValidCategory(row.category));
     }).toList();
 
-    // Trigger AI categorization
-    _runAICategorization();
+    // Trigger AI categorization after first frame (context not ready in initState)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _runAICategorization();
+    });
   }
 
   Future<void> _runAICategorization() async {

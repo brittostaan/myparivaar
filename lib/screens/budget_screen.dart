@@ -664,36 +664,28 @@ class _BudgetScreenState extends State<BudgetScreen> {
         ),
       ),
       Tooltip(
-        message: _showImportPanel ? 'Close Import' : 'Import',
+        message: 'Import Excel',
         child: IconButton(
-          icon: Icon(
-            _showImportPanel ? Icons.close_rounded : Icons.upload_file,
-            color: _showImportPanel ? const Color(0xFF43A047) : const Color(0xFF64748B),
+          icon: const Icon(
+            Icons.upload_file,
+            color: Color(0xFF64748B),
             size: 20,
           ),
-          onPressed: () => setState(() {
-            final opening = !_showImportPanel;
-            _closeAllPanels();
-            _showImportPanel = opening;
-          }),
+          onPressed: _uploadExcelBudget,
           constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
           padding: EdgeInsets.zero,
           splashRadius: 18,
         ),
       ),
       Tooltip(
-        message: _showAddBudgetPanel ? 'Close' : 'Add Budget',
+        message: 'Add Budget',
         child: IconButton(
-          icon: Icon(
-            _showAddBudgetPanel ? Icons.close_rounded : Icons.add_rounded,
-            color: _showAddBudgetPanel ? const Color(0xFFFF6D00) : const Color(0xFF64748B),
+          icon: const Icon(
+            Icons.add_rounded,
+            color: Color(0xFF64748B),
             size: 20,
           ),
-          onPressed: () => setState(() {
-            final opening = !_showAddBudgetPanel;
-            _closeAllPanels();
-            _showAddBudgetPanel = opening;
-          }),
+          onPressed: () => _addOrEditBudget(),
           constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
           padding: EdgeInsets.zero,
           splashRadius: 18,
@@ -1435,11 +1427,222 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     ),
                   ],
                 ),
-                // Calendar dropdown overlay (future)
+                // Calendar dropdown overlay
+                if (_showCalendarDropdown)
+                  Positioned(
+                    top: 0,
+                    left: 20,
+                    child: Material(
+                      elevation: 8,
+                      borderRadius: BorderRadius.circular(16),
+                      child: _buildInlineCalendar(),
+                    ),
+                  ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildInlineCalendar() {
+    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final calMonth = _calendarDisplayMonth;
+    final daysInMonth = DateTime(calMonth.year, calMonth.month + 1, 0).day;
+    final firstWeekday = calMonth.weekday % 7;
+
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+    return Container(
+      width: 280,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF7C4DFF), Color(0xFF651FFF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.deepPurple.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header: month navigation
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _calendarDisplayMonth = DateTime(calMonth.year, calMonth.month - 1, 1);
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.chevron_left, size: 16, color: Colors.white),
+                ),
+              ),
+              Text(
+                '${months[calMonth.month - 1]} ${calMonth.year}',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+              ),
+              GestureDetector(
+                onTap: () {
+                  final next = DateTime(calMonth.year, calMonth.month + 1, 1);
+                  if (!next.isAfter(today)) {
+                    setState(() {
+                      _calendarDisplayMonth = next;
+                    });
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.chevron_right, size: 16,
+                    color: DateTime(calMonth.year, calMonth.month + 1, 1).isAfter(today) ? Colors.white38 : Colors.white),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Weekday headers
+          Row(
+            children: weekdays.map((d) => Expanded(
+              child: Center(child: Text(d, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white70))),
+            )).toList(),
+          ),
+          const SizedBox(height: 4),
+          // Day grid
+          ...List.generate(6, (week) {
+            return Row(
+              children: List.generate(7, (dow) {
+                final dayIdx = week * 7 + dow - firstWeekday + 1;
+                if (dayIdx < 1 || dayIdx > daysInMonth) {
+                  return const Expanded(child: SizedBox(height: 28));
+                }
+                final date = DateTime(calMonth.year, calMonth.month, dayIdx);
+                final isFuture = date.isAfter(today);
+                final isToday = date == today;
+                final isStart = _filterStartDate != null &&
+                    date.year == _filterStartDate!.year && date.month == _filterStartDate!.month && date.day == _filterStartDate!.day;
+                final isEnd = _filterEndDate != null &&
+                    date.year == _filterEndDate!.year && date.month == _filterEndDate!.month && date.day == _filterEndDate!.day;
+                final inRange = _filterStartDate != null && _filterEndDate != null &&
+                    date.isAfter(_filterStartDate!.subtract(const Duration(days: 1))) &&
+                    date.isBefore(_filterEndDate!.add(const Duration(days: 1)));
+                final isSelected = isStart || isEnd;
+
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: isFuture ? null : () {
+                      setState(() {
+                        if (_filterStartDate == null || (_filterStartDate != null && _filterEndDate != null)) {
+                          _filterStartDate = date;
+                          _filterEndDate = null;
+                        } else {
+                          if (date.isBefore(_filterStartDate!)) {
+                            _filterEndDate = _filterStartDate;
+                            _filterStartDate = date;
+                          } else {
+                            _filterEndDate = date;
+                          }
+                          _showCalendarDropdown = false;
+                        }
+                      });
+                    },
+                    child: Container(
+                      height: 28,
+                      margin: const EdgeInsets.symmetric(vertical: 1),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.white
+                            : inRange
+                                ? Colors.white24
+                                : null,
+                        borderRadius: BorderRadius.circular(isSelected ? 8 : 4),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$dayIdx',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: isSelected || isToday ? FontWeight.w800 : FontWeight.w500,
+                            color: isFuture
+                                ? Colors.white24
+                                : isSelected
+                                    ? const Color(0xFF651FFF)
+                                    : isToday
+                                        ? Colors.amber
+                                        : Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            );
+          }),
+          const SizedBox(height: 8),
+          // Quick select buttons
+          Row(
+            children: [
+              _calQuickBtn('This Month', () {
+                setState(() {
+                  _filterStartDate = DateTime(today.year, today.month, 1);
+                  _filterEndDate = today;
+                  _showCalendarDropdown = false;
+                });
+              }),
+              const SizedBox(width: 6),
+              _calQuickBtn('Last Month', () {
+                final lastMonth = DateTime(today.year, today.month - 1, 1);
+                final lastDay = DateTime(today.year, today.month, 0);
+                setState(() {
+                  _filterStartDate = lastMonth;
+                  _filterEndDate = lastDay;
+                  _showCalendarDropdown = false;
+                });
+              }),
+              const SizedBox(width: 6),
+              _calQuickBtn('Clear', () {
+                setState(() {
+                  _filterStartDate = null;
+                  _filterEndDate = null;
+                  _showCalendarDropdown = false;
+                });
+              }),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _calQuickBtn(String label, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white24,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Center(
+            child: Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
+          ),
+        ),
       ),
     );
   }

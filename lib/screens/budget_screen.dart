@@ -564,8 +564,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             Container(
               color: Colors.white,
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
                   const Text(
                     'Budget',
@@ -575,6 +574,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       letterSpacing: -0.3,
                     ),
                   ),
+                  const Spacer(),
+                  ..._buildHeaderIcons(),
                 ],
               ),
             ),
@@ -632,6 +633,73 @@ class _BudgetScreenState extends State<BudgetScreen> {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildHeaderIcons() {
+    final hasDateFilter = _filterStartDate != null || _filterEndDate != null;
+    String dateTooltip = 'Date Filter';
+    if (_filterStartDate != null && _filterEndDate != null) {
+      dateTooltip = 'Date Filter: ${_filterStartDate!.day}/${_filterStartDate!.month} – ${_filterEndDate!.day}/${_filterEndDate!.month}';
+    } else if (_filterStartDate != null) {
+      dateTooltip = 'Date Filter: from ${_filterStartDate!.day}/${_filterStartDate!.month}';
+    }
+    return [
+      Tooltip(
+        message: dateTooltip,
+        child: IconButton(
+          icon: Icon(
+            Icons.date_range_rounded,
+            color: (_showCalendarDropdown || hasDateFilter) ? const Color(0xFFE65100) : const Color(0xFF64748B),
+            size: 20,
+          ),
+          onPressed: () => setState(() {
+            _showCalendarDropdown = !_showCalendarDropdown;
+            if (_showCalendarDropdown) {
+              _calendarDisplayMonth = _filterStartDate ?? DateTime(DateTime.now().year, DateTime.now().month);
+            }
+          }),
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          padding: EdgeInsets.zero,
+          splashRadius: 18,
+        ),
+      ),
+      Tooltip(
+        message: _showImportPanel ? 'Close Import' : 'Import',
+        child: IconButton(
+          icon: Icon(
+            _showImportPanel ? Icons.close_rounded : Icons.upload_file,
+            color: _showImportPanel ? const Color(0xFF43A047) : const Color(0xFF64748B),
+            size: 20,
+          ),
+          onPressed: () => setState(() {
+            final opening = !_showImportPanel;
+            _closeAllPanels();
+            _showImportPanel = opening;
+          }),
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          padding: EdgeInsets.zero,
+          splashRadius: 18,
+        ),
+      ),
+      Tooltip(
+        message: _showAddBudgetPanel ? 'Close' : 'Add Budget',
+        child: IconButton(
+          icon: Icon(
+            _showAddBudgetPanel ? Icons.close_rounded : Icons.add_rounded,
+            color: _showAddBudgetPanel ? const Color(0xFFFF6D00) : const Color(0xFF64748B),
+            size: 20,
+          ),
+          onPressed: () => setState(() {
+            final opening = !_showAddBudgetPanel;
+            _closeAllPanels();
+            _showAddBudgetPanel = opening;
+          }),
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          padding: EdgeInsets.zero,
+          splashRadius: 18,
+        ),
+      ),
+    ];
   }
 
   Widget _buildControlsRow() {
@@ -1261,13 +1329,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
           // ── Title Row ──
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
                 const Text(
                   'Budget',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
                 ),
+                const Spacer(),
+                ..._buildHeaderIcons(),
               ],
             ),
           ),

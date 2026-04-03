@@ -559,7 +559,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
       if (!mounted) return;
       setState(() => _isUploading = false);
-      await _loadBudgets();
+      // Silently refresh budget data without full page reload
+      _loadBudgets();
 
       if (!mounted) return;
       if (errors.isEmpty) {
@@ -1470,30 +1471,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Budget Category Chips
-                    _buildBudgetCategoryGrid(isDark),
-                    // Clear filter chip
-                    if (_selectedCategoryFilter != null) ...[                      const SizedBox(height: 8),
-                      InkWell(
-                        onTap: () => setState(() => _selectedCategoryFilter = null),
-                        borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: primary.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.close, size: 14, color: primary),
-                              const SizedBox(width: 4),
-                              Text('Clear filter: $_selectedCategoryFilter', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: primary)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
                     const SizedBox(height: 12),
                     // ── Main 3-column layout ──
                     Expanded(
@@ -1614,12 +1591,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
               ),
               GestureDetector(
                 onTap: () {
-                  final next = DateTime(calMonth.year, calMonth.month + 1, 1);
-                  if (!next.isAfter(today)) {
-                    setState(() {
-                      _calendarDisplayMonth = next;
-                    });
-                  }
+                  setState(() {
+                    _calendarDisplayMonth = DateTime(calMonth.year, calMonth.month + 1, 1);
+                  });
                 },
                 child: Container(
                   padding: const EdgeInsets.all(4),
@@ -1627,8 +1601,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     color: Colors.white24,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.chevron_right, size: 16,
-                    color: DateTime(calMonth.year, calMonth.month + 1, 1).isAfter(today) ? Colors.white38 : Colors.white),
+                  child: const Icon(Icons.chevron_right, size: 16, color: Colors.white),
                 ),
               ),
             ],
@@ -1650,7 +1623,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   return const Expanded(child: SizedBox(height: 28));
                 }
                 final date = DateTime(calMonth.year, calMonth.month, dayIdx);
-                final isFuture = date.isAfter(today);
+                final isFuture = false; // Allow selecting any date
                 final isToday = date == today;
                 final isStart = _filterStartDate != null &&
                     date.year == _filterStartDate!.year && date.month == _filterStartDate!.month && date.day == _filterStartDate!.day;
@@ -1845,17 +1818,13 @@ class _BudgetScreenState extends State<BudgetScreen> {
   Widget _buildInlineBudgetForm() {
     final isEditing = _editingBudget != null;
     return Container(
-      width: 320,
-      padding: const EdgeInsets.all(20),
+      width: 380,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, 6)),
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
         ],
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
@@ -1863,92 +1832,148 @@ class _BudgetScreenState extends State<BudgetScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(
-                isEditing ? 'Edit Budget' : 'Add Budget',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3),
-              ),
-              const Spacer(),
-              InkWell(
-                onTap: _closeBudgetForm,
-                borderRadius: BorderRadius.circular(8),
-                child: const Padding(
-                  padding: EdgeInsets.all(4),
-                  child: Icon(Icons.close_rounded, size: 18, color: Color(0xFF94A3B8)),
+          // Header — matches Excel Import Preview style
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isEditing ? Icons.edit_note_rounded : Icons.add_chart_rounded,
+                  color: AppColors.primary,
+                  size: 22,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Category dropdown
-          DropdownButtonFormField<String>(
-            value: _formCategory,
-            items: _categories
-                .map((value) => DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(_titleCase(value)),
-                    ))
-                .toList(),
-            onChanged: (value) {
-              if (value != null) setState(() => _formCategory = value);
-            },
-            decoration: InputDecoration(
-              labelText: 'Category',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                const SizedBox(width: 10),
+                Text(
+                  isEditing ? 'Edit Budget' : 'Add Budget',
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: _closeBudgetForm,
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  style: IconButton.styleFrom(
+                    foregroundColor: const Color(0xFF94A3B8),
+                    backgroundColor: const Color(0xFFF1F5F9),
+                    minimumSize: const Size(32, 32),
+                    padding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 12),
-          // Monthly Budget
-          TextField(
-            controller: _formAmountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: 'Monthly Budget',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Tags
-          TextField(
-            controller: _formTagsController,
-            decoration: InputDecoration(
-              labelText: 'Tags (optional)',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Tag this budget with family members or ...',
-            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-          ),
-          const SizedBox(height: 16),
-          // Action buttons
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: _closeBudgetForm,
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF64748B),
+          // Form body
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Category
+                Text('Category', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[600])),
+                const SizedBox(height: 6),
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: DropdownButtonFormField<String>(
+                    value: _formCategory,
+                    items: _categories
+                        .map((value) => DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(_titleCase(value), style: const TextStyle(fontSize: 14)),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) setState(() => _formCategory = value);
+                    },
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    ),
+                    dropdownColor: Colors.white,
+                  ),
                 ),
-                child: const Text('Cancel'),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: _saveBudgetForm,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                const SizedBox(height: 14),
+                // Amount
+                Text('Monthly Budget', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[600])),
+                const SizedBox(height: 6),
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: TextField(
+                    controller: _formAmountController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: const TextStyle(fontSize: 14),
+                    decoration: const InputDecoration(
+                      hintText: '₹ 0.00',
+                      hintStyle: TextStyle(color: Color(0xFFCBD5E1)),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
                 ),
-                child: Text(isEditing ? 'Update' : 'Save'),
-              ),
-            ],
+                const SizedBox(height: 14),
+                // Tags
+                Text('Tags (optional)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[600])),
+                const SizedBox(height: 6),
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: TextField(
+                    controller: _formTagsController,
+                    style: const TextStyle(fontSize: 14),
+                    decoration: const InputDecoration(
+                      hintText: 'e.g. mom, school, travel',
+                      hintStyle: TextStyle(color: Color(0xFFCBD5E1)),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Tag this budget with family members or intent.',
+                  style: TextStyle(fontSize: 10, color: Colors.grey[400], fontStyle: FontStyle.italic),
+                ),
+                const SizedBox(height: 20),
+                // Actions
+                Row(
+                  children: [
+                    const Spacer(),
+                    TextButton(
+                      onPressed: _closeBudgetForm,
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF64748B),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      ),
+                      child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed: _saveBudgetForm,
+                      icon: Icon(isEditing ? Icons.check_rounded : Icons.add_rounded, size: 16),
+                      label: Text(isEditing ? 'Update' : 'Save'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),

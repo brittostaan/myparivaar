@@ -9,6 +9,7 @@ import 'screens/savings_goals_screen.dart';
 import 'screens/family_management_screen.dart';
 import 'screens/expense_management_screen.dart';
 import 'screens/budget_screen.dart';
+import 'screens/budget2_screen.dart';
 import 'screens/investments_screen.dart';
 import 'screens/upcoming_bills_screen.dart';
 import 'screens/reports_screen.dart';
@@ -412,6 +413,15 @@ class MyParivaaarApp extends StatelessWidget {
           builder: (_) => NavigationShell(
             currentRoute: routeName,
             child: const BudgetScreen(),
+          ),
+        );
+
+      case '/budget2':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const Budget2Screen(),
           ),
         );
 

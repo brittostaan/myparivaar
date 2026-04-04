@@ -159,14 +159,22 @@ class _BudgetScreenState extends State<BudgetScreen> {
         tags: parseTags(_formTagsController.text),
       );
       if (!mounted) return;
-      _closeBudgetForm();
-      await _loadBudgets();
+      // Refresh budget list without closing form or full page reload
+      _loadBudgets();
+      if (!isEditing) {
+        // Clear fields for next entry but keep form open
+        _formAmountController.clear();
+        _formTagsController.clear();
+      } else {
+        _closeBudgetForm();
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(isEditing
               ? 'Budget updated successfully'
               : 'Budget added successfully'),
+          duration: const Duration(seconds: 1),
         ),
       );
     } catch (e) {
@@ -4301,10 +4309,13 @@ class _CategoryEditorState extends State<_CategoryEditor> {
 
   Widget _buildOverlay() {
     final query = _controller.text.toLowerCase().trim();
-    final filtered = _allCategories
-        .where((c) => query.isEmpty || c.contains(query))
-        .toList();
-    final showAddNew = query.isNotEmpty && !_allCategories.contains(query);
+    // Show all categories when field is empty or matches current value;
+    // otherwise filter by typed query
+    final isCurrentValue = query == widget.value.toLowerCase();
+    final filtered = (query.isEmpty || isCurrentValue)
+        ? _allCategories
+        : _allCategories.where((c) => c.contains(query)).toList();
+    final showAddNew = query.isNotEmpty && !isCurrentValue && !_allCategories.contains(query);
 
     return Positioned(
       width: 160,
@@ -4377,7 +4388,7 @@ class _CategoryEditorState extends State<_CategoryEditor> {
     return CompositedTransformTarget(
       link: _layerLink,
       child: SizedBox(
-        height: 30,
+        height: 32,
         child: TextField(
           controller: _controller,
           focusNode: _focusNode,

@@ -424,24 +424,45 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       int successCount = 0;
       final errors = <String>[];
 
+      // Get token once before the loop to avoid repeated token fetches
+      final idToken = await authService.getIdToken();
+
       for (final row in validRows) {
         try {
           await _expenseService.createExpense(
             supabaseUrl: authService.supabaseUrl,
-            idToken: await authService.getIdToken(),
+            idToken: idToken,
             amount: row.amount,
             category: row.category.toLowerCase().trim(),
-            description: row.description,
+            description: row.description.isNotEmpty ? row.description : row.category,
             date: row.date,
           );
           successCount++;
         } catch (e) {
-          errors.add('${row.description.isNotEmpty ? row.description : row.category}: $e');
+          final label = row.description.isNotEmpty ? row.description : row.category;
+          final msg = e is ExpenseException ? e.message : '$e';
+          errors.add('$label: $msg');
         }
       }
 
+      // Silently refresh data without full page loading state
       if (!mounted) return;
-      _loadExpenses();
+      if (successCount > 0) {
+        try {
+          final refreshToken = await authService.getIdToken();
+          final expenses = await _expenseService.getExpenses(
+            supabaseUrl: authService.supabaseUrl,
+            idToken: refreshToken,
+          );
+          if (mounted) {
+            setState(() {
+              _expenses = expenses;
+            });
+          }
+        } catch (_) {
+          // Silent refresh failure is OK
+        }
+      }
 
       if (errors.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(

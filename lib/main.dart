@@ -131,9 +131,7 @@ String _computeInitialRoute() {
 // ── View Mode (Responsive Design) ────────────────────────────────────────────
 
 enum ViewMode {
-  desktop(label: 'Browser Mode', icon: AppIcons.laptop, width: null),
-  tablet(label: 'Tablet', icon: AppIcons.tablet, width: 768),
-  mobile(label: 'Mobile', icon: AppIcons.phone, width: 375);
+  desktop(label: 'Browser Mode', icon: AppIcons.laptop, width: null);
 
   const ViewMode({
     required this.label,
@@ -147,40 +145,18 @@ enum ViewMode {
 }
 
 ViewMode viewModeFromWidth(double width) {
-  if (width >= 1024) {
-    return ViewMode.desktop;
-  }
-  if (width >= 700) {
-    return ViewMode.tablet;
-  }
-  return ViewMode.mobile;
+  return ViewMode.desktop;
 }
 
 class ViewModeProvider extends ChangeNotifier {
-  ViewMode _mode = ViewMode.mobile;
-  bool _isManualOverride = false;
+  ViewMode _mode = ViewMode.desktop;
 
   ViewMode get mode => _mode;
-  bool get isManualOverride => _isManualOverride;
+  bool get isManualOverride => false;
 
-  void setMode(ViewMode mode) {
-    _isManualOverride = true;
-    if (_mode == mode) return;
-    _mode = mode;
-    notifyListeners();
-  }
-
-  void syncAutoMode(ViewMode mode) {
-    if (_isManualOverride || _mode == mode) return;
-    _mode = mode;
-    notifyListeners();
-  }
-
-  void clearManualOverride() {
-    if (!_isManualOverride) return;
-    _isManualOverride = false;
-    notifyListeners();
-  }
+  void setMode(ViewMode mode) {}
+  void syncAutoMode(ViewMode mode) {}
+  void clearManualOverride() {}
 }
 
 // ── Entry point ──────────────────────────────────────────────────────────────
@@ -1400,41 +1376,7 @@ class _ResponsiveWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final detectedMode = viewModeFromWidth(MediaQuery.of(context).size.width);
-    final modeProvider = context.read<ViewModeProvider>();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!context.mounted) return;
-      context.read<ViewModeProvider>().syncAutoMode(detectedMode);
-    });
-    final activeMode = modeProvider.isManualOverride ? viewMode : detectedMode;
-
-    // Desktop mode - full width
-    if (activeMode == ViewMode.desktop) {
-      return child;
-    }
-
-    // Mobile/Tablet modes - constrained width with device frame
-    final bgColor = Theme.of(context).scaffoldBackgroundColor;
-    return Container(
-      color: bgColor,
-      child: Center(
-        child: Container(
-          width: activeMode.width,
-          decoration: BoxDecoration(
-            color: bgColor,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 20,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          child: ClipRect(
-            child: child,
-          ),
-        ),
-      ),
-    );
+    // Web-only: always full width, no device-frame constraints
+    return child;
   }
 }

@@ -130,9 +130,9 @@ class ExpenseService {
       } else {
         try {
           final error = jsonDecode(response.body);
-          final msg = error['error'] ?? error['message'] ?? response.body;
+          final msg = error['error'] ?? error['message'] ?? error['msg'] ?? response.body;
           throw ExpenseException(
-            'Failed to create expense: $msg',
+            '$msg (HTTP ${response.statusCode})',
             statusCode: response.statusCode,
             rawBody: response.body,
             url: '$supabaseUrl/functions/v1/expense-create',
@@ -140,7 +140,7 @@ class ExpenseService {
         } catch (e) {
           if (e is ExpenseException) rethrow;
           throw ExpenseException(
-            'Failed to create expense (HTTP ${response.statusCode})',
+            'HTTP ${response.statusCode}: ${response.body}',
             statusCode: response.statusCode,
             rawBody: response.body,
             url: '$supabaseUrl/functions/v1/expense-create',

@@ -194,9 +194,23 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     }
   }
 
-  /// Convert .xlsx bytes to CSV string by parsing the XML inside the zip.
-  /// Correctly handles column positions using cell references (A1, B2, etc.).
-  String _excelToCsv(Uint8List bytes) {
+  /// Convert xlsx column reference (e.g. "A1", "B2", "AA3") to 0-based column index.
+  static int _colRefToIndex(String cellRef) {
+    int col = 0;
+    for (int i = 0; i < cellRef.length; i++) {
+      final ch = cellRef.codeUnitAt(i);
+      if (ch >= 65 && ch <= 90) {
+        col = col * 26 + (ch - 64);
+      } else {
+        break;
+      }
+    }
+    return col - 1;
+  }
+
+  /// Parse .xlsx bytes into structured expense rows (description, category, date, amount).
+  /// Handles: DD-MM-YYYY dates, ₹-prefixed amounts, Excel date serials.
+  static List<_ExpenseEditableRow> _parseExpenseExcel(Uint8List bytes) {
     final archive = ZipDecoder().decodeBytes(bytes);
 
     // Parse shared strings
@@ -229,7 +243,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
     if (xmlRows.isEmpty) throw const FormatException('Excel sheet is empty');
 
-    // First pass: find max column index across all rows
+    // Find max column index
     int maxCol = 0;
     for (final row in xmlRows) {
       for (final cell in row.findAllElements('c', namespace: ns)) {
@@ -239,10 +253,10 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       }
     }
 
-    final csvLines = <String>[];
+    // Parse all rows into List<List<String>>
+    final allRows = <List<String>>[];
     for (final row in xmlRows) {
       final cells = row.findAllElements('c', namespace: ns);
-      // Pre-fill with empty strings for all columns
       final values = List<String>.filled(maxCol + 1, '');
       for (final cell in cells) {
         final ref = cell.getAttribute('r') ?? '';
@@ -250,77 +264,109 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         final type = cell.getAttribute('t') ?? '';
         final vElem = cell.findElements('v', namespace: ns);
         final raw = vElem.isNotEmpty ? vElem.first.innerText : '';
-        String value;
         if (type == 's' && raw.isNotEmpty) {
           final idx = int.tryParse(raw) ?? 0;
-          value = idx < sharedStrings.length ? sharedStrings[idx] : raw;
+          values[colIdx] = idx < sharedStrings.length ? sharedStrings[idx] : raw;
         } else {
-          value = raw;
-        }
-        // Escape CSV: quote if contains comma, quote, or newline
-        if (value.contains(',') || value.contains('"') || value.contains('\n')) {
-          value = '"${value.replaceAll('"', '""')}"';
-        }
-        values[colIdx] = value;
-      }
-      // Trim trailing empty cells
-      while (values.isNotEmpty && values.last.isEmpty) {
-        values.removeLast();
-      }
-      if (values.isNotEmpty) csvLines.add(values.join(','));
-    }
-    return csvLines.join('\n');
-  }
-
-  /// Convert xlsx column reference (e.g. "A1", "B2", "AA3") to 0-based column index.
-  static int _colRefToIndex(String cellRef) {
-    int col = 0;
-    for (int i = 0; i < cellRef.length; i++) {
-      final ch = cellRef.codeUnitAt(i);
-      if (ch >= 65 && ch <= 90) { // A-Z
-        col = col * 26 + (ch - 64);
-      } else {
-        break;
-      }
-    }
-    return col - 1; // 0-based
-  }
-
-  /// Convert Excel date serial number to YYYY-MM-DD string.
-  /// Excel epoch is Jan 1, 1900 (with the Lotus 1-2-3 leap year bug).
-  static String _excelDateToIso(String raw) {
-    final serial = double.tryParse(raw);
-    if (serial == null || serial < 1) return raw;
-    // Excel epoch: Dec 30, 1899 (accounting for the Lotus bug where 1900 is wrongly a leap year)
-    final epoch = DateTime(1899, 12, 30);
-    final date = epoch.add(Duration(days: serial.toInt()));
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-
-  /// Post-process CSV from Excel: convert date serial numbers in the first column
-  /// (if header is "date") to ISO format.
-  String _postProcessExcelCsv(String csv) {
-    final lines = csv.split('\n').where((l) => l.trim().isNotEmpty).toList();
-    if (lines.isEmpty) return csv;
-
-    // Find the date column index from the header row
-    final headers = lines[0].split(',').map((h) => h.trim().toLowerCase()).toList();
-    final dateColIdx = headers.indexOf('date');
-    if (dateColIdx < 0) return csv; // No date column, return
-
-    final result = <String>[lines[0]]; // Keep header as-is
-    for (int i = 1; i < lines.length; i++) {
-      final cols = lines[i].split(',');
-      if (dateColIdx < cols.length) {
-        final raw = cols[dateColIdx].trim();
-        // If it looks like a serial number (all digits, possibly with decimal), convert
-        if (RegExp(r'^\d+(\.\d+)?$').hasMatch(raw)) {
-          cols[dateColIdx] = _excelDateToIso(raw);
+          values[colIdx] = raw;
         }
       }
-      result.add(cols.join(','));
+      allRows.add(values);
     }
-    return result.join('\n');
+
+    if (allRows.length < 2) return [];
+
+    // Detect column mapping from header row
+    final headers = allRows[0].map((h) => h.toLowerCase().trim()).toList();
+    int descCol = -1, catCol = -1, dateCol = -1, amtCol = -1;
+    for (int i = 0; i < headers.length; i++) {
+      final h = headers[i];
+      if (h.contains('desc') || h.contains('narration') || h.contains('particular')) {
+        descCol = i;
+      } else if (h.contains('categ')) {
+        catCol = i;
+      } else if (h.contains('date')) {
+        dateCol = i;
+      } else if (h.contains('amount') || h.contains('amt') || h.contains('total') || h.contains('debit')) {
+        amtCol = i;
+      }
+    }
+
+    // Fallback: if no headers matched, assume A=Description, B=Category, C=Date, D=Amount
+    if (descCol < 0 && catCol < 0 && dateCol < 0 && amtCol < 0) {
+      descCol = 0;
+      catCol = 1;
+      dateCol = 2;
+      amtCol = 3;
+    }
+
+    final rows = <_ExpenseEditableRow>[];
+    for (int i = 1; i < allRows.length; i++) {
+      final vals = allRows[i];
+      // Skip fully empty rows
+      if (vals.every((v) => v.trim().isEmpty)) continue;
+
+      final rawDesc = descCol >= 0 && descCol < vals.length ? vals[descCol].trim() : '';
+      final rawCat = catCol >= 0 && catCol < vals.length ? vals[catCol].trim() : '';
+      final rawDate = dateCol >= 0 && dateCol < vals.length ? vals[dateCol].trim() : '';
+      final rawAmt = amtCol >= 0 && amtCol < vals.length ? vals[amtCol].trim() : '';
+
+      // Parse amount: strip ₹, commas, spaces
+      final cleanAmt = rawAmt.replaceAll(RegExp(r'[₹,\s]'), '');
+      final amount = double.tryParse(cleanAmt);
+
+      // Parse date: handle DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD, Excel serial
+      DateTime? date;
+      if (rawDate.isNotEmpty) {
+        // Try DD-MM-YYYY or DD/MM/YYYY
+        final ddmmyyyy = RegExp(r'^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$').firstMatch(rawDate);
+        if (ddmmyyyy != null) {
+          final d = int.parse(ddmmyyyy.group(1)!);
+          final m = int.parse(ddmmyyyy.group(2)!);
+          final y = int.parse(ddmmyyyy.group(3)!);
+          date = DateTime(y, m, d);
+        }
+        // Try YYYY-MM-DD
+        if (date == null) {
+          final isoMatch = RegExp(r'^(\d{4})-(\d{1,2})-(\d{1,2})$').firstMatch(rawDate);
+          if (isoMatch != null) {
+            date = DateTime(
+              int.parse(isoMatch.group(1)!),
+              int.parse(isoMatch.group(2)!),
+              int.parse(isoMatch.group(3)!),
+            );
+          }
+        }
+        // Try Excel serial number
+        if (date == null) {
+          final serial = double.tryParse(rawDate);
+          if (serial != null && serial > 1) {
+            date = DateTime(1899, 12, 30).add(Duration(days: serial.toInt()));
+          }
+        }
+      }
+
+      // Map category
+      final mappedCategory = _ExpenseExcelPreviewDialogState._mapToValidCategory(rawCat);
+
+      // Validation
+      String? error;
+      if (amount == null || amount <= 0) {
+        error = 'Invalid amount: $rawAmt';
+      } else if (date == null) {
+        error = 'Invalid date: $rawDate';
+      }
+
+      rows.add(_ExpenseEditableRow(
+        description: rawDesc,
+        category: mappedCategory,
+        date: date ?? DateTime.now(),
+        amount: amount ?? 0,
+        isValid: error == null,
+        validationError: error,
+      ));
+    }
+    return rows;
   }
 
   Future<void> _uploadExpenseFile() async {
@@ -328,13 +374,13 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['csv', 'xlsx'],
+        allowedExtensions: ['xlsx'],
         withData: true,
       );
       if (result == null || result.files.isEmpty) return;
 
-      final file = result.files.first;
-      if (file.bytes == null) {
+      final bytes = result.files.first.bytes;
+      if (bytes == null) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not read file data')),
@@ -342,91 +388,120 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         return;
       }
 
-      final ext = file.name.split('.').last.toLowerCase();
-      String csvText;
-
-      if (ext == 'xlsx' || ext == 'xls') {
-        // Parse Excel binary to CSV
-        try {
-          csvText = _postProcessExcelCsv(_excelToCsv(Uint8List.fromList(file.bytes!)));
-        } catch (e) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not parse Excel file: $e')),
-          );
-          return;
-        }
-      } else {
-        // CSV — decode as UTF-8
-        try {
-          csvText = utf8.decode(file.bytes!);
-        } catch (_) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('CSV file must be UTF-8 encoded')),
-          );
-          return;
-        }
-      }
-
-      if (csvText.trim().isEmpty) {
+      List<_ExpenseEditableRow> rows;
+      try {
+        rows = _parseExpenseExcel(Uint8List.fromList(bytes));
+      } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Selected file is empty')),
+          SnackBar(content: Text('Could not parse Excel file: $e')),
         );
         return;
       }
 
-      final svc = ImportService(supabaseUrl: authService.supabaseUrl, authService: authService);
-      final preview = await svc.preview(type: 'expenses', csvText: csvText);
+      if (rows.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No expense data found in the Excel file')),
+        );
+        return;
+      }
 
       if (!mounted) return;
 
-      // Build preview message with error details
-      final msgBuf = StringBuffer();
-      msgBuf.writeln('Valid: ${preview.validCount} expense(s)');
-      if (preview.hasErrors) {
-        msgBuf.writeln('Errors: ${preview.errorCount} row(s)');
-        for (final err in preview.errors.take(5)) {
-          msgBuf.writeln('  Row ${err.row}: ${err.message}');
-        }
-        if (preview.errors.length > 5) {
-          msgBuf.writeln('  ... and ${preview.errors.length - 5} more');
-        }
-      }
-
-      final confirmed = await showDialog<bool>(
+      final dialogResult = await showDialog<Map<String, dynamic>>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Import Preview'),
-          content: SingleChildScrollView(
-            child: Text(msgBuf.toString()),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            if (preview.validCount > 0 && !preview.hasErrors)
-              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Import')),
-          ],
+        builder: (context) => _ExpenseExcelPreviewDialog(
+          rows: rows,
+          authService: authService,
         ),
       );
 
-      if (confirmed != true || !mounted) return;
+      if (dialogResult == null || !mounted) return;
+      final editedRows = dialogResult['rows'] as List<_ExpenseEditableRow>;
 
-      final commitResult = await svc.commit(type: 'expenses', csvText: csvText);
+      final validRows = editedRows.where((r) => r.isValid).toList();
+      int successCount = 0;
+      final errors = <String>[];
+
+      for (final row in validRows) {
+        try {
+          await _expenseService.createExpense(
+            supabaseUrl: authService.supabaseUrl,
+            idToken: await authService.getIdToken(),
+            amount: row.amount,
+            category: row.category.toLowerCase().trim(),
+            description: row.description,
+            date: row.date,
+          );
+          successCount++;
+        } catch (e) {
+          errors.add('${row.description.isNotEmpty ? row.description : row.category}: $e');
+        }
+      }
+
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Imported ${commitResult.imported} expense(s) successfully')),
-      );
       _loadExpenses();
-    } on ImportException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Import error: ${e.message}')),
-      );
+
+      if (errors.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully imported $successCount expense(s)'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      } else {
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: AppColors.warningDark),
+                const SizedBox(width: 8),
+                Text('Imported $successCount, ${errors.length} failed'),
+              ],
+            ),
+            content: SizedBox(
+              width: 500,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (successCount > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text('$successCount expenses imported successfully.',
+                          style: const TextStyle(color: AppColors.success)),
+                    ),
+                  const Text('Errors:', style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  ...errors.map((e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.error_outline, size: 16, color: AppColors.error),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text(e, style: const TextStyle(fontSize: 13))),
+                      ],
+                    ),
+                  )),
+                ],
+              ),
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to import: $e')),
+        SnackBar(content: Text('Failed to process Excel file: $e')),
       );
     }
   }
@@ -6426,4 +6501,595 @@ class _RewardIcon {
   final Color color;
   final String label;
   const _RewardIcon(this.icon, this.color, this.label);
+}
+
+/// Mutable row for the expense preview dialog
+class _ExpenseEditableRow {
+  String description;
+  String category;
+  DateTime date;
+  double amount;
+  final bool isValid;
+  final String? validationError;
+  bool aiCategorized;
+  String aiConfidence;
+
+  _ExpenseEditableRow({
+    required this.description,
+    required this.category,
+    required this.date,
+    required this.amount,
+    this.isValid = true,
+    this.validationError,
+    this.aiCategorized = false,
+    this.aiConfidence = '',
+  });
+}
+
+/// Rich Excel import preview dialog for expenses — matches budget's _ExcelPreviewDialog
+class _ExpenseExcelPreviewDialog extends StatefulWidget {
+  final List<_ExpenseEditableRow> rows;
+  final AuthService authService;
+
+  const _ExpenseExcelPreviewDialog({
+    required this.rows,
+    required this.authService,
+  });
+
+  @override
+  State<_ExpenseExcelPreviewDialog> createState() => _ExpenseExcelPreviewDialogState();
+}
+
+class _ExpenseExcelPreviewDialogState extends State<_ExpenseExcelPreviewDialog> {
+  late List<_ExpenseEditableRow> _editableRows;
+  bool _isCategorizingWithAI = false;
+  bool _aiCategorizationDone = false;
+  String? _aiError;
+  final List<String> _userAddedCategories = [];
+
+  static const _validCategories = [
+    'food', 'transport', 'utilities', 'shopping',
+    'healthcare', 'entertainment', 'bank', 'other',
+  ];
+
+  static const _indianBanks = <String>[
+    'iob', 'sbi', 'hdfc', 'icici', 'axis', 'kotak', 'pnb', 'bob', 'boi',
+    'canara', 'union', 'idbi', 'yes bank', 'indusind', 'rbl', 'federal',
+    'bandhan', 'au bank', 'au small', 'idfc', 'idfc first', 'cbi',
+    'indian overseas', 'uco', 'allahabad', 'syndicate', 'andhra bank',
+    'vijaya', 'dena', 'oriental', 'corporation bank', 'mahanagar',
+    'city union', 'karur vysya', 'kvb', 'south indian', 'tamilnad mercantile',
+    'tmb', 'lakshmi vilas', 'dhanlaxmi', 'j&k bank', 'karnataka bank',
+    'nainital', 'saraswat', 'fino', 'paytm', 'airtel payments', 'jio payments',
+    'nps', 'ppf', 'mutual fund', 'mf', 'lic', 'bajaj', 'tata capital',
+  ];
+
+  static String _mapToValidCategory(String raw) {
+    final lower = raw.toLowerCase().trim();
+    if (lower.isEmpty) return 'other';
+    if (_validCategories.contains(lower)) return lower;
+
+    for (final bank in _indianBanks) {
+      if (lower.contains(bank) || bank.contains(lower)) return 'bank';
+    }
+
+    const mapping = <String, List<String>>{
+      'food': ['food', 'grocery', 'groceries', 'meal', 'dining', 'provisions',
+        'kitchen', 'vegetables', 'fruits', 'milk', 'snack'],
+      'transport': ['transport', 'travel', 'fuel', 'petrol', 'commut',
+        'vehicle', 'car', 'bike', 'parking', 'auto', 'cab'],
+      'utilities': ['utility', 'utilities', 'electric', 'water', 'internet',
+        'wifi', 'phone', 'mobile', 'recharge', 'bill', 'maintenance', 'rent',
+        'housing', 'household', 'emi', 'act'],
+      'shopping': ['shopping', 'cloth', 'fashion', 'amazon', 'flipkart',
+        'online', 'gadget', 'electronics'],
+      'healthcare': ['health', 'medical', 'medicine', 'doctor', 'hospital',
+        'pharmacy', 'insurance', 'gym', 'fitness', 'dental', 'parlour'],
+      'entertainment': ['entertainment', 'movie', 'netflix', 'subscription',
+        'hobby', 'game', 'sport', 'outing', 'party', 'fun', 'leisure',
+        'class', 'classes', 'yoga', 'violin', 'cello', 'music'],
+      'bank': ['bank', 'neft', 'imps', 'rtgs', 'upi', 'transfer', 'deposit',
+        'withdrawal', 'atm', 'cheque', 'saving', 'current account', 'fd',
+        'fixed deposit', 'rd', 'recurring'],
+    };
+
+    for (final entry in mapping.entries) {
+      for (final keyword in entry.value) {
+        if (lower.contains(keyword)) return entry.key;
+      }
+    }
+    return 'other';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _editableRows = List.of(widget.rows);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _runAICategorization();
+    });
+  }
+
+  Future<void> _runAICategorization() async {
+    if (!mounted) return;
+    setState(() {
+      _isCategorizingWithAI = true;
+      _aiError = null;
+    });
+
+    try {
+      final authService = widget.authService;
+      final validRows = _editableRows.where((r) => r.isValid).toList();
+      if (validRows.isEmpty) return;
+
+      final items = validRows.map((r) => <String, dynamic>{
+        'description': r.description.isNotEmpty ? r.description : r.category,
+        'amount': r.amount,
+      }).toList();
+
+      final results = await AIService().categorizeBudgetItems(
+        items: items,
+        supabaseUrl: authService.supabaseUrl,
+        idToken: await authService.getIdToken(),
+      );
+
+      if (!mounted) return;
+      setState(() {
+        int ri = 0;
+        for (final row in _editableRows) {
+          if (row.isValid && ri < results.length) {
+            row.category = results[ri]['category'] ?? row.category;
+            row.aiConfidence = results[ri]['confidence'] ?? 'low';
+            row.aiCategorized = true;
+            ri++;
+          }
+        }
+        _isCategorizingWithAI = false;
+        _aiCategorizationDone = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isCategorizingWithAI = false;
+        _aiError = 'AI categorization failed: $e';
+      });
+    }
+  }
+
+  static const _monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  String _titleCase(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  String _formatDate(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}-${_monthNames[d.month - 1]}-${d.year}';
+
+  @override
+  Widget build(BuildContext context) {
+    final validRows = _editableRows.where((r) => r.isValid).toList();
+    final invalidRows = _editableRows.where((r) => !r.isValid).toList();
+    final totalAmount = validRows.fold<double>(0, (sum, r) => sum + r.amount);
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Icon(Icons.preview, color: AppColors.primary),
+          const SizedBox(width: 8),
+          const Expanded(child: Text('Excel Import Preview')),
+        ],
+      ),
+      content: SizedBox(
+        width: 850,
+        height: 540,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Summary bar
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  _chip('${validRows.length} valid', AppColors.success),
+                  const SizedBox(width: 8),
+                  if (invalidRows.isNotEmpty)
+                    _chip('${invalidRows.length} invalid', AppColors.error),
+                  const Spacer(),
+                  Text(
+                    'Total: ₹${totalAmount.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Review expenses below. You can change categories before importing.',
+              style: TextStyle(fontSize: 11, color: Colors.grey[500], fontStyle: FontStyle.italic),
+            ),
+            if (_isCategorizingWithAI)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(children: [
+                  const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                  const SizedBox(width: 8),
+                  Text('AI is categorizing items...', style: TextStyle(fontSize: 11, color: Colors.deepPurple[400], fontWeight: FontWeight.w600)),
+                ]),
+              ),
+            if (_aiCategorizationDone)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(children: [
+                  Icon(Icons.auto_awesome, size: 14, color: Colors.deepPurple[400]),
+                  const SizedBox(width: 6),
+                  Text('AI categorized. Review & correct if needed.', style: TextStyle(fontSize: 11, color: Colors.deepPurple[400], fontWeight: FontWeight.w600)),
+                ]),
+              ),
+            if (_aiError != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(_aiError!, style: const TextStyle(fontSize: 11, color: AppColors.warningDark)),
+              ),
+            const SizedBox(height: 8),
+            // Table
+            Expanded(
+              child: SingleChildScrollView(
+                child: Table(
+                  columnWidths: const <int, TableColumnWidth>{
+                    0: FixedColumnWidth(32),
+                    1: FlexColumnWidth(2),
+                    2: FlexColumnWidth(1.2),
+                    3: FlexColumnWidth(1),
+                    4: FlexColumnWidth(0.8),
+                    5: FixedColumnWidth(36),
+                    6: FixedColumnWidth(36),
+                  },
+                  border: TableBorder.all(
+                    color: AppColors.grey200,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  children: [
+                    TableRow(
+                      decoration: BoxDecoration(
+                        color: AppColors.grey200,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                      ),
+                      children: const [
+                        _ExpTableHeader('#'),
+                        _ExpTableHeader('Description'),
+                        _ExpTableHeader('Category'),
+                        _ExpTableHeader('Date'),
+                        _ExpTableHeader('Amount'),
+                        _ExpTableHeader(''),
+                        _ExpTableHeader(''),
+                      ],
+                    ),
+                    for (int idx = 0; idx < _editableRows.length; idx++)
+                      TableRow(
+                        decoration: BoxDecoration(
+                          color: _editableRows[idx].isValid
+                              ? null
+                              : AppColors.error.withValues(alpha: 0.06),
+                        ),
+                        children: [
+                          _ExpTableCell(
+                            Text('${idx + 1}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                          ),
+                          _ExpTableCell(
+                            Text(
+                              _editableRows[idx].description,
+                              style: const TextStyle(fontSize: 12),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          _ExpTableCell(
+                            _ExpCategoryEditor(
+                              value: _editableRows[idx].category,
+                              enabled: _editableRows[idx].isValid,
+                              extraCategories: _userAddedCategories,
+                              onChanged: (v) {
+                                setState(() {
+                                  _editableRows[idx].category = v;
+                                  if (!_validCategories.contains(v) &&
+                                      !_userAddedCategories.contains(v)) {
+                                    _userAddedCategories.add(v);
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                          _ExpTableCell(
+                            Text(
+                              _editableRows[idx].isValid
+                                  ? _formatDate(_editableRows[idx].date)
+                                  : _editableRows[idx].validationError ?? 'Invalid',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _editableRows[idx].isValid ? null : AppColors.error,
+                              ),
+                            ),
+                          ),
+                          _ExpTableCell(
+                            Text(
+                              _editableRows[idx].isValid
+                                  ? '₹${_editableRows[idx].amount.toStringAsFixed(0)}'
+                                  : '',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          _ExpTableCell(
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _editableRows[idx].isValid ? Icons.check_circle : Icons.error,
+                                  color: _editableRows[idx].isValid ? AppColors.success : AppColors.error,
+                                  size: 15,
+                                ),
+                                if (_editableRows[idx].aiCategorized) ...[
+                                  const SizedBox(width: 3),
+                                  Tooltip(
+                                    message: 'AI: ${_editableRows[idx].aiConfidence} confidence',
+                                    child: Container(
+                                      width: 7, height: 7,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: _editableRows[idx].aiConfidence == 'high'
+                                            ? AppColors.success
+                                            : _editableRows[idx].aiConfidence == 'medium'
+                                                ? AppColors.warningDark
+                                                : AppColors.error,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          _ExpTableCell(
+                            Tooltip(
+                              message: 'Remove row',
+                              child: InkWell(
+                                onTap: () => setState(() => _editableRows.removeAt(idx)),
+                                borderRadius: BorderRadius.circular(4),
+                                child: const Icon(Icons.close_rounded, size: 14, color: Color(0xFF94A3B8)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            if (invalidRows.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Invalid rows will be skipped. You can correct or delete them.',
+                style: TextStyle(fontSize: 11, color: Colors.grey[600], fontStyle: FontStyle.italic),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: validRows.isEmpty
+              ? null
+              : () => Navigator.pop(context, {
+                    'rows': _editableRows,
+                  }),
+          icon: const Icon(Icons.upload),
+          label: Text('Import ${validRows.length} Items'),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _chip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
+      ),
+    );
+  }
+}
+
+class _ExpTableHeader extends StatelessWidget {
+  final String text;
+  const _ExpTableHeader(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+    );
+  }
+}
+
+class _ExpTableCell extends StatelessWidget {
+  final Widget child;
+  const _ExpTableCell(this.child);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: child,
+    );
+  }
+}
+
+class _ExpCategoryEditor extends StatefulWidget {
+  final String value;
+  final bool enabled;
+  final ValueChanged<String> onChanged;
+  final List<String>? extraCategories;
+
+  const _ExpCategoryEditor({
+    required this.value,
+    required this.enabled,
+    required this.onChanged,
+    this.extraCategories,
+  });
+
+  static const _defaultCategories = [
+    'food', 'transport', 'utilities', 'shopping',
+    'healthcare', 'entertainment', 'bank', 'other',
+  ];
+
+  @override
+  State<_ExpCategoryEditor> createState() => _ExpCategoryEditorState();
+}
+
+class _ExpCategoryEditorState extends State<_ExpCategoryEditor> {
+  late TextEditingController _controller;
+  late FocusNode _focusNode;
+  final LayerLink _layerLink = LayerLink();
+  OverlayEntry? _overlayEntry;
+
+  List<String> get _allCategories {
+    final cats = [..._ExpCategoryEditor._defaultCategories];
+    if (widget.extraCategories != null) {
+      for (final c in widget.extraCategories!) {
+        if (!cats.contains(c.toLowerCase())) cats.add(c.toLowerCase());
+      }
+    }
+    return cats;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value);
+    _focusNode = FocusNode();
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        _showOverlay();
+      } else {
+        _removeOverlay();
+        if (_controller.text.trim().isNotEmpty) {
+          widget.onChanged(_controller.text.trim().toLowerCase());
+        }
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _ExpCategoryEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value) {
+      _controller.text = widget.value;
+    }
+  }
+
+  @override
+  void dispose() {
+    _removeOverlay();
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _showOverlay() {
+    _removeOverlay();
+    final overlay = Overlay.of(context);
+    _overlayEntry = OverlayEntry(builder: (_) {
+      final filtered = _allCategories
+          .where((c) => c.contains(_controller.text.toLowerCase()))
+          .toList();
+      return Positioned(
+        width: 180,
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          offset: const Offset(0, 34),
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200),
+              child: ListView(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                children: filtered.map((cat) {
+                  return ListTile(
+                    dense: true,
+                    title: Text(cat, style: const TextStyle(fontSize: 12)),
+                    onTap: () {
+                      _controller.text = cat;
+                      widget.onChanged(cat);
+                      _focusNode.unfocus();
+                    },
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ),
+      );
+    });
+    overlay.insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: SizedBox(
+        height: 30,
+        child: TextField(
+          controller: _controller,
+          focusNode: _focusNode,
+          enabled: widget.enabled,
+          style: const TextStyle(fontSize: 12),
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(color: AppColors.grey200),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: const BorderSide(color: AppColors.primary),
+            ),
+          ),
+          onChanged: (_) {
+            _overlayEntry?.markNeedsBuild();
+          },
+        ),
+      ),
+    );
+  }
 }

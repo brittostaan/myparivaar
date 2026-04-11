@@ -424,8 +424,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       int successCount = 0;
       final errors = <String>[];
 
-      // Get token once before the loop to avoid repeated token fetches
-      final idToken = await authService.getIdToken();
+      // Force-refresh token to ensure it's valid before bulk import
+      final idToken = await authService.getIdToken(true);
 
       for (final row in validRows) {
         try {

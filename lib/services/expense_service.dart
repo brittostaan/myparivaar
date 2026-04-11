@@ -51,6 +51,7 @@ class ExpenseService {
         uri,
         headers: {
           'Authorization': 'Bearer $idToken',
+          'apikey': _supabaseAnonKey(),
           'Content-Type': 'application/json',
         },
         body: jsonEncode({}),
@@ -110,6 +111,7 @@ class ExpenseService {
         Uri.parse('$supabaseUrl/functions/v1/expense-create'),
         headers: {
           'Authorization': 'Bearer $idToken',
+          'apikey': _supabaseAnonKey(),
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
@@ -171,6 +173,7 @@ class ExpenseService {
         Uri.parse('$supabaseUrl/functions/v1/expense-update'),
         headers: {
           'Authorization': 'Bearer $idToken',
+          'apikey': _supabaseAnonKey(),
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
@@ -208,6 +211,7 @@ class ExpenseService {
         Uri.parse('$supabaseUrl/functions/v1/expense-delete'),
         headers: {
           'Authorization': 'Bearer $idToken',
+          'apikey': _supabaseAnonKey(),
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
@@ -239,6 +243,7 @@ class ExpenseService {
         Uri.parse('$supabaseUrl/functions/v1/expense-stats'),
         headers: {
           'Authorization': 'Bearer $idToken',
+          'apikey': _supabaseAnonKey(),
           'Content-Type': 'application/json',
         },
         body: jsonEncode({

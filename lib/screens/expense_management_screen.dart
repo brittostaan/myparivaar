@@ -738,12 +738,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      _buildActionChip(
-                        icon: Icons.auto_awesome,
-                        label: 'AI Insights',
-                        onTap: () => Navigator.of(context).pushNamed('/ai-features'),
-                      ),
-                      const SizedBox(width: 8),
+
                       _buildActionChip(
                         icon: Icons.upload_file,
                         label: 'Import',

@@ -840,8 +840,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onTap: () => Navigator.of(context).pushNamed('/savings')),
     QuickAction(label: 'Assets', icon: Icons.account_balance_outlined,
         onTap: () => Navigator.of(context).pushNamed('/assets')),
-    QuickAction(label: 'AI Advisor', icon: Icons.auto_awesome,
-        onTap: () => Navigator.of(context).pushNamed('/ai')),
+    QuickAction(label: 'Key Contacts', icon: Icons.contacts_outlined,
+        onTap: () => Navigator.of(context).pushNamed('/key-contacts')),
   ];
 
   Widget _buildMobileAlerts() {
@@ -1840,21 +1840,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ]),
           ),
         ],
-        // Ask AI button
-        const SizedBox(height: 16),
-        Center(
-          child: OutlinedButton.icon(
-            onPressed: () => Navigator.of(context).pushNamed('/ai'),
-            icon: const Icon(Icons.chat_outlined, size: 16),
-            label: const Text('Ask AI about your finances'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF7C3AED),
-              side: const BorderSide(color: Color(0xFFDDD6FE)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            ),
-          ),
-        ),
+
       ],
     );
   }

@@ -392,12 +392,7 @@ class _NavigationShellState extends State<NavigationShell> {
         route: '/reports',
         connected: true,
       ),
-      _WebSidebarItem(
-        label: 'AI Insights',
-        icon: Icons.auto_awesome,
-        route: '/ai',
-        connected: true,
-      ),
+
       _WebSidebarItem(
         label: 'Email Settings',
         icon: Icons.mark_email_read_outlined,

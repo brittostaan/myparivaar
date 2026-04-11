@@ -64,12 +64,7 @@ class MoreScreen extends StatelessWidget {
                       subtitle: 'Lawyer, auditor, doctor and more',
                       onTap: () => Navigator.of(context).pushReplacementNamed('/key-contacts'),
                     ),
-                    _MoreTile(
-                      icon: AppIcons.smartToy,
-                      label: 'AI Features',
-                      subtitle: 'Smart insights and suggestions',
-                      onTap: () => Navigator.of(context).pushReplacementNamed('/ai'),
-                    ),
+
                   ],
                 ),
               ),

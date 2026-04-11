@@ -38,14 +38,16 @@ class ExpenseService {
     String? endDate,
   }) async {
     try {
-      final queryParams = <String, String>{};
-      if (limit != null) queryParams['limit'] = limit.toString();
-      if (category != null) queryParams['category'] = category;
-      if (startDate != null) queryParams['start_date'] = startDate;
-      if (endDate != null) queryParams['end_date'] = endDate;
+      // Send filters in the JSON body (the Edge Function reads from body,
+      // not from URL query params). Default limit 500 to show all imported rows.
+      final bodyParams = <String, dynamic>{
+        'limit': limit ?? 500,
+      };
+      if (category != null) bodyParams['category'] = category;
+      if (startDate != null) bodyParams['start_date'] = startDate;
+      if (endDate != null) bodyParams['end_date'] = endDate;
 
-      final uri = Uri.parse('$supabaseUrl/functions/v1/expense-list')
-          .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+      final uri = Uri.parse('$supabaseUrl/functions/v1/expense-list');
 
       final response = await http.post(
         uri,
@@ -54,7 +56,7 @@ class ExpenseService {
           'apikey': _supabaseAnonKey(),
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({}),
+        body: jsonEncode(bodyParams),
       );
 
       if (response.statusCode == 200) {

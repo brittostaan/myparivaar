@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Parse request body
-    const { limit = 100, category, start_date, end_date }: ExpenseListRequest = await req.json().catch(() => ({}))
+    const { limit = 500, category, start_date, end_date }: ExpenseListRequest = await req.json().catch(() => ({}))
 
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
       .eq('household_id', userData.household_id)
       .is('deleted_at', null)
       .order('date', { ascending: false })
-      .limit(Math.min(limit, 500)) // Max 500 records
+      .limit(Math.min(limit, 1000)) // Max 1000 records
 
     if (category) {
       query = query.eq('category', category.toLowerCase())

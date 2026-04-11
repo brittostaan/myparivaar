@@ -706,9 +706,6 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     return _buildWebLayout(context);
   }
 
-  // â”€â”€ Web (Desktop) Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    return Scaffold(
-  // â”€â”€ Web (Desktop) Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildWebLayout(BuildContext context) {
     final theme = Theme.of(context);

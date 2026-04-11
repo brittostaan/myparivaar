@@ -643,6 +643,460 @@ class _BudgetScreenState extends State<BudgetScreen> {
     return _buildWebLayout(context, summary);
   }
 
+
+  Widget _buildRewardsRow(bool isDark) {
+    final rewards = <_BudgetRewardIcon>[
+      _BudgetRewardIcon(Icons.emoji_events_rounded, Colors.amber, 'Budget Champion'),
+      _BudgetRewardIcon(Icons.savings_rounded, Colors.green, 'Smart Saver'),
+      _BudgetRewardIcon(Icons.auto_graph_rounded, Colors.blue, 'Trend Watcher'),
+      _BudgetRewardIcon(Icons.favorite_rounded, Colors.pink, 'Impulse Control'),
+      _BudgetRewardIcon(Icons.shield_rounded, Colors.purple, 'No Leaks'),
+      _BudgetRewardIcon(Icons.star_rounded, Colors.orange, 'Consistent'),
+      _BudgetRewardIcon(Icons.diamond_rounded, Colors.teal, 'Goal Achiever'),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Text('Rewards', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.grey.shade500)),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: rewards.map((r) => Tooltip(
+              message: r.label,
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [r.color.withOpacity(0.15), r.color.withOpacity(0.05)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: r.color.withOpacity(0.3)),
+                ),
+                child: Icon(r.icon, size: 15, color: r.color),
+              ),
+            )).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ΓöÇΓöÇ Info Cards Column ΓöÇΓöÇ
+
+  Widget _buildInfoCardsColumn(bool isDark, Color primary) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? const Color(0xFF333333) : const Color(0xFFE2E8F0)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: _buildAllInfoCards(isDark, primary),
+      ),
+    );
+  }
+
+  Widget _buildAllInfoCards(bool isDark, Color primary) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final canScrollDown = _infoCardScrollController.hasClients &&
+            _infoCardScrollController.offset < _infoCardScrollController.position.maxScrollExtent;
+        final canScrollUp = _infoCardScrollController.hasClients &&
+            _infoCardScrollController.offset > 0;
+
+        return Stack(
+          children: [
+            NotificationListener<ScrollNotification>(
+              onNotification: (_) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) setState(() {});
+                });
+                return false;
+              },
+              child: SingleChildScrollView(
+                controller: _infoCardScrollController,
+                child: _buildInfoCardsList(isDark, primary),
+              ),
+            ),
+            if (canScrollUp)
+              Positioned(
+                top: 0, left: 0, right: 0,
+                child: GestureDetector(
+                  onTap: () {
+                    _infoCardScrollController.animateTo(
+                      (_infoCardScrollController.offset - constraints.maxHeight * 0.7)
+                          .clamp(0, _infoCardScrollController.position.maxScrollExtent),
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                    );
+                  },
+                  child: Container(
+                    height: 28,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                        colors: [
+                          (isDark ? Colors.grey.shade900 : Colors.white),
+                          (isDark ? Colors.grey.shade900 : Colors.white).withOpacity(0),
+                        ],
+                      ),
+                    ),
+                    child: Center(child: Icon(Icons.keyboard_arrow_up_rounded, size: 20, color: Colors.grey.shade500)),
+                  ),
+                ),
+              ),
+            if (canScrollDown)
+              Positioned(
+                bottom: 0, left: 0, right: 0,
+                child: GestureDetector(
+                  onTap: () {
+                    _infoCardScrollController.animateTo(
+                      (_infoCardScrollController.offset + constraints.maxHeight * 0.7)
+                          .clamp(0, _infoCardScrollController.position.maxScrollExtent),
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                    );
+                  },
+                  child: Container(
+                    height: 28,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter, end: Alignment.topCenter,
+                        colors: [
+                          (isDark ? Colors.grey.shade900 : Colors.white),
+                          (isDark ? Colors.grey.shade900 : Colors.white).withOpacity(0),
+                        ],
+                      ),
+                    ),
+                    child: Center(child: Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Colors.grey.shade500)),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _fmtCurrency(double amount) {
+    final formatted = amount.abs().toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    return '\u20B9$formatted';
+  }
+
+  Widget _buildInfoCardsList(bool isDark, Color primary) {
+    final now = DateTime.now();
+    final totalBudget = _budgets.fold<double>(0, (s, b) => s + b.amount);
+    final totalSpent = _budgets.fold<double>(0, (s, b) => s + b.spent);
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final monthPct = now.day / daysInMonth * 100;
+
+    // Category budgets map
+    final catBudget = <String, double>{};
+    final catSpent = <String, double>{};
+    for (final b in _budgets) {
+      catBudget[b.category] = (catBudget[b.category] ?? 0) + b.amount;
+      catSpent[b.category] = (catSpent[b.category] ?? 0) + b.spent;
+    }
+
+    // Historical data for month-over-month comparison
+    final prevMonthKey = _monthKeyFor(DateTime(now.year, now.month - 1));
+    final prevBudgets = _historicalBudgets[prevMonthKey] ?? [];
+    final prevCatBudget = <String, double>{};
+    for (final b in prevBudgets) {
+      prevCatBudget[b.category] = (prevCatBudget[b.category] ?? 0) + b.amount;
+    }
+
+    // Over-budget count
+    final overBudgetCount = _budgets.where((b) => b.amount > 0 && b.spent > b.amount).length;
+    final usagePct = totalBudget > 0 ? (totalSpent / totalBudget * 100).clamp(0, 999) : 0.0;
+    final withinBudget = totalSpent <= totalBudget;
+
+    // Budget Leakage: categories with budget but no spending
+    final leakyBudgets = _budgets.where((b) => b.amount > 0 && b.spent == 0).toList();
+    final leakyTotal = leakyBudgets.fold<double>(0, (s, b) => s + b.amount);
+
+    // Impulse-risk categories
+    final impulseRiskCats = {'convenience food', 'entertainment', 'shopping', 'party'};
+    final impulseRiskBudgets = _budgets.where(
+        (b) => impulseRiskCats.contains(b.category.toLowerCase()) && b.amount > 0).toList();
+    final hasImpulseRisk = impulseRiskBudgets.isNotEmpty;
+
+    // Recurring / subscription budget
+    final recurringCats = {'subscriptions', 'streaming', 'insurance', 'emi'};
+    final recurringTotal = _budgets
+        .where((b) => recurringCats.contains(b.category.toLowerCase()))
+        .fold<double>(0, (s, b) => s + b.amount);
+
+    // Silent Budget Erosion: small allocations under Γé╣500
+    final smallBudgets = _budgets.where((b) => b.amount > 0 && b.amount < 500).toList();
+    final smallTotal = smallBudgets.fold<double>(0, (s, b) => s + b.amount);
+
+    // Budget Slippage: categories likely to overshoot at current pace
+    String? slippageCat;
+    double slippageAmount = 0;
+    for (final b in _budgets) {
+      if (b.amount > 0 && b.spent > 0) {
+        final projected = (b.spent / now.day) * daysInMonth;
+        if (projected > b.amount) {
+          final excess = projected - b.amount;
+          if (excess > slippageAmount) {
+            slippageAmount = excess;
+            slippageCat = b.category;
+          }
+        }
+      }
+    }
+
+    // Budget Instability: compare month to month budget changes
+    String? unstableCat;
+    double maxFluctuation = 0;
+    for (final entry in catBudget.entries) {
+      final prev = prevCatBudget[entry.key] ?? 0;
+      if (prev > 0) {
+        final diff = ((entry.value - prev) / prev * 100).abs();
+        if (diff > maxFluctuation) {
+          maxFluctuation = diff;
+          unstableCat = entry.key;
+        }
+      }
+    }
+
+    // Healthy Budget Mix
+    final essentialCats = {'groceries', 'food', 'education', 'healthcare', 'utilities', 'housing', 'senior care', 'transport'};
+    final essentialBudget = catBudget.entries
+        .where((e) => essentialCats.contains(e.key.toLowerCase()))
+        .fold<double>(0, (s, e) => s + e.value);
+    final mixRatio = totalBudget > 0 ? (essentialBudget / totalBudget * 100) : 0.0;
+
+    // Budget Discipline Score
+    final summaries = _historicalSummaries();
+    int withinCount = 0;
+    int totalMonths = summaries.length;
+    for (final s in summaries) {
+      if (s.summary.totalSpent <= s.summary.totalBudget || s.summary.totalBudget == 0) {
+        withinCount++;
+      }
+    }
+    final disciplineScore = totalMonths > 0 ? (withinCount / totalMonths * 10).clamp(0, 10) : 0.0;
+
+    // Smart Budget Recommendation
+    String? smartRecCat;
+    double smartRecSaving = 0;
+    for (final b in _budgets) {
+      if (b.amount > 0 && !essentialCats.contains(b.category.toLowerCase())) {
+        final saving = b.amount * 0.1;
+        if (saving > smartRecSaving) {
+          smartRecSaving = saving;
+          smartRecCat = b.category;
+        }
+      }
+    }
+
+    // Safe-to-Spend
+    final remaining = totalBudget - totalSpent;
+    final daysLeft = daysInMonth - now.day;
+    final safeToSpend = daysLeft > 0 ? remaining / daysLeft : 0.0;
+
+    // Fixed vs Flexible
+    final fixedCats = {'housing', 'emi', 'insurance', 'subscriptions', 'utilities'};
+    final fixedBudget = catBudget.entries
+        .where((e) => fixedCats.contains(e.key.toLowerCase()))
+        .fold<double>(0, (s, e) => s + e.value);
+    final fixedPct = totalBudget > 0 ? (fixedBudget / totalBudget * 100) : 0.0;
+    final flexPct = 100 - fixedPct;
+
+    // Emergency Buffer
+    final emergencyCats = {'emergency', 'emergency fund', 'buffer'};
+    final emergencyBudget = _budgets
+        .where((b) => emergencyCats.contains(b.category.toLowerCase()))
+        .fold<double>(0, (s, b) => s + b.amount);
+
+    // Goal Impact
+    final savingsCats = {'savings', 'investments', 'goals'};
+    final savingsBudget = _budgets
+        .where((b) => savingsCats.contains(b.category.toLowerCase()))
+        .fold<double>(0, (s, b) => s + b.amount);
+    final nonSavingsBudget = totalBudget - savingsBudget;
+
+    // ΓöÇΓöÇ Build all 14 cards ΓöÇΓöÇ
+    final allCards = <Widget>[
+      _aiCard('≡ƒÆº', 'Spend Leakage',
+          leakyBudgets.isNotEmpty
+              ? '${_fmtCurrency(leakyTotal)} allocated to ${leakyBudgets.map((b) => b.category).take(2).join(' and ')} but no spending.'
+              : 'All budget categories are being utilized. No leaks detected!',
+          leakyBudgets.isNotEmpty ? Colors.pink : Colors.green,
+          leakyBudgets.isNotEmpty ? 'Reallocate' : 'Healthy'),
+
+      _aiCard('ΓÜí', 'Impulse Risk',
+          hasImpulseRisk
+              ? '${impulseRiskBudgets.first.category} budget may trigger impulse spending.'
+              : 'No impulse-risk budget categories detected!',
+          hasImpulseRisk ? Colors.orange : Colors.green,
+          hasImpulseRisk ? 'Watch closely' : 'Great control!'),
+
+      _aiCard('≡ƒöö', 'Recurring Lock-in',
+          recurringTotal > 0
+              ? '${_fmtCurrency(recurringTotal)} locked into monthly subscriptions.'
+              : 'No recurring budget lock-ins detected.',
+          recurringTotal > 0 ? Colors.red : Colors.green,
+          recurringTotal > 0 ? 'Review subscriptions' : 'No lock-ins'),
+
+      _aiCard('≡ƒöì', 'Silent Erosion',
+          smallBudgets.isNotEmpty
+              ? '${smallBudgets.length} small allocations add up to ${_fmtCurrency(smallTotal)}.'
+              : 'No small budget erosion detected.',
+          smallBudgets.isNotEmpty ? Colors.indigo : Colors.green,
+          smallBudgets.isNotEmpty ? 'Under Γé╣500 each' : 'Clean'),
+
+      _aiCard('≡ƒôë', 'Slippage',
+          slippageCat != null
+              ? '${slippageCat} likely to exceed by ${_fmtCurrency(slippageAmount)} at current pace.'
+              : 'All categories on pace. No slippage detected!',
+          slippageCat != null ? Colors.red : Colors.green,
+          slippageCat != null ? 'Adjust now' : 'On track'),
+
+      _aiCard('≡ƒôè', 'Instability',
+          unstableCat != null && maxFluctuation > 20
+              ? '${unstableCat} budget fluctuates ${maxFluctuation.toStringAsFixed(0)}% month to month.'
+              : 'Budget allocations are stable month to month.',
+          maxFluctuation > 20 ? Colors.amber : Colors.green,
+          maxFluctuation > 20 ? 'Stabilize' : 'Stable'),
+
+      _aiCard('Γ£à', 'Healthy Mix',
+          '${mixRatio.toStringAsFixed(0)}% of budget allocated to essentials & long-term needs.',
+          mixRatio >= 60 ? Colors.green : Colors.orange,
+          mixRatio >= 60 ? 'Great balance!' : 'Could improve'),
+
+      _aiCard('≡ƒÅå', 'Discipline Score',
+          totalMonths > 0
+              ? 'Score: ${disciplineScore.toStringAsFixed(1)} / 10\nWithin budget for $withinCount of $totalMonths months.'
+              : 'Add budgets to start tracking discipline.',
+          disciplineScore >= 7 ? Colors.green : disciplineScore >= 4 ? Colors.amber : Colors.red,
+          '${disciplineScore.toStringAsFixed(1)}/10'),
+
+      _aiCard('≡ƒÆí', 'Smart Recommendation',
+          smartRecCat != null
+              ? 'Reducing ${smartRecCat} by 10% could increase savings by ${_fmtCurrency(smartRecSaving)}.'
+              : 'Set non-essential budgets to get recommendations.',
+          Colors.blue,
+          smartRecCat != null ? 'Quick win' : 'Set budgets'),
+
+      _aiCard('≡ƒÆ│', 'Safe-to-Spend',
+          remaining > 0
+              ? 'You can safely spend ${_fmtCurrency(safeToSpend > 0 ? safeToSpend : 0)} per day and stay within budget.'
+              : 'Budget exhausted for this month.',
+          remaining > 0 ? Colors.teal : Colors.red,
+          remaining > 0 ? 'On track' : 'Exceeded'),
+
+      _aiCard('≡ƒôÉ', 'Income Fit',
+          totalBudget > 0
+              ? 'Total budget: ${_fmtCurrency(totalBudget)}. ${usagePct > 85 ? 'Keeping budgets under 85% of income improves flexibility.' : 'Budget allocation looks sustainable.'}'
+              : 'Set budgets to check income fit.',
+          usagePct <= 85 ? Colors.green : Colors.orange,
+          usagePct <= 85 ? 'Good fit' : 'Tight'),
+
+      _aiCard('ΓÜû∩╕Å', 'Fixed vs Flexible Split',
+          totalBudget > 0
+              ? 'Fixed: ${fixedPct.toStringAsFixed(0)}%  |  Flexible: ${flexPct.toStringAsFixed(0)}%\n${fixedPct > 65 ? 'High fixed costs may reduce month-end comfort.' : 'Balanced split between fixed and flexible.'}'
+              : 'Add budgets to see the split.',
+          fixedPct <= 65 ? Colors.green : Colors.orange,
+          fixedPct <= 65 ? 'Balanced' : 'Review fixed'),
+
+      _aiCard('≡ƒ¢í∩╕Å', 'Emergency Buffer Health',
+          emergencyBudget > 0
+              ? '${_fmtCurrency(emergencyBudget)} allocated for emergencies this month.'
+              : 'No emergency buffer allocated. Consider adding Γé╣2,000ΓÇôΓé╣5,000.',
+          emergencyBudget > 0 ? Colors.green : Colors.red,
+          emergencyBudget > 0 ? 'Protected' : 'Add buffer'),
+
+      _aiCard('≡ƒÄ»', 'Goal Impact',
+          savingsBudget > 0
+              ? '${_fmtCurrency(savingsBudget)} allocated to savings & goals this month.'
+              : 'No savings budget set. Current spend may reduce goal progress.',
+          savingsBudget > 0 ? Colors.green : Colors.amber,
+          savingsBudget > 0 ? 'Aligned' : 'Set goals'),
+    ];
+
+    // Distribute alternately into 2 columns
+    final leftCards = <Widget>[];
+    final rightCards = <Widget>[];
+    for (int i = 0; i < allCards.length; i++) {
+      if (i.isEven) {
+        if (leftCards.isNotEmpty) leftCards.add(const SizedBox(height: 8));
+        leftCards.add(allCards[i]);
+      } else {
+        if (rightCards.isNotEmpty) rightCards.add(const SizedBox(height: 8));
+        rightCards.add(allCards[i]);
+      }
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: Column(children: leftCards)),
+        const SizedBox(width: 8),
+        Expanded(child: Column(children: rightCards)),
+      ],
+    );
+  }
+
+  Widget _aiCard(String emoji, String title, String message, Color color, String badge) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.15)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 18)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(child: Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color), overflow: TextOverflow.ellipsis)),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      flex: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(badge, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: color), overflow: TextOverflow.ellipsis, maxLines: 1),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(message, style: TextStyle(fontSize: 10, color: Colors.grey.shade700, height: 1.3)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
   Widget _buildWebLayout(BuildContext context, BudgetSummary summary) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;

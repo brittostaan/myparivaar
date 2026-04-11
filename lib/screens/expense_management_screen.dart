@@ -195,6 +195,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   }
 
   /// Convert .xlsx bytes to CSV string by parsing the XML inside the zip.
+  /// Correctly handles column positions using cell references (A1, B2, etc.).
   String _excelToCsv(Uint8List bytes) {
     final archive = ZipDecoder().decodeBytes(bytes);
 
@@ -228,11 +229,24 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
     if (xmlRows.isEmpty) throw const FormatException('Excel sheet is empty');
 
+    // First pass: find max column index across all rows
+    int maxCol = 0;
+    for (final row in xmlRows) {
+      for (final cell in row.findAllElements('c', namespace: ns)) {
+        final ref = cell.getAttribute('r') ?? '';
+        final colIdx = _colRefToIndex(ref);
+        if (colIdx > maxCol) maxCol = colIdx;
+      }
+    }
+
     final csvLines = <String>[];
     for (final row in xmlRows) {
       final cells = row.findAllElements('c', namespace: ns);
-      final values = <String>[];
+      // Pre-fill with empty strings for all columns
+      final values = List<String>.filled(maxCol + 1, '');
       for (final cell in cells) {
+        final ref = cell.getAttribute('r') ?? '';
+        final colIdx = _colRefToIndex(ref);
         final type = cell.getAttribute('t') ?? '';
         final vElem = cell.findElements('v', namespace: ns);
         final raw = vElem.isNotEmpty ? vElem.first.innerText : '';
@@ -247,11 +261,66 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         if (value.contains(',') || value.contains('"') || value.contains('\n')) {
           value = '"${value.replaceAll('"', '""')}"';
         }
-        values.add(value);
+        values[colIdx] = value;
       }
-      csvLines.add(values.join(','));
+      // Trim trailing empty cells
+      while (values.isNotEmpty && values.last.isEmpty) {
+        values.removeLast();
+      }
+      if (values.isNotEmpty) csvLines.add(values.join(','));
     }
     return csvLines.join('\n');
+  }
+
+  /// Convert xlsx column reference (e.g. "A1", "B2", "AA3") to 0-based column index.
+  static int _colRefToIndex(String cellRef) {
+    int col = 0;
+    for (int i = 0; i < cellRef.length; i++) {
+      final ch = cellRef.codeUnitAt(i);
+      if (ch >= 65 && ch <= 90) { // A-Z
+        col = col * 26 + (ch - 64);
+      } else {
+        break;
+      }
+    }
+    return col - 1; // 0-based
+  }
+
+  /// Convert Excel date serial number to YYYY-MM-DD string.
+  /// Excel epoch is Jan 1, 1900 (with the Lotus 1-2-3 leap year bug).
+  static String _excelDateToIso(String raw) {
+    final serial = double.tryParse(raw);
+    if (serial == null || serial < 1) return raw;
+    // Excel epoch: Dec 30, 1899 (accounting for the Lotus bug where 1900 is wrongly a leap year)
+    final epoch = DateTime(1899, 12, 30);
+    final date = epoch.add(Duration(days: serial.toInt()));
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  /// Post-process CSV from Excel: convert date serial numbers in the first column
+  /// (if header is "date") to ISO format.
+  String _postProcessExcelCsv(String csv) {
+    final lines = csv.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    if (lines.isEmpty) return csv;
+
+    // Find the date column index from the header row
+    final headers = lines[0].split(',').map((h) => h.trim().toLowerCase()).toList();
+    final dateColIdx = headers.indexOf('date');
+    if (dateColIdx < 0) return csv; // No date column, return
+
+    final result = <String>[lines[0]]; // Keep header as-is
+    for (int i = 1; i < lines.length; i++) {
+      final cols = lines[i].split(',');
+      if (dateColIdx < cols.length) {
+        final raw = cols[dateColIdx].trim();
+        // If it looks like a serial number (all digits, possibly with decimal), convert
+        if (RegExp(r'^\d+(\.\d+)?$').hasMatch(raw)) {
+          cols[dateColIdx] = _excelDateToIso(raw);
+        }
+      }
+      result.add(cols.join(','));
+    }
+    return result.join('\n');
   }
 
   Future<void> _uploadExpenseFile() async {
@@ -279,7 +348,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       if (ext == 'xlsx' || ext == 'xls') {
         // Parse Excel binary to CSV
         try {
-          csvText = _excelToCsv(Uint8List.fromList(file.bytes!));
+          csvText = _postProcessExcelCsv(_excelToCsv(Uint8List.fromList(file.bytes!)));
         } catch (e) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
@@ -312,14 +381,31 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       final preview = await svc.preview(type: 'expenses', csvText: csvText);
 
       if (!mounted) return;
+
+      // Build preview message with error details
+      final msgBuf = StringBuffer();
+      msgBuf.writeln('Valid: ${preview.validCount} expense(s)');
+      if (preview.hasErrors) {
+        msgBuf.writeln('Errors: ${preview.errorCount} row(s)');
+        for (final err in preview.errors.take(5)) {
+          msgBuf.writeln('  Row ${err.row}: ${err.message}');
+        }
+        if (preview.errors.length > 5) {
+          msgBuf.writeln('  ... and ${preview.errors.length - 5} more');
+        }
+      }
+
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('Import Preview'),
-          content: Text('Found ${preview.validCount} expense(s) to import.\nProceed?'),
+          content: SingleChildScrollView(
+            child: Text(msgBuf.toString()),
+          ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Import')),
+            if (preview.validCount > 0 && !preview.hasErrors)
+              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Import')),
           ],
         ),
       );

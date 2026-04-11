@@ -1,10 +1,8 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../main.dart' show ViewModeProvider, ViewMode;
 import '../models/budget.dart';
 import '../models/expense.dart';
 import '../models/investment.dart';
@@ -25,9 +23,9 @@ import '../widgets/recent_activity_list.dart';
 import '../theme/app_icons.dart';
 import '../theme/app_colors.dart';
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Family Financial Command Center — Unified Dashboard
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Family Financial Command Center â€” Unified Dashboard
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -37,7 +35,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  // ── Services ───────────────────────────────────────────────────────────────
+  // â”€â”€ Services â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   final ExpenseService _expenseService = ExpenseService();
   final BudgetService _budgetService = BudgetService();
   final InvestmentService _investmentService = InvestmentService();
@@ -45,7 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final FamilyPlannerService _plannerService = FamilyPlannerService();
   final SavingsService _savingsService = SavingsService();
 
-  // ── State ──────────────────────────────────────────────────────────────────
+  // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   List<Expense> _allExpenses = [];
   List<Expense> _recentExpenses = [];
   List<Budget> _budgets = [];
@@ -66,7 +64,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String? _aiForecastProjection;
   String? _aiForecastError;
 
-  // ── Kids / Parents keyword constants (from kids & parents dashboards) ──────
+  // â”€â”€ Kids / Parents keyword constants (from kids & parents dashboards) â”€â”€â”€â”€â”€â”€
   static const List<String> _educationKeywords = [
     'school', 'fees', 'fee', 'tuition', 'books', 'book', 'stationary',
     'stationery', 'school van', 'uniform', 'exam', 'class', 'coaching',
@@ -86,7 +84,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     'retirement', 'pension',
   ];
 
-  // ── Lifecycle ──────────────────────────────────────────────────────────────
+  // â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @override
   void initState() {
@@ -107,7 +105,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final supabaseUrl = authService.supabaseUrl;
       final idToken = await authService.getIdToken();
 
-      // ── Expenses ──
+      // â”€â”€ Expenses â”€â”€
       final expenses = await _expenseService.getExpenses(
         supabaseUrl: supabaseUrl,
         idToken: idToken,
@@ -115,7 +113,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final sortedExpenses = [...expenses]
         ..sort((a, b) => b.date.compareTo(a.date));
 
-      // ── Budgets ──
+      // â”€â”€ Budgets â”€â”€
       List<Budget> budgets = [];
       try {
         final now = DateTime.now();
@@ -127,7 +125,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       } catch (_) {}
 
-      // ── Investments ──
+      // â”€â”€ Investments â”€â”€
       List<Investment> investments = [];
       try {
         investments = await _investmentService.getInvestments(
@@ -136,7 +134,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       } catch (_) {}
 
-      // ── Bills ──
+      // â”€â”€ Bills â”€â”€
       List<Bill> allBills = [];
       try {
         allBills = await _billService.getBills(
@@ -145,7 +143,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       } catch (_) {}
 
-      // ── Planner ──
+      // â”€â”€ Planner â”€â”€
       List<PlannerItem> allPlannerItems = [];
       try {
         allPlannerItems = await _plannerService.getItems(
@@ -154,7 +152,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       } catch (_) {}
 
-      // ── Savings Goals ──
+      // â”€â”€ Savings Goals â”€â”€
       List<SavingsGoal> savingsGoals = [];
       try {
         savingsGoals = await _savingsService.getGoals(
@@ -163,7 +161,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       } catch (_) {}
 
-      // ── Balance ──
+      // â”€â”€ Balance â”€â”€
       double totalBalance = 0.0;
       double percentageChange = 0.0;
       try {
@@ -212,9 +210,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // ═════════════════════════════════════════════════════════════════════════════
-  // COMPUTED PROPERTIES — Financial Metrics
-  // ═════════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // COMPUTED PROPERTIES â€” Financial Metrics
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -227,7 +225,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final abs = amount.abs();
     final formatted = abs.toStringAsFixed(0).replaceAllMapped(
         RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
-    return amount < 0 ? '-₹$formatted' : '₹$formatted';
+    return amount < 0 ? '-â‚¹$formatted' : 'â‚¹$formatted';
   }
 
   String _capitalize(String s) =>
@@ -238,7 +236,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return abbrs[(month - 1).clamp(0, 11)];
   }
 
-  // ── Monthly aggregates ─────────────────────────────────────────────────────
+  // â”€â”€ Monthly aggregates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   double get _monthlySpend {
     final now = DateTime.now();
@@ -275,7 +273,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return totals;
   }
 
-  // ── Financial health metrics ───────────────────────────────────────────────
+  // â”€â”€ Financial health metrics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   double get _savingsRate {
     if (_monthlyIncome <= 0) return 0;
@@ -334,7 +332,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return (current / target * 100).clamp(0, 100);
   }
 
-  // ── Financial Health Score (0-100) ─────────────────────────────────────────
+  // â”€â”€ Financial Health Score (0-100) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Weighted: Savings Rate (25), Emergency Fund (25), Budget Adherence (25),
   //           Investment Health (15), Debt Management (10)
   int get _financialHealthScore {
@@ -382,7 +380,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return 'Critical';
   }
 
-  // ── Kids / Parents spending ────────────────────────────────────────────────
+  // â”€â”€ Kids / Parents spending â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   bool _containsAny(String source, List<String> keywords) {
     final text = source.toLowerCase();
@@ -416,7 +414,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .fold(0.0, (s, e) => s + e.amount);
   }
 
-  // ── Previous month comparison ──────────────────────────────────────────────
+  // â”€â”€ Previous month comparison â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   double get _previousMonthSpend {
     final now = DateTime.now();
@@ -428,7 +426,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .fold(0.0, (sum, e) => sum + e.amount);
   }
 
-  // ── Smart tips engine ──────────────────────────────────────────────────────
+  // â”€â”€ Smart tips engine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   List<_SmartTip> get _smartTips {
     final tips = <_SmartTip>[];
@@ -471,7 +469,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         icon: Icons.pie_chart_outline,
         color: const Color(0xFFEA580C),
         title: 'Budget Alert',
-        message: '${_capitalize(worstBudget.category)} is at ${worstBudget.usagePercent.toStringAsFixed(0)}% — consider reallocating or reducing spend.',
+        message: '${_capitalize(worstBudget.category)} is at ${worstBudget.usagePercent.toStringAsFixed(0)}% â€” consider reallocating or reducing spend.',
         priority: 1,
       ));
     }
@@ -522,7 +520,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return tips.take(4).toList();
   }
 
-  // ── Smart Alerts ───────────────────────────────────────────────────────────
+  // â”€â”€ Smart Alerts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   List<_AlertItem> get _smartAlerts {
     final alerts = <_AlertItem>[];
@@ -565,7 +563,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         icon: _plannerTypeIcon(event.type),
         color: _plannerTypeColors(event.type).$2,
         bgColor: _plannerTypeColors(event.type).$1,
-        text: '${event.title} — $label',
+        text: '${event.title} â€” $label',
         priority: 3,
       ));
     }
@@ -574,7 +572,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return alerts;
   }
 
-  // ── Unified Timeline items ─────────────────────────────────────────────────
+  // â”€â”€ Unified Timeline items â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   List<_TimelineEntry> get _unifiedTimeline {
     final entries = <_TimelineEntry>[];
@@ -588,7 +586,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         color: const Color(0xFFDC2626),
         bgColor: const Color(0xFFFEE2E2),
         title: bill.name,
-        subtitle: '${_formatCurrency(bill.amount)} • ${Bill.categoryLabel(bill.category)}',
+        subtitle: '${_formatCurrency(bill.amount)} â€¢ ${Bill.categoryLabel(bill.category)}',
         tag: 'Bill',
         tagColor: const Color(0xFFDC2626),
       ));
@@ -617,7 +615,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         color: const Color(0xFF059669),
         bgColor: const Color(0xFFDCFCE7),
         title: '${goal.name} deadline',
-        subtitle: '${goal.progressPercent.toStringAsFixed(0)}% complete • ${_formatCurrency(goal.remaining)} remaining',
+        subtitle: '${goal.progressPercent.toStringAsFixed(0)}% complete â€¢ ${_formatCurrency(goal.remaining)} remaining',
         tag: 'Goal',
         tagColor: const Color(0xFF059669),
       ));
@@ -627,7 +625,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return entries.take(8).toList();
   }
 
-  // ── Spending trend (category comparison vs last month) ─────────────────────
+  // â”€â”€ Spending trend (category comparison vs last month) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   List<_SpendingTrend> get _spendingTrends {
     final now = DateTime.now();
     final prev = DateTime(now.year, now.month - 1);
@@ -663,7 +661,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return trends.take(3).toList();
   }
 
-  // ── Budget run-rate projection ─────────────────────────────────────────────
+  // â”€â”€ Budget run-rate projection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   List<_BudgetProjection> get _budgetProjections {
     final now = DateTime.now();
     final dayOfMonth = now.day;
@@ -688,7 +686,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return projections.take(3).toList();
   }
 
-  // ── AI Forecast ────────────────────────────────────────────────────────────
+  // â”€â”€ AI Forecast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _loadAIForecast() async {
     setState(() { _aiForecastLoading = true; _aiForecastError = null; });
@@ -710,387 +708,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // ═════════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // BUILD
-  // ═════════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   @override
   Widget build(BuildContext context) {
-    final viewMode = context.watch<ViewModeProvider>().mode;
-    if (kIsWeb && viewMode == ViewMode.desktop) {
-      return _buildWebLayout(context);
-    }
-    return _buildMobileLayout(context);
+    return _buildWebLayout(context);
   }
 
-  // ═════════════════════════════════════════════════════════════════════════════
-  // MOBILE LAYOUT
-  // ═════════════════════════════════════════════════════════════════════════════
-
-  Widget _buildMobileLayout(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
-    final userName = authService.currentUser?.displayName ?? 'Family';
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── Header ──
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('${_getGreeting()},',
-                              style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                          const SizedBox(height: 2),
-                          Row(children: [
-                            Text(userName,
-                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
-                            const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
-                          ]),
-                        ],
-                      ),
-                      const Spacer(),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            ),
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
-
-            // ── Content ──
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _error != null
-                      ? _buildErrorState()
-                      : RefreshIndicator(
-                          onRefresh: _loadDashboardData,
-                          child: SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // ── Smart Alerts ──
-                                if (_smartAlerts.isNotEmpty)
-                                  _buildMobileAlerts(),
-
-                                // ── Financial Pulse (compact) ──
-                                _buildMobileFinancialPulse(),
-
-                                // ── Quick Actions ──
-                                const SizedBox(height: 16),
-                                QuickActionsGrid(actions: _quickActions),
-
-                                // ── 360° Status Cards (2-col grid) ──
-                                const SizedBox(height: 24),
-                                _buildMobileStatusCards(),
-
-                                // ── What's Ahead (compact timeline) ──
-                                if (_unifiedTimeline.isNotEmpty) ...[
-                                  const SizedBox(height: 24),
-                                  _buildMobileTimeline(),
-                                ],
-
-                                // ── AI Smart Tips ──
-                                if (_smartTips.isNotEmpty) ...[
-                                  const SizedBox(height: 24),
-                                  _buildMobileSmartTips(),
-                                ],
-
-                                // ── Recent Activity ──
-                                const SizedBox(height: 24),
-                                RecentActivityList(
-                                  expenses: _recentExpenses,
-                                  onSeeAll: () => Navigator.of(context).pushNamed('/expenses'),
-                                ),
-                                const SizedBox(height: 24),
-                              ],
-                            ),
-                          ),
-                        ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  List<QuickAction> get _quickActions => [
-    QuickAction(label: 'Expense', icon: AppIcons.addCircle,
-        onTap: () => Navigator.of(context).pushNamed('/expenses')),
-    QuickAction(label: 'Budget', icon: AppIcons.pieChart,
-        onTap: () => Navigator.of(context).pushNamed('/budget')),
-    QuickAction(label: 'Investments', icon: Icons.query_stats,
-        onTap: () => Navigator.of(context).pushNamed('/investments')),
-    QuickAction(label: 'Planner', icon: Icons.event_note_outlined,
-        onTap: () => Navigator.of(context).pushNamed('/family-planner')),
-    QuickAction(label: 'Bills', icon: Icons.receipt_long_outlined,
-        onTap: () => Navigator.of(context).pushNamed('/bills')),
-    QuickAction(label: 'Savings', icon: Icons.savings_outlined,
-        onTap: () => Navigator.of(context).pushNamed('/savings')),
-    QuickAction(label: 'Assets', icon: Icons.account_balance_outlined,
-        onTap: () => Navigator.of(context).pushNamed('/assets')),
-    QuickAction(label: 'Key Contacts', icon: Icons.contacts_outlined,
-        onTap: () => Navigator.of(context).pushNamed('/key-contacts')),
-  ];
-
-  Widget _buildMobileAlerts() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: SizedBox(
-        height: 36,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: _smartAlerts.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (context, index) {
-            final alert = _smartAlerts[index];
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: alert.bgColor,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(alert.icon, size: 14, color: alert.color),
-                const SizedBox(width: 6),
-                Text(alert.text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: alert.color)),
-              ]),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMobileFinancialPulse() {
-    final score = _financialHealthScore;
-    final scoreColor = _healthScoreColor(score);
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 8))],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              // Score circle
-              SizedBox(
-                width: 72,
-                height: 72,
-                child: CustomPaint(
-                  painter: _GaugePainter(score: score / 100, color: scoreColor),
-                  child: Center(
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      Text('$score', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white)),
-                      Text(_healthScoreLabel(score),
-                          style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: scoreColor)),
-                    ]),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Financial Health', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
-                  const SizedBox(height: 4),
-                  Text('Net Worth: ${_formatCurrency(_netWorth)}',
-                      style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.7))),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Cash Flow: ${_monthlyCashFlow >= 0 ? '+' : ''}${_formatCurrency(_monthlyCashFlow)}/mo',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: _monthlyCashFlow >= 0 ? const Color(0xFF4ADE80) : const Color(0xFFF87171),
-                    ),
-                  ),
-                ]),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Mini metrics row
-          Row(children: [
-            _mobilePulseMetric('Savings', '${_savingsRate.toStringAsFixed(0)}%',
-                _savingsRate >= 20 ? const Color(0xFF4ADE80) : const Color(0xFFFBBF24)),
-            _mobilePulseMetric('Emergency', '${_emergencyFundMonths.toStringAsFixed(1)}mo',
-                _emergencyFundMonths >= 6 ? const Color(0xFF4ADE80) : const Color(0xFFFBBF24)),
-            _mobilePulseMetric('Budget', '${(_budgetUsage * 100).toStringAsFixed(0)}%',
-                _budgetUsage <= 0.8 ? const Color(0xFF4ADE80) : const Color(0xFFF87171)),
-            _mobilePulseMetric('Bills', '$_overdueBillsCount due',
-                _overdueBillsCount == 0 ? const Color(0xFF4ADE80) : const Color(0xFFF87171)),
-          ]),
-        ],
-      ),
-    );
-  }
-
-  Widget _mobilePulseMetric(String label, String value, Color color) {
-    return Expanded(
-      child: Column(children: [
-        Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)),
-        const SizedBox(height: 2),
-        Text(label, style: TextStyle(fontSize: 9, color: Colors.white.withValues(alpha: 0.5))),
-      ]),
-    );
-  }
-
-  Widget _buildMobileStatusCards() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Your Money Right Now', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          Row(children: [
-            Expanded(child: _statusCardMini(
-              'Cash Flow', Icons.swap_vert_circle_outlined,
-              _formatCurrency(_monthlyCashFlow),
-              _monthlyCashFlow >= 0 ? 'Positive' : 'Negative',
-              const [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
-              onTap: () => Navigator.of(context).pushNamed('/expenses'),
-            )),
-            const SizedBox(width: 10),
-            Expanded(child: _statusCardMini(
-              'Budget', Icons.pie_chart_outline,
-              '${_budgetsOnTrack}/${_budgets.length}',
-              'On Track',
-              const [Color(0xFFF59E0B), Color(0xFFD97706)],
-              onTap: () => Navigator.of(context).pushNamed('/budget'),
-            )),
-          ]),
-          const SizedBox(height: 10),
-          Row(children: [
-            Expanded(child: _statusCardMini(
-              'Bills', Icons.receipt_long_outlined,
-              _upcomingBills.isEmpty ? 'None' : '${_upcomingBills.length} upcoming',
-              _overdueBillsCount > 0 ? '$_overdueBillsCount overdue' : 'All clear',
-              const [Color(0xFFEF4444), Color(0xFFDC2626)],
-              onTap: () => Navigator.of(context).pushNamed('/bills'),
-            )),
-            const SizedBox(width: 10),
-            Expanded(child: _statusCardMini(
-              'Savings', Icons.flag_outlined,
-              '${_savingsGoalProgress.toStringAsFixed(0)}%',
-              '${_savingsGoals.length} goal${_savingsGoals.length != 1 ? 's' : ''}',
-              const [Color(0xFF22C55E), Color(0xFF16A34A)],
-              onTap: () => Navigator.of(context).pushNamed('/savings'),
-            )),
-          ]),
-          const SizedBox(height: 10),
-          Row(children: [
-            Expanded(child: _statusCardMini(
-              'Investments', Icons.query_stats,
-              _formatCurrency(_totalInvestedValue),
-              _totalInvestmentReturns >= 0
-                  ? '+${_formatCurrency(_totalInvestmentReturns)}'
-                  : _formatCurrency(_totalInvestmentReturns),
-              const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
-              onTap: () => Navigator.of(context).pushNamed('/investments'),
-            )),
-            const SizedBox(width: 10),
-            Expanded(child: _statusCardMini(
-              'Family', Icons.family_restroom_outlined,
-              _formatCurrency(_kidsSpendingThisMonth + _parentsSpendingThisMonth),
-              'Kids + Parents',
-              const [Color(0xFF14B8A6), Color(0xFF0D9488)],
-              onTap: () => Navigator.of(context).pushNamed('/kids-dashboard'),
-            )),
-          ]),
-        ],
-      ),
-    );
-  }
-
-  Widget _statusCardMini(String label, IconData icon, String value, String sub, List<Color> gradient, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: gradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: gradient.first.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))],
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(icon, size: 16, color: Colors.white.withValues(alpha: 0.8)),
-            const SizedBox(width: 6),
-            Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.8))),
-          ]),
-          const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
-          const SizedBox(height: 2),
-          Text(sub, style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.7))),
-        ]),
-      ),
-    );
-  }
-
-  Widget _buildMobileTimeline() {
-    final items = _unifiedTimeline.take(5).toList();
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            const Text("What's Ahead", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const Spacer(),
-            TextButton(
-              onPressed: () => Navigator.of(context).pushNamed('/family-planner'),
-              child: const Text('View all', style: TextStyle(fontSize: 11)),
-            ),
-          ]),
-          const SizedBox(height: 8),
-          ...items.map((entry) => _buildTimelineRow(entry, compact: true)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMobileSmartTips() {
-    final tips = _smartTips.take(2).toList();
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            const Icon(Icons.auto_awesome, size: 16, color: Color(0xFF7C3AED)),
-            const SizedBox(width: 6),
-            const Text('Smart Tips', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          ]),
-          const SizedBox(height: 8),
-          ...tips.map((tip) => _buildTipCard(tip, compact: true)),
-        ],
-      ),
-    );
-  }
-
-  // ═════════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // WEB (DESKTOP) LAYOUT
-  // ═════════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   Widget _buildWebLayout(BuildContext context) {
     final theme = Theme.of(context);
@@ -1109,19 +738,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ── Smart Alerts Banner ──
+                        // â”€â”€ Smart Alerts Banner â”€â”€
                         if (_smartAlerts.isNotEmpty)
                           _buildWebAlerts(isDark),
 
-                        // ── Section 1: Financial Pulse ──
+                        // â”€â”€ Section 1: Financial Pulse â”€â”€
                         const SizedBox(height: 8),
                         _buildWebFinancialPulse(isDark),
 
-                        // ── Section 2: 360° Status Cards ──
+                        // â”€â”€ Section 2: 360Â° Status Cards â”€â”€
                         const SizedBox(height: 32),
                         _buildWebStatusSection(isDark),
 
-                        // ── Section 3: Spending Spotlight + Upcoming Timeline ──
+                        // â”€â”€ Section 3: Spending Spotlight + Upcoming Timeline â”€â”€
                         const SizedBox(height: 32),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1132,15 +761,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ],
                         ),
 
-                        // ── Section 4: AI Financial Advisor ──
+                        // â”€â”€ Section 4: AI Financial Advisor â”€â”€
                         const SizedBox(height: 32),
                         _buildWebAISection(isDark),
 
-                        // ── Section 5: Family Lens (Kids + Parents) ──
+                        // â”€â”€ Section 5: Family Lens (Kids + Parents) â”€â”€
                         const SizedBox(height: 32),
                         _buildWebFamilyLens(isDark),
 
-                        // ── Section 6: Recent Transactions ──
+                        // â”€â”€ Section 6: Recent Transactions â”€â”€
                         const SizedBox(height: 32),
                         _buildWebTransactionsTable(isDark),
                       ],
@@ -1150,7 +779,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ── Web: Smart Alerts ──────────────────────────────────────────────────────
+  // â”€â”€ Web: Smart Alerts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildWebAlerts(bool isDark) {
     return SizedBox(
@@ -1179,7 +808,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ── Web: Financial Pulse ───────────────────────────────────────────────────
+  // â”€â”€ Web: Financial Pulse â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildWebFinancialPulse(bool isDark) {
     final score = _financialHealthScore;
@@ -1225,7 +854,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 const Text('Family Financial Health', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 4),
-                Text('360° overview of your household finances',
+                Text('360Â° overview of your household finances',
                     style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.5))),
                 const SizedBox(height: 20),
                 Row(children: [
@@ -1301,7 +930,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ── Web: 360° Status Cards ─────────────────────────────────────────────────
+  // â”€â”€ Web: 360Â° Status Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildWebStatusSection(bool isDark) {
     return Column(
@@ -1372,7 +1001,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(999)),
-                  child: Text('⚠ $_overdueBillsCount overdue',
+                  child: Text('âš  $_overdueBillsCount overdue',
                       style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
                 ),
               ],
@@ -1516,7 +1145,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ── Web: Spending Spotlight ────────────────────────────────────────────────
+  // â”€â”€ Web: Spending Spotlight â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildWebSpendingSpotlight(bool isDark) {
     final totals = _categoryTotals.entries.toList()
@@ -1601,7 +1230,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ── Web: Unified Timeline ──────────────────────────────────────────────────
+  // â”€â”€ Web: Unified Timeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildWebTimeline(bool isDark) {
     return _webCard(
@@ -1674,7 +1303,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ── Web: AI Financial Advisor ──────────────────────────────────────────────
+  // â”€â”€ Web: AI Financial Advisor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildWebAISection(bool isDark) {
     return Column(
@@ -1866,7 +1495,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ── Web: Family Lens (Kids + Parents) ──────────────────────────────────────
+  // â”€â”€ Web: Family Lens (Kids + Parents) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildWebFamilyLens(bool isDark) {
     return Column(
@@ -1892,7 +1521,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const Spacer(),
                 TextButton(
                   onPressed: () => Navigator.of(context).pushNamed('/kids-dashboard'),
-                  child: const Text('Details →', style: TextStyle(fontSize: 11)),
+                  child: const Text('Details â†’', style: TextStyle(fontSize: 11)),
                 ),
               ]),
               const SizedBox(height: 14),
@@ -1933,7 +1562,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const Spacer(),
                 TextButton(
                   onPressed: () => Navigator.of(context).pushNamed('/parents-dashboard'),
-                  child: const Text('Details →', style: TextStyle(fontSize: 11)),
+                  child: const Text('Details â†’', style: TextStyle(fontSize: 11)),
                 ),
               ]),
               const SizedBox(height: 14),
@@ -2000,7 +1629,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (schoolKeywords.any((kw) => text.contains(kw))) {
         final days = item.daysUntil;
         final dLabel = days == 0 ? 'Today' : days == 1 ? 'Tomorrow' : 'In ${days}d';
-        return '${item.title} — $dLabel';
+        return '${item.title} â€” $dLabel';
       }
     }
     return null;
@@ -2013,7 +1642,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (_containsAny(text, _healthKeywords) || _containsAny(text, _parentKeywords)) {
         final days = item.daysUntil;
         final dLabel = days == 0 ? 'Today' : days == 1 ? 'Tomorrow' : 'In ${days}d';
-        return '${item.title} — $dLabel';
+        return '${item.title} â€” $dLabel';
       }
     }
     return null;
@@ -2030,7 +1659,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ]);
   }
 
-  // ── Web: Recent Transactions ───────────────────────────────────────────────
+  // â”€â”€ Web: Recent Transactions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildWebTransactionsTable(bool isDark) {
     return _webCard(
@@ -2097,9 +1726,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ═════════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // SHARED WIDGETS
-  // ═════════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   Widget _webCard({required bool isDark, required Widget child}) {
     return Container(
@@ -2136,7 +1765,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ── Planner helpers ────────────────────────────────────────────────────────
+  // â”€â”€ Planner helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   (Color, Color) _plannerTypeColors(PlannerItemType type) {
     switch (type) {
@@ -2172,9 +1801,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // DATA CLASSES
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _SmartTip {
   final IconData icon;
@@ -2225,9 +1854,9 @@ class _BudgetProjection {
   const _BudgetProjection({required this.category, required this.budgeted, required this.projected, required this.overshoot});
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // CUSTOM PAINTERS
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 /// Circular gauge painter for the Financial Health Score
 class _GaugePainter extends CustomPainter {

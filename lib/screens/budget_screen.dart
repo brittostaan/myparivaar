@@ -1,9 +1,8 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 
 import '../models/budget.dart';
@@ -641,756 +640,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
   @override
   Widget build(BuildContext context) {
     final summary = BudgetSummary(month: _monthKey, budgets: _budgets);
-    if (kIsWeb) {
-      return _buildWebLayout(context, summary);
-    }
-
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── Header + Controls ──────────────────────────────
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-              child: Row(
-                children: [
-                  const Text(
-                    'Budget',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
-            const SizedBox(height: 4),
-            Expanded(child: _buildBody()),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildControlPill({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-    bool active = false,
-    bool locked = false,
-  }) {
-    final bg = active ? color : color.withOpacity(0.08);
-    final fg = active ? Colors.white : color;
-    return Tooltip(
-      message: locked ? 'Coming soon' : '',
-      child: Material(
-        color: bg,
-        borderRadius: BorderRadius.circular(24),
-        elevation: active ? 2 : 0,
-        shadowColor: color.withOpacity(0.3),
-        child: InkWell(
-          onTap: locked ? null : onTap,
-          borderRadius: BorderRadius.circular(24),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 16, color: fg),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: fg,
-                  ),
-                ),
-                if (locked) ...[
-                  const SizedBox(width: 4),
-                  Icon(Icons.lock_outline, size: 11, color: fg.withOpacity(0.5)),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _buildHeaderIcons() {
-    final hasDateFilter = _filterStartDate != null || _filterEndDate != null;
-    final hasCatFilter = _selectedCategoryFilter != null;
-    String dateTooltip = 'Date Filter';
-    if (_filterStartDate != null && _filterEndDate != null) {
-      dateTooltip = 'Date Filter: ${_filterStartDate!.day}/${_filterStartDate!.month} – ${_filterEndDate!.day}/${_filterEndDate!.month}';
-    } else if (_filterStartDate != null) {
-      dateTooltip = 'Date Filter: from ${_filterStartDate!.day}/${_filterStartDate!.month}';
-    }
-
-    final allCategoryLabels = [
-      'Entertainment', 'Groceries', 'Mental Wellness', 'Physical Wellness',
-      'Party', 'Personal Care', 'Pet Care', 'Senior Care', 'Education',
-      'Vacation', 'Convenience Food',
-    ];
-
-    return [
-      // Category Filter funnel
-      PopupMenuButton<String?>(
-        tooltip: hasCatFilter ? 'Filtered: $_selectedCategoryFilter' : 'Filter by Category',
-        icon: Icon(
-          Icons.filter_list_rounded,
-          color: hasCatFilter ? const Color(0xFFE65100) : const Color(0xFF64748B),
-          size: 20,
-        ),
-        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-        padding: EdgeInsets.zero,
-        onSelected: (value) => setState(() => _selectedCategoryFilter = value),
-        itemBuilder: (context) => [
-          PopupMenuItem<String?>(
-            value: null,
-            child: Row(
-              children: [
-                Icon(Icons.clear_all_rounded, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 8),
-                const Text('All Categories', style: TextStyle(fontSize: 13)),
-              ],
-            ),
-          ),
-          const PopupMenuDivider(),
-          ...allCategoryLabels.map((cat) => PopupMenuItem<String?>(
-            value: cat,
-            child: Row(
-              children: [
-                if (_selectedCategoryFilter == cat)
-                  const Icon(Icons.check_rounded, size: 16, color: Color(0xFFE65100))
-                else
-                  const SizedBox(width: 16),
-                const SizedBox(width: 8),
-                Text(cat, style: const TextStyle(fontSize: 13)),
-              ],
-            ),
-          )),
-        ],
-      ),
-      // Date Filter calendar
-      Tooltip(
-        message: dateTooltip,
-        child: IconButton(
-          icon: Icon(
-            Icons.date_range_rounded,
-            color: (_showCalendarDropdown || hasDateFilter) ? const Color(0xFFE65100) : const Color(0xFF64748B),
-            size: 20,
-          ),
-          onPressed: () => setState(() {
-            _showCalendarDropdown = !_showCalendarDropdown;
-            if (_showCalendarDropdown) {
-              _calendarDisplayMonth = _filterStartDate ?? DateTime(DateTime.now().year, DateTime.now().month);
-            }
-          }),
-          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-          padding: EdgeInsets.zero,
-          splashRadius: 18,
-        ),
-      ),
-      // Import Excel
-      Tooltip(
-        message: 'Import Excel',
-        child: IconButton(
-          icon: const Icon(
-            Icons.upload_file,
-            color: Color(0xFF64748B),
-            size: 20,
-          ),
-          onPressed: _uploadExcelBudget,
-          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-          padding: EdgeInsets.zero,
-          splashRadius: 18,
-        ),
-      ),
-      // Add Budget (opens inline form)
-      Tooltip(
-        message: 'Add Budget',
-        child: IconButton(
-          icon: Icon(
-            Icons.add_rounded,
-            color: _showInlineBudgetForm ? const Color(0xFFE65100) : const Color(0xFF64748B),
-            size: 20,
-          ),
-          onPressed: () {
-            if (_showInlineBudgetForm) {
-              _closeBudgetForm();
-            } else {
-              _openBudgetForm();
-            }
-          },
-          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-          padding: EdgeInsets.zero,
-          splashRadius: 18,
-        ),
-      ),
-    ];
-  }
-
-  Widget _buildControlsRow() {
-    final hasDateFilter = _filterStartDate != null || _filterEndDate != null;
-    String dateFilterLabel = 'Date Filter';
-    if (_filterStartDate != null && _filterEndDate != null) {
-      dateFilterLabel = '${_filterStartDate!.day}/${_filterStartDate!.month} – ${_filterEndDate!.day}/${_filterEndDate!.month}';
-    } else if (_filterStartDate != null) {
-      dateFilterLabel = 'From ${_filterStartDate!.day}/${_filterStartDate!.month}';
-    }
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        _buildControlPill(
-          icon: Icons.date_range_rounded,
-          label: hasDateFilter ? dateFilterLabel : 'Date Filter',
-          color: const Color(0xFFE65100),
-          active: _showCalendarDropdown || hasDateFilter,
-          onTap: () => setState(() {
-            _showCalendarDropdown = !_showCalendarDropdown;
-            if (_showCalendarDropdown) {
-              _calendarDisplayMonth = _filterStartDate ?? DateTime(DateTime.now().year, DateTime.now().month);
-            }
-          }),
-        ),
-        _buildControlPill(
-          icon: Icons.calendar_month,
-          label: 'Current Month',
-          color: const Color(0xFF1565C0),
-          active: false,
-          onTap: () => setState(() {
-            _filterStartDate = null;
-            _filterEndDate = null;
-            _showCalendarDropdown = false;
-            _calendarDisplayMonth = DateTime(DateTime.now().year, DateTime.now().month);
-            _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
-            _loadBudgets();
-          }),
-        ),
-        _buildControlPill(
-          icon: _showImportPanel ? Icons.close_rounded : Icons.upload_file,
-          label: _showImportPanel ? 'Close' : 'Import',
-          color: const Color(0xFF43A047),
-          active: _showImportPanel,
-          onTap: () => setState(() {
-            final opening = !_showImportPanel;
-            _closeAllPanels();
-            _showImportPanel = opening;
-          }),
-        ),
-        _buildControlPill(
-          icon: _showAddBudgetPanel ? Icons.close_rounded : Icons.add_rounded,
-          label: _showAddBudgetPanel ? 'Close' : 'Add Budget',
-          color: const Color(0xFFFF6D00),
-          active: _showAddBudgetPanel,
-          onTap: () => setState(() {
-            final opening = !_showAddBudgetPanel;
-            _closeAllPanels();
-            _showAddBudgetPanel = opening;
-          }),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBudgetViewTab(String label, IconData icon, bool active, {bool comingSoon = false, VoidCallback? onTap}) {
-    return Tooltip(
-      message: comingSoon ? 'Coming soon' : '',
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
-        child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: active ? AppColors.primary.withAlpha(15) : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-          border: active
-              ? Border(bottom: BorderSide(color: AppColors.primary, width: 2))
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 15, color: active ? AppColors.primary : Colors.grey[400]),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                color: active ? AppColors.primary : Colors.grey[500],
-              ),
-            ),
-            if (comingSoon) ...[
-              const SizedBox(width: 4),
-              Icon(Icons.lock_outline, size: 11, color: Colors.grey[400]),
-            ],
-          ],
-        ),
-      ),
-      ),
-    );
-  }
-
-  // ── Rewards Row ──
-
-  Widget _buildRewardsRow(bool isDark) {
-    final rewards = <_BudgetRewardIcon>[
-      _BudgetRewardIcon(Icons.emoji_events_rounded, Colors.amber, 'Budget Champion'),
-      _BudgetRewardIcon(Icons.savings_rounded, Colors.green, 'Smart Saver'),
-      _BudgetRewardIcon(Icons.auto_graph_rounded, Colors.blue, 'Trend Watcher'),
-      _BudgetRewardIcon(Icons.favorite_rounded, Colors.pink, 'Impulse Control'),
-      _BudgetRewardIcon(Icons.shield_rounded, Colors.purple, 'No Leaks'),
-      _BudgetRewardIcon(Icons.star_rounded, Colors.orange, 'Consistent'),
-      _BudgetRewardIcon(Icons.diamond_rounded, Colors.teal, 'Goal Achiever'),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Text('Rewards', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.grey.shade500)),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: rewards.map((r) => Tooltip(
-              message: r.label,
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [r.color.withOpacity(0.15), r.color.withOpacity(0.05)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: r.color.withOpacity(0.3)),
-                ),
-                child: Icon(r.icon, size: 15, color: r.color),
-              ),
-            )).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Info Cards Column ──
-
-  Widget _buildInfoCardsColumn(bool isDark, Color primary) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? const Color(0xFF333333) : const Color(0xFFE2E8F0)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: _buildAllInfoCards(isDark, primary),
-      ),
-    );
-  }
-
-  Widget _buildAllInfoCards(bool isDark, Color primary) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final canScrollDown = _infoCardScrollController.hasClients &&
-            _infoCardScrollController.offset < _infoCardScrollController.position.maxScrollExtent;
-        final canScrollUp = _infoCardScrollController.hasClients &&
-            _infoCardScrollController.offset > 0;
-
-        return Stack(
-          children: [
-            NotificationListener<ScrollNotification>(
-              onNotification: (_) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) setState(() {});
-                });
-                return false;
-              },
-              child: SingleChildScrollView(
-                controller: _infoCardScrollController,
-                child: _buildInfoCardsList(isDark, primary),
-              ),
-            ),
-            if (canScrollUp)
-              Positioned(
-                top: 0, left: 0, right: 0,
-                child: GestureDetector(
-                  onTap: () {
-                    _infoCardScrollController.animateTo(
-                      (_infoCardScrollController.offset - constraints.maxHeight * 0.7)
-                          .clamp(0, _infoCardScrollController.position.maxScrollExtent),
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOut,
-                    );
-                  },
-                  child: Container(
-                    height: 28,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                        colors: [
-                          (isDark ? Colors.grey.shade900 : Colors.white),
-                          (isDark ? Colors.grey.shade900 : Colors.white).withOpacity(0),
-                        ],
-                      ),
-                    ),
-                    child: Center(child: Icon(Icons.keyboard_arrow_up_rounded, size: 20, color: Colors.grey.shade500)),
-                  ),
-                ),
-              ),
-            if (canScrollDown)
-              Positioned(
-                bottom: 0, left: 0, right: 0,
-                child: GestureDetector(
-                  onTap: () {
-                    _infoCardScrollController.animateTo(
-                      (_infoCardScrollController.offset + constraints.maxHeight * 0.7)
-                          .clamp(0, _infoCardScrollController.position.maxScrollExtent),
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOut,
-                    );
-                  },
-                  child: Container(
-                    height: 28,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter, end: Alignment.topCenter,
-                        colors: [
-                          (isDark ? Colors.grey.shade900 : Colors.white),
-                          (isDark ? Colors.grey.shade900 : Colors.white).withOpacity(0),
-                        ],
-                      ),
-                    ),
-                    child: Center(child: Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Colors.grey.shade500)),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  String _fmtCurrency(double amount) {
-    final formatted = amount.abs().toStringAsFixed(0).replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
-    return '\u20B9$formatted';
-  }
-
-  Widget _buildInfoCardsList(bool isDark, Color primary) {
-    final now = DateTime.now();
-    final totalBudget = _budgets.fold<double>(0, (s, b) => s + b.amount);
-    final totalSpent = _budgets.fold<double>(0, (s, b) => s + b.spent);
-    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-    final monthPct = now.day / daysInMonth * 100;
-
-    // Category budgets map
-    final catBudget = <String, double>{};
-    final catSpent = <String, double>{};
-    for (final b in _budgets) {
-      catBudget[b.category] = (catBudget[b.category] ?? 0) + b.amount;
-      catSpent[b.category] = (catSpent[b.category] ?? 0) + b.spent;
-    }
-
-    // Historical data for month-over-month comparison
-    final prevMonthKey = _monthKeyFor(DateTime(now.year, now.month - 1));
-    final prevBudgets = _historicalBudgets[prevMonthKey] ?? [];
-    final prevCatBudget = <String, double>{};
-    for (final b in prevBudgets) {
-      prevCatBudget[b.category] = (prevCatBudget[b.category] ?? 0) + b.amount;
-    }
-
-    // Over-budget count
-    final overBudgetCount = _budgets.where((b) => b.amount > 0 && b.spent > b.amount).length;
-    final usagePct = totalBudget > 0 ? (totalSpent / totalBudget * 100).clamp(0, 999) : 0.0;
-    final withinBudget = totalSpent <= totalBudget;
-
-    // Budget Leakage: categories with budget but no spending
-    final leakyBudgets = _budgets.where((b) => b.amount > 0 && b.spent == 0).toList();
-    final leakyTotal = leakyBudgets.fold<double>(0, (s, b) => s + b.amount);
-
-    // Impulse-risk categories
-    final impulseRiskCats = {'convenience food', 'entertainment', 'shopping', 'party'};
-    final impulseRiskBudgets = _budgets.where(
-        (b) => impulseRiskCats.contains(b.category.toLowerCase()) && b.amount > 0).toList();
-    final hasImpulseRisk = impulseRiskBudgets.isNotEmpty;
-
-    // Recurring / subscription budget
-    final recurringCats = {'subscriptions', 'streaming', 'insurance', 'emi'};
-    final recurringTotal = _budgets
-        .where((b) => recurringCats.contains(b.category.toLowerCase()))
-        .fold<double>(0, (s, b) => s + b.amount);
-
-    // Silent Budget Erosion: small allocations under ₹500
-    final smallBudgets = _budgets.where((b) => b.amount > 0 && b.amount < 500).toList();
-    final smallTotal = smallBudgets.fold<double>(0, (s, b) => s + b.amount);
-
-    // Budget Slippage: categories likely to overshoot at current pace
-    String? slippageCat;
-    double slippageAmount = 0;
-    for (final b in _budgets) {
-      if (b.amount > 0 && b.spent > 0) {
-        final projected = (b.spent / now.day) * daysInMonth;
-        if (projected > b.amount) {
-          final excess = projected - b.amount;
-          if (excess > slippageAmount) {
-            slippageAmount = excess;
-            slippageCat = b.category;
-          }
-        }
-      }
-    }
-
-    // Budget Instability: compare month to month budget changes
-    String? unstableCat;
-    double maxFluctuation = 0;
-    for (final entry in catBudget.entries) {
-      final prev = prevCatBudget[entry.key] ?? 0;
-      if (prev > 0) {
-        final diff = ((entry.value - prev) / prev * 100).abs();
-        if (diff > maxFluctuation) {
-          maxFluctuation = diff;
-          unstableCat = entry.key;
-        }
-      }
-    }
-
-    // Healthy Budget Mix
-    final essentialCats = {'groceries', 'food', 'education', 'healthcare', 'utilities', 'housing', 'senior care', 'transport'};
-    final essentialBudget = catBudget.entries
-        .where((e) => essentialCats.contains(e.key.toLowerCase()))
-        .fold<double>(0, (s, e) => s + e.value);
-    final mixRatio = totalBudget > 0 ? (essentialBudget / totalBudget * 100) : 0.0;
-
-    // Budget Discipline Score
-    final summaries = _historicalSummaries();
-    int withinCount = 0;
-    int totalMonths = summaries.length;
-    for (final s in summaries) {
-      if (s.summary.totalSpent <= s.summary.totalBudget || s.summary.totalBudget == 0) {
-        withinCount++;
-      }
-    }
-    final disciplineScore = totalMonths > 0 ? (withinCount / totalMonths * 10).clamp(0, 10) : 0.0;
-
-    // Smart Budget Recommendation
-    String? smartRecCat;
-    double smartRecSaving = 0;
-    for (final b in _budgets) {
-      if (b.amount > 0 && !essentialCats.contains(b.category.toLowerCase())) {
-        final saving = b.amount * 0.1;
-        if (saving > smartRecSaving) {
-          smartRecSaving = saving;
-          smartRecCat = b.category;
-        }
-      }
-    }
-
-    // Safe-to-Spend
-    final remaining = totalBudget - totalSpent;
-    final daysLeft = daysInMonth - now.day;
-    final safeToSpend = daysLeft > 0 ? remaining / daysLeft : 0.0;
-
-    // Fixed vs Flexible
-    final fixedCats = {'housing', 'emi', 'insurance', 'subscriptions', 'utilities'};
-    final fixedBudget = catBudget.entries
-        .where((e) => fixedCats.contains(e.key.toLowerCase()))
-        .fold<double>(0, (s, e) => s + e.value);
-    final fixedPct = totalBudget > 0 ? (fixedBudget / totalBudget * 100) : 0.0;
-    final flexPct = 100 - fixedPct;
-
-    // Emergency Buffer
-    final emergencyCats = {'emergency', 'emergency fund', 'buffer'};
-    final emergencyBudget = _budgets
-        .where((b) => emergencyCats.contains(b.category.toLowerCase()))
-        .fold<double>(0, (s, b) => s + b.amount);
-
-    // Goal Impact
-    final savingsCats = {'savings', 'investments', 'goals'};
-    final savingsBudget = _budgets
-        .where((b) => savingsCats.contains(b.category.toLowerCase()))
-        .fold<double>(0, (s, b) => s + b.amount);
-    final nonSavingsBudget = totalBudget - savingsBudget;
-
-    // ── Build all 14 cards ──
-    final allCards = <Widget>[
-      _aiCard('💧', 'Spend Leakage',
-          leakyBudgets.isNotEmpty
-              ? '${_fmtCurrency(leakyTotal)} allocated to ${leakyBudgets.map((b) => b.category).take(2).join(' and ')} but no spending.'
-              : 'All budget categories are being utilized. No leaks detected!',
-          leakyBudgets.isNotEmpty ? Colors.pink : Colors.green,
-          leakyBudgets.isNotEmpty ? 'Reallocate' : 'Healthy'),
-
-      _aiCard('⚡', 'Impulse Risk',
-          hasImpulseRisk
-              ? '${impulseRiskBudgets.first.category} budget may trigger impulse spending.'
-              : 'No impulse-risk budget categories detected!',
-          hasImpulseRisk ? Colors.orange : Colors.green,
-          hasImpulseRisk ? 'Watch closely' : 'Great control!'),
-
-      _aiCard('🔔', 'Recurring Lock-in',
-          recurringTotal > 0
-              ? '${_fmtCurrency(recurringTotal)} locked into monthly subscriptions.'
-              : 'No recurring budget lock-ins detected.',
-          recurringTotal > 0 ? Colors.red : Colors.green,
-          recurringTotal > 0 ? 'Review subscriptions' : 'No lock-ins'),
-
-      _aiCard('🔍', 'Silent Erosion',
-          smallBudgets.isNotEmpty
-              ? '${smallBudgets.length} small allocations add up to ${_fmtCurrency(smallTotal)}.'
-              : 'No small budget erosion detected.',
-          smallBudgets.isNotEmpty ? Colors.indigo : Colors.green,
-          smallBudgets.isNotEmpty ? 'Under ₹500 each' : 'Clean'),
-
-      _aiCard('📉', 'Slippage',
-          slippageCat != null
-              ? '${slippageCat} likely to exceed by ${_fmtCurrency(slippageAmount)} at current pace.'
-              : 'All categories on pace. No slippage detected!',
-          slippageCat != null ? Colors.red : Colors.green,
-          slippageCat != null ? 'Adjust now' : 'On track'),
-
-      _aiCard('📊', 'Instability',
-          unstableCat != null && maxFluctuation > 20
-              ? '${unstableCat} budget fluctuates ${maxFluctuation.toStringAsFixed(0)}% month to month.'
-              : 'Budget allocations are stable month to month.',
-          maxFluctuation > 20 ? Colors.amber : Colors.green,
-          maxFluctuation > 20 ? 'Stabilize' : 'Stable'),
-
-      _aiCard('✅', 'Healthy Mix',
-          '${mixRatio.toStringAsFixed(0)}% of budget allocated to essentials & long-term needs.',
-          mixRatio >= 60 ? Colors.green : Colors.orange,
-          mixRatio >= 60 ? 'Great balance!' : 'Could improve'),
-
-      _aiCard('🏆', 'Discipline Score',
-          totalMonths > 0
-              ? 'Score: ${disciplineScore.toStringAsFixed(1)} / 10\nWithin budget for $withinCount of $totalMonths months.'
-              : 'Add budgets to start tracking discipline.',
-          disciplineScore >= 7 ? Colors.green : disciplineScore >= 4 ? Colors.amber : Colors.red,
-          '${disciplineScore.toStringAsFixed(1)}/10'),
-
-      _aiCard('💡', 'Smart Recommendation',
-          smartRecCat != null
-              ? 'Reducing ${smartRecCat} by 10% could increase savings by ${_fmtCurrency(smartRecSaving)}.'
-              : 'Set non-essential budgets to get recommendations.',
-          Colors.blue,
-          smartRecCat != null ? 'Quick win' : 'Set budgets'),
-
-      _aiCard('💳', 'Safe-to-Spend',
-          remaining > 0
-              ? 'You can safely spend ${_fmtCurrency(safeToSpend > 0 ? safeToSpend : 0)} per day and stay within budget.'
-              : 'Budget exhausted for this month.',
-          remaining > 0 ? Colors.teal : Colors.red,
-          remaining > 0 ? 'On track' : 'Exceeded'),
-
-      _aiCard('📐', 'Income Fit',
-          totalBudget > 0
-              ? 'Total budget: ${_fmtCurrency(totalBudget)}. ${usagePct > 85 ? 'Keeping budgets under 85% of income improves flexibility.' : 'Budget allocation looks sustainable.'}'
-              : 'Set budgets to check income fit.',
-          usagePct <= 85 ? Colors.green : Colors.orange,
-          usagePct <= 85 ? 'Good fit' : 'Tight'),
-
-      _aiCard('⚖️', 'Fixed vs Flexible Split',
-          totalBudget > 0
-              ? 'Fixed: ${fixedPct.toStringAsFixed(0)}%  |  Flexible: ${flexPct.toStringAsFixed(0)}%\n${fixedPct > 65 ? 'High fixed costs may reduce month-end comfort.' : 'Balanced split between fixed and flexible.'}'
-              : 'Add budgets to see the split.',
-          fixedPct <= 65 ? Colors.green : Colors.orange,
-          fixedPct <= 65 ? 'Balanced' : 'Review fixed'),
-
-      _aiCard('🛡️', 'Emergency Buffer Health',
-          emergencyBudget > 0
-              ? '${_fmtCurrency(emergencyBudget)} allocated for emergencies this month.'
-              : 'No emergency buffer allocated. Consider adding ₹2,000–₹5,000.',
-          emergencyBudget > 0 ? Colors.green : Colors.red,
-          emergencyBudget > 0 ? 'Protected' : 'Add buffer'),
-
-      _aiCard('🎯', 'Goal Impact',
-          savingsBudget > 0
-              ? '${_fmtCurrency(savingsBudget)} allocated to savings & goals this month.'
-              : 'No savings budget set. Current spend may reduce goal progress.',
-          savingsBudget > 0 ? Colors.green : Colors.amber,
-          savingsBudget > 0 ? 'Aligned' : 'Set goals'),
-    ];
-
-    // Distribute alternately into 2 columns
-    final leftCards = <Widget>[];
-    final rightCards = <Widget>[];
-    for (int i = 0; i < allCards.length; i++) {
-      if (i.isEven) {
-        if (leftCards.isNotEmpty) leftCards.add(const SizedBox(height: 8));
-        leftCards.add(allCards[i]);
-      } else {
-        if (rightCards.isNotEmpty) rightCards.add(const SizedBox(height: 8));
-        rightCards.add(allCards[i]);
-      }
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(child: Column(children: leftCards)),
-        const SizedBox(width: 8),
-        Expanded(child: Column(children: rightCards)),
-      ],
-    );
-  }
-
-  Widget _aiCard(String emoji, String title, String message, Color color, String badge) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.15)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 18)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(child: Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color), overflow: TextOverflow.ellipsis)),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      flex: 0,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(badge, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: color), overflow: TextOverflow.ellipsis, maxLines: 1),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(message, style: TextStyle(fontSize: 10, color: Colors.grey.shade700, height: 1.3)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    return _buildWebLayout(context, summary);
   }
 
   Widget _buildWebLayout(BuildContext context, BudgetSummary summary) {
@@ -1460,7 +710,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Title Row ──
+          // â”€â”€ Title Row â”€â”€
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
             child: Row(
@@ -1472,7 +722,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               ],
             ),
           ),
-          // ── Everything below controls: Stack so calendar can float ──
+          // â”€â”€ Everything below controls: Stack so calendar can float â”€â”€
           Expanded(
             child: Stack(
               clipBehavior: Clip.none,
@@ -1482,7 +732,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 12),
-                    // ── Main 3-column layout ──
+                    // â”€â”€ Main 3-column layout â”€â”€
                     Expanded(
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1543,7 +793,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     ),
                   ],
                 ),
-                // Calendar overlay removed from here — now inside budget card
+                // Calendar overlay removed from here â€” now inside budget card
               ],
             ),
           ),
@@ -1849,7 +1099,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155)),
           ),
           const SizedBox(width: 16),
-          // Category — fixed width, vertically centered
+          // Category â€” fixed width, vertically centered
           SizedBox(
             width: 140, height: 32,
             child: _CategoryEditor(
@@ -1859,7 +1109,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          // Amount — fixed width, vertically centered
+          // Amount â€” fixed width, vertically centered
           SizedBox(
             width: 100, height: 32,
             child: TextField(
@@ -1867,7 +1117,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               style: const TextStyle(fontSize: 12),
               decoration: InputDecoration(
-                hintText: '₹ 0.00',
+                hintText: 'â‚¹ 0.00',
                 hintStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -1878,7 +1128,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          // Tags — flex, vertically centered
+          // Tags â€” flex, vertically centered
           Expanded(
             child: SizedBox(
               height: 32,
@@ -1898,7 +1148,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          // Action icons — same style as toolbar controls
+          // Action icons â€” same style as toolbar controls
           IconButton(
             tooltip: isEditing ? 'Update' : 'Save',
             onPressed: _saveBudgetForm,
@@ -1947,7 +1197,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 1. Filter by Category — compact glass-style popup
+        // 1. Filter by Category â€” compact glass-style popup
         PopupMenuButton<String?>(
           tooltip: hasCatFilter ? 'Filtered: $_selectedCategoryFilter' : 'Filter by Category',
           icon: Icon(Icons.filter_list_rounded, color: hasCatFilter ? activeColor : iconColor, size: iconSize),
@@ -2012,7 +1262,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
         ),
         // 3. Sort by Amount
         Tooltip(
-          message: _budgetSortAscending ? 'Sort: Low → High' : 'Sort: High → Low',
+          message: _budgetSortAscending ? 'Sort: Low â†’ High' : 'Sort: High â†’ Low',
           child: IconButton(
             icon: Icon(
               _budgetSortAscending ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
@@ -2191,7 +1441,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               // Inline budget form slides down, pushing budget rows
               if (_showInlineBudgetForm)
                 _buildInlineBudgetForm(),
-              // Budget rows (scrollable) — grouped or flat
+              // Budget rows (scrollable) â€” grouped or flat
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
@@ -2369,7 +1619,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            // Edit icon — visible on hover
+            // Edit icon â€” visible on hover
             AnimatedOpacity(
               opacity: isHovered ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 150),
@@ -2714,12 +1964,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
       icon = Icons.auto_awesome;
     } else if (focusBudget.isOverBudget) {
       title = 'Overspend Alert';
-      message = '${_titleCase(focusBudget.category)} is over budget by ₹${focusBudget.remaining.abs().toStringAsFixed(0)} this month. Review and adjust the category limit.';
+      message = '${_titleCase(focusBudget.category)} is over budget by â‚¹${focusBudget.remaining.abs().toStringAsFixed(0)} this month. Review and adjust the category limit.';
       accent = AppColors.error;
       icon = Icons.warning_amber_rounded;
     } else if (focusBudget.usagePercent >= 85) {
       title = 'Tightest Budget';
-      message = '${_titleCase(focusBudget.category)} has already used ${focusBudget.usagePercent.toStringAsFixed(0)}% of its budget, leaving ₹${focusBudget.remaining.toStringAsFixed(0)}.';
+      message = '${_titleCase(focusBudget.category)} has already used ${focusBudget.usagePercent.toStringAsFixed(0)}% of its budget, leaving â‚¹${focusBudget.remaining.toStringAsFixed(0)}.';
       accent = AppColors.warningDark;
       icon = Icons.trending_up_rounded;
     } else {
@@ -2727,7 +1977,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
         ..sort((a, b) => a.usagePercent.compareTo(b.usagePercent));
       final winner = bestBudget.first;
       title = 'Best Controlled Category';
-      message = '${_titleCase(winner.category)} is tracking well at ${winner.usagePercent.toStringAsFixed(0)}% used, leaving ₹${winner.remaining.toStringAsFixed(0)} for the month.';
+      message = '${_titleCase(winner.category)} is tracking well at ${winner.usagePercent.toStringAsFixed(0)}% used, leaving â‚¹${winner.remaining.toStringAsFixed(0)} for the month.';
       accent = AppColors.success;
       icon = Icons.check_circle_outline_rounded;
     }
@@ -2802,7 +2052,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             Expanded(
               child: _budgetSummaryCard(
                 title: 'Latest Month Spend',
-                value: '₹${latest.totalSpent.toStringAsFixed(0)}',
+                value: 'â‚¹${latest.totalSpent.toStringAsFixed(0)}',
                 subtitle: latest.month.isEmpty ? 'No history yet' : _monthLabel(_selectedMonth),
                 valueColor: primary,
               ),
@@ -2858,7 +2108,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        '₹${item.summary.totalSpent.toStringAsFixed(0)} / ₹${item.summary.totalBudget.toStringAsFixed(0)}',
+                        'â‚¹${item.summary.totalSpent.toStringAsFixed(0)} / â‚¹${item.summary.totalBudget.toStringAsFixed(0)}',
                         style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                       ),
                     ],
@@ -2901,10 +2151,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
             Expanded(
               child: _budgetSummaryCard(
                 title: 'Top Spend Category',
-                value: topCategory == null ? '—' : _titleCase(topCategory.category),
+                value: topCategory == null ? 'â€”' : _titleCase(topCategory.category),
                 subtitle: topCategory == null
                     ? 'No analytics yet'
-                    : '₹${topCategory.totalSpent.toStringAsFixed(0)} over ${topCategory.monthsTracked} months',
+                    : 'â‚¹${topCategory.totalSpent.toStringAsFixed(0)} over ${topCategory.monthsTracked} months',
                 valueColor: primary,
               ),
             ),
@@ -2912,7 +2162,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             Expanded(
               child: _budgetSummaryCard(
                 title: 'Average Monthly Spend',
-                value: '₹${averageMonthlySpend.toStringAsFixed(0)}',
+                value: 'â‚¹${averageMonthlySpend.toStringAsFixed(0)}',
                 subtitle: 'Across tracked categories',
                 valueColor: AppColors.success,
               ),
@@ -2921,7 +2171,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             Expanded(
               child: _budgetSummaryCard(
                 title: 'Most Volatile Category',
-                value: topCategory == null ? '—' : '${topCategory.overBudgetMonths}',
+                value: topCategory == null ? 'â€”' : '${topCategory.overBudgetMonths}',
                 subtitle: topCategory == null
                     ? 'No over-budget months'
                     : '${_titleCase(topCategory.category)} months over budget',
@@ -2980,7 +2230,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                'Spent ₹${item.totalSpent.toStringAsFixed(0)} of ₹${item.totalBudget.toStringAsFixed(0)} across ${item.monthsTracked} months',
+                                'Spent â‚¹${item.totalSpent.toStringAsFixed(0)} of â‚¹${item.totalBudget.toStringAsFixed(0)} across ${item.monthsTracked} months',
                                 style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                               ),
                             ],
@@ -3622,7 +2872,7 @@ class _AggregatedBudget {
   final List<String> tags = [];
 }
 
-/// Mutable row for the preview dialog — lets users edit the category
+/// Mutable row for the preview dialog â€” lets users edit the category
 class _EditableRow {
   String category;
   final String subcategory;
@@ -3690,7 +2940,7 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
     'other',
   ];
 
-  // Indian banks knowledge base — maps bank names/abbreviations to 'bank' category
+  // Indian banks knowledge base â€” maps bank names/abbreviations to 'bank' category
   static const _indianBanks = <String>[
     'iob', 'sbi', 'hdfc', 'icici', 'axis', 'kotak', 'pnb', 'bob', 'boi',
     'canara', 'union', 'idbi', 'yes bank', 'indusind', 'rbl', 'federal',
@@ -3901,7 +3151,7 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
                     _chip('${invalidRows.length} invalid', AppColors.error),
                   const Spacer(),
                   Text(
-                    'Total: ₹${totalAmount.toStringAsFixed(0)}',
+                    'Total: â‚¹${totalAmount.toStringAsFixed(0)}',
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
@@ -4008,7 +3258,7 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
                           _TableCell(
                             Text(
                               _editableRows[idx].isValid
-                                  ? '₹${_editableRows[idx].amount.toStringAsFixed(0)}'
+                                  ? 'â‚¹${_editableRows[idx].amount.toStringAsFixed(0)}'
                                   : _editableRows[idx].validationError ?? 'Invalid',
                               style: TextStyle(
                                 fontSize: 12,
@@ -4372,9 +3622,9 @@ class _CategoryEditorState extends State<_CategoryEditor> {
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Budget AI Insights Panel
-// ══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _BudgetAIInsightsPanel extends StatefulWidget {
   final VoidCallback onClose;

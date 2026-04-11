@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:async';
 import 'package:provider/provider.dart';
-import '../config/navigation_config.dart';
+import '../config/navigation_config.dart'; // kept for future mobile app
 import '../main.dart' show ViewMode, ViewModeProvider;
 import '../models/expense.dart';
 import '../services/auth_service.dart';
 import '../services/expense_service.dart';
-import 'app_bottom_navigation_bar.dart';
+// app_bottom_navigation_bar removed (mobile-only)
 import 'global_header_actions.dart';
 
 /// A shell widget that wraps screens with bottom navigation.
@@ -780,80 +780,30 @@ class _NavigationShellState extends State<NavigationShell> {
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb) {
-      final viewMode = context.watch<ViewModeProvider>().mode;
-      final isDesktop = viewMode == ViewMode.desktop;
-      final showLabels = isDesktop && NavigationShell.webSidebarExpanded;
-      return Scaffold(
-        body: SafeArea(
-          child: Row(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                width: showLabels ? 256 : 80,
-                child: _buildWebSidebar(context, showLabels, isDesktop),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    if (widget.showWebTopBar)
-                      _buildWebTopBar(context, showLabels, isDesktop),
-                    Expanded(child: widget.child),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Get navigation items for the current route
-    final navItems = NavigationConfig.getNavigationItems(widget.currentRoute);
-
-    // If no navigation items configured, show child without navigation
-    if (navItems == null || navItems.isEmpty) {
-      return widget.child;
-    }
-
-    // Find the index of the current route in navigation items
-    int currentIndex = 0;
-    for (int i = 0; i < navItems.length; i++) {
-      if (navItems[i].routeName == widget.currentRoute) {
-        currentIndex = i;
-        break;
-      }
-    }
-
-    // Convert NavigationItem to NavItem for AppBottomNavigationBar
-    final bottomNavItems = navItems.map((item) {
-      return NavItem(
-        label: item.label,
-        icon: item.icon,
-        filledIcon: item.filledIcon,
-      );
-    }).toList();
-
+    final viewMode = context.watch<ViewModeProvider>().mode;
+    final isDesktop = viewMode == ViewMode.desktop;
+    final showLabels = isDesktop && NavigationShell.webSidebarExpanded;
     return Scaffold(
-      body: widget.child,
-      bottomNavigationBar: AppBottomNavigationBar(
-        currentIndex: currentIndex,
-        items: bottomNavItems,
-        onTabChanged: (index) {
-          final targetRoute = navItems[index].routeName;
-
-          // Empty routeName means the tab is intentionally unconnected
-          if (targetRoute.isEmpty) return;
-
-          // Don't navigate if already on that route
-          if (targetRoute == widget.currentRoute) {
-            return;
-          }
-
-          // Replace current route so tabs don't stack up the back history
-          Navigator.of(context).pushReplacementNamed(targetRoute);
-        },
+      body: SafeArea(
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              width: showLabels ? 256 : 80,
+              child: _buildWebSidebar(context, showLabels, isDesktop),
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  if (widget.showWebTopBar)
+                    _buildWebTopBar(context, showLabels, isDesktop),
+                  Expanded(child: widget.child),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

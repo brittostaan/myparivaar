@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xml/xml.dart';
@@ -442,6 +442,10 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           final label = row.description.isNotEmpty ? row.description : row.category;
           final msg = e is ExpenseException ? e.message : '$e';
           errors.add('$label: $msg');
+          // Log first error details for debugging
+          if (errors.length == 1 && e is ExpenseException) {
+            debugPrint('[EXPENSE-IMPORT] First error diagnostics:\n${e.diagnostics}');
+          }
         }
       }
 
@@ -484,30 +488,39 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             ),
             content: SizedBox(
               width: 500,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (successCount > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text('$successCount expenses imported successfully.',
-                          style: const TextStyle(color: AppColors.success)),
-                    ),
-                  const Text('Errors:', style: TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  ...errors.map((e) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.error_outline, size: 16, color: AppColors.error),
-                        const SizedBox(width: 6),
-                        Expanded(child: Text(e, style: const TextStyle(fontSize: 13))),
-                      ],
-                    ),
-                  )),
-                ],
+              height: 400,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (successCount > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text('$successCount expenses imported successfully.',
+                            style: const TextStyle(color: AppColors.success)),
+                      ),
+                    const Text('Errors:', style: TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    ...errors.take(10).map((e) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.error_outline, size: 16, color: AppColors.error),
+                          const SizedBox(width: 6),
+                          Expanded(child: Text(e, style: const TextStyle(fontSize: 13))),
+                        ],
+                      ),
+                    )),
+                    if (errors.length > 10)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text('... and ${errors.length - 10} more errors',
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic)),
+                      ),
+                  ],
+                ),
               ),
             ),
             actions: [

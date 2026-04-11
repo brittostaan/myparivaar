@@ -126,12 +126,31 @@ class ExpenseService {
         final data = jsonDecode(response.body);
         return Expense.fromJson(data['expense']);
       } else {
-        final error = jsonDecode(response.body);
-        throw ExpenseException(error['error'] ?? 'Failed to create expense');
+        try {
+          final error = jsonDecode(response.body);
+          final msg = error['error'] ?? error['message'] ?? response.body;
+          throw ExpenseException(
+            'Failed to create expense: $msg',
+            statusCode: response.statusCode,
+            rawBody: response.body,
+            url: '$supabaseUrl/functions/v1/expense-create',
+          );
+        } catch (e) {
+          if (e is ExpenseException) rethrow;
+          throw ExpenseException(
+            'Failed to create expense (HTTP ${response.statusCode})',
+            statusCode: response.statusCode,
+            rawBody: response.body,
+            url: '$supabaseUrl/functions/v1/expense-create',
+          );
+        }
       }
     } catch (e) {
       if (e is ExpenseException) rethrow;
-      throw ExpenseException('Network error: Unable to create expense');
+      throw ExpenseException(
+        'Network error: Unable to create expense: $e',
+        url: '$supabaseUrl/functions/v1/expense-create',
+      );
     }
   }
 

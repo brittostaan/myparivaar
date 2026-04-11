@@ -67,6 +67,11 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   bool _expenseSortAscending = false; // false = high→low (default)
   String? _hoveredExpenseId;
 
+  // Upload progress tracking
+  bool _isImporting = false;
+  int _importTotal = 0;
+  int _importDone = 0;
+
   // Inline expense form (matches budget screen pattern)
   Expense? _editingExpense;
   bool _showInlineExpenseForm = false;
@@ -427,6 +432,15 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       // Force-refresh token to ensure it's valid before bulk import
       final idToken = await authService.getIdToken(true);
 
+      // Show progress
+      if (mounted) {
+        setState(() {
+          _isImporting = true;
+          _importTotal = validRows.length;
+          _importDone = 0;
+        });
+      }
+
       for (final row in validRows) {
         try {
           await _expenseService.createExpense(
@@ -442,11 +456,19 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           final label = row.description.isNotEmpty ? row.description : row.category;
           final msg = e is ExpenseException ? e.message : '$e';
           errors.add('$label: $msg');
-          // Log first error details for debugging
           if (errors.length == 1 && e is ExpenseException) {
             debugPrint('[EXPENSE-IMPORT] First error diagnostics:\n${e.diagnostics}');
           }
         }
+        // Update progress after each row
+        if (mounted) {
+          setState(() => _importDone = successCount + errors.length);
+        }
+      }
+
+      // Hide progress
+      if (mounted) {
+        setState(() => _isImporting = false);
       }
 
       // Silently refresh data without full page loading state
@@ -1361,12 +1383,12 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   child: GestureDetector(
                     onTap: isFuture ? null : () {
                       setState(() {
-                        if (_filterStartDate == null || (_filterStartDate != null && _filterEndDate != null)) {
-                          // First tap or reset: set start date
+                        if (_filterStartDate == null || _filterEndDate != null) {
+                          // No start set, or both set (restart selection)
                           _filterStartDate = date;
                           _filterEndDate = null;
                         } else {
-                          // Second tap: set end date (ensure start < end)
+                          // Start is set, end is not — set end date
                           if (date.isBefore(_filterStartDate!)) {
                             _filterEndDate = _filterStartDate;
                             _filterStartDate = date;
@@ -1440,6 +1462,28 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               }),
             ],
           ),
+          const SizedBox(height: 6),
+          // Clear filter button
+          if (_filterStartDate != null || _filterEndDate != null)
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _filterStartDate = null;
+                  _filterEndDate = null;
+                  _showCalendarDropdown = false;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Center(
+                  child: Text('Clear Filter', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -4056,6 +4100,28 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                           Text('Budget: ${_fmtCurrency(totalBudget)}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[600])),
                       ],
                     ),
+                    // Import progress bar
+                    if (_isImporting) ...[
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: _importTotal > 0 ? _importDone / _importTotal : 0,
+                          minHeight: 4,
+                          backgroundColor: const Color(0xFFFFCDD2),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            _importTotal > 0 && _importDone / _importTotal > 0.5
+                                ? AppColors.success
+                                : const Color(0xFFEF5350),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Importing $_importDone / $_importTotal expenses...',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey[500]),
+                      ),
+                    ],
                   ],
                 ),
               ),

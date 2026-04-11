@@ -959,21 +959,40 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       );
     }
 
-    // Group expenses by month
+    // Apply date/search/category filters
+    final filtered = _filteredExpenses;
+
+    if (filtered.isEmpty) {
+      final hasFilter = _filterStartDate != null || _searchQuery.isNotEmpty;
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(AppIcons.receiptOutlined, size: 64, color: AppColors.grey400),
+            const SizedBox(height: 16),
+            Text(hasFilter ? 'No transactions match your filter' : 'No transactions this month',
+                style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 8),
+            Text(hasFilter ? 'Try adjusting your date range or search' : 'Add your first expense to get started'),
+          ],
+        ),
+      );
+    }
+
+    // Group filtered expenses by month
     final groupedExpenses = <String, List<Expense>>{};
-    for (final expense in _expenses) {
+    for (final expense in filtered) {
       final monthKey =
           '${expense.date.year}-${expense.date.month.toString().padLeft(2, '0')}';
       groupedExpenses.putIfAbsent(monthKey, () => []).add(expense);
     }
-    final now = DateTime.now();
-    final currentMonthKey =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    // Sort month keys descending so newest month is first
+    final sortedKeys = groupedExpenses.keys.toList()..sort((a, b) => b.compareTo(a));
 
     return ListView.builder(
-      itemCount: groupedExpenses.length,
+      itemCount: sortedKeys.length,
       itemBuilder: (context, index) {
-        final monthKey = groupedExpenses.keys.elementAt(index);
+        final monthKey = sortedKeys[index];
         final monthExpenses = groupedExpenses[monthKey]!;
         final totalAmount =
             monthExpenses.fold<double>(0, (sum, e) => sum + e.amount);
@@ -983,7 +1002,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         return Card(
           margin: const EdgeInsets.all(8.0),
           child: ExpansionTile(
-            initiallyExpanded: monthKey == currentMonthKey,
+            initiallyExpanded: true,
             title: Text(monthName,
                 style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text(
@@ -3401,9 +3420,18 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   List<Expense> get _filteredExpenses {
     final now = DateTime.now();
     return _expenses.where((e) {
-      // Show only current month expenses
-      final inPeriod = e.date.year == now.year && e.date.month == now.month;
-      if (!inPeriod) return false;
+      // When date range filter is active, use that instead of current month
+      if (_filterStartDate != null) {
+        final start = DateTime(_filterStartDate!.year, _filterStartDate!.month, _filterStartDate!.day);
+        final end = _filterEndDate != null
+            ? DateTime(_filterEndDate!.year, _filterEndDate!.month, _filterEndDate!.day, 23, 59, 59)
+            : DateTime(start.year, start.month, start.day, 23, 59, 59);
+        if (e.date.isBefore(start) || e.date.isAfter(end)) return false;
+      } else {
+        // Default: show current month only
+        final inPeriod = e.date.year == now.year && e.date.month == now.month;
+        if (!inPeriod) return false;
+      }
       if (_searchQuery.isNotEmpty) {
         final q = _searchQuery.toLowerCase();
         return e.description.toLowerCase().contains(q) ||

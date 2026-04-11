@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:xml/xml.dart';
 import '../main.dart' show ViewModeProvider, ViewMode;
 import '../models/import_result.dart';
 import '../services/auth_service.dart';
@@ -191,12 +194,72 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     }
   }
 
+  /// Convert .xlsx bytes to CSV string by parsing the XML inside the zip.
+  String _excelToCsv(Uint8List bytes) {
+    final archive = ZipDecoder().decodeBytes(bytes);
+
+    // Parse shared strings
+    final ssFile = archive.files.firstWhere(
+      (f) => f.name.contains('sharedStrings'),
+      orElse: () => ArchiveFile('empty', 0, []),
+    );
+    final sharedStrings = <String>[];
+    if (ssFile.size > 0) {
+      final ssXml = XmlDocument.parse(String.fromCharCodes(ssFile.content as List<int>));
+      final ns = ssXml.rootElement.name.namespaceUri;
+      for (final si in ssXml.rootElement.findAllElements('si', namespace: ns)) {
+        final buf = StringBuffer();
+        for (final t in si.findAllElements('t', namespace: ns)) {
+          buf.write(t.innerText);
+        }
+        sharedStrings.add(buf.toString());
+      }
+    }
+
+    // Parse first worksheet
+    final sheetFile = archive.files.firstWhere(
+      (f) => f.name.contains('worksheets/sheet') && f.name.endsWith('.xml'),
+      orElse: () => throw const FormatException('No worksheet found'),
+    );
+    final sheetXml = XmlDocument.parse(String.fromCharCodes(sheetFile.content as List<int>));
+    final ns = sheetXml.rootElement.name.namespaceUri;
+    final sheetData = sheetXml.rootElement.findAllElements('sheetData', namespace: ns).first;
+    final xmlRows = sheetData.findAllElements('row', namespace: ns).toList();
+
+    if (xmlRows.isEmpty) throw const FormatException('Excel sheet is empty');
+
+    final csvLines = <String>[];
+    for (final row in xmlRows) {
+      final cells = row.findAllElements('c', namespace: ns);
+      final values = <String>[];
+      for (final cell in cells) {
+        final type = cell.getAttribute('t') ?? '';
+        final vElem = cell.findElements('v', namespace: ns);
+        final raw = vElem.isNotEmpty ? vElem.first.innerText : '';
+        String value;
+        if (type == 's' && raw.isNotEmpty) {
+          final idx = int.tryParse(raw) ?? 0;
+          value = idx < sharedStrings.length ? sharedStrings[idx] : raw;
+        } else {
+          value = raw;
+        }
+        // Escape CSV: quote if contains comma, quote, or newline
+        if (value.contains(',') || value.contains('"') || value.contains('\n')) {
+          value = '"${value.replaceAll('"', '""')}"';
+        }
+        values.add(value);
+      }
+      csvLines.add(values.join(','));
+    }
+    return csvLines.join('\n');
+  }
+
   Future<void> _uploadExpenseFile() async {
     final authService = Provider.of<AuthService>(context, listen: false);
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['csv', 'xlsx', 'xls', 'pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'webp'],
+        allowedExtensions: ['csv', 'xlsx'],
         withData: true,
       );
       if (result == null || result.files.isEmpty) return;
@@ -210,18 +273,34 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         return;
       }
 
-      String text;
-      try {
-        text = utf8.decode(file.bytes!);
-      } catch (_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('File must be UTF-8 encoded')),
-        );
-        return;
+      final ext = file.name.split('.').last.toLowerCase();
+      String csvText;
+
+      if (ext == 'xlsx' || ext == 'xls') {
+        // Parse Excel binary to CSV
+        try {
+          csvText = _excelToCsv(Uint8List.fromList(file.bytes!));
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not parse Excel file: $e')),
+          );
+          return;
+        }
+      } else {
+        // CSV — decode as UTF-8
+        try {
+          csvText = utf8.decode(file.bytes!);
+        } catch (_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('CSV file must be UTF-8 encoded')),
+          );
+          return;
+        }
       }
 
-      if (text.trim().isEmpty) {
+      if (csvText.trim().isEmpty) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Selected file is empty')),
@@ -230,10 +309,9 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       }
 
       final svc = ImportService(supabaseUrl: authService.supabaseUrl, authService: authService);
-      final preview = await svc.preview(type: 'expenses', csvText: text);
+      final preview = await svc.preview(type: 'expenses', csvText: csvText);
 
       if (!mounted) return;
-      // Show a confirmation dialog with preview count
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -248,7 +326,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
       if (confirmed != true || !mounted) return;
 
-      final commitResult = await svc.commit(type: 'expenses', csvText: text);
+      final commitResult = await svc.commit(type: 'expenses', csvText: csvText);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Imported ${commitResult.imported} expense(s) successfully')),

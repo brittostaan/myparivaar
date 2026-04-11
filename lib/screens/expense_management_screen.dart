@@ -64,6 +64,20 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   bool _expenseSortAscending = false; // false = high→low (default)
   String? _hoveredExpenseId;
 
+  // Inline expense form (matches budget screen pattern)
+  Expense? _editingExpense;
+  bool _showInlineExpenseForm = false;
+  String _formExpenseCategory = 'Groceries';
+  final TextEditingController _formExpenseAmountController = TextEditingController();
+  final TextEditingController _formExpenseDescController = TextEditingController();
+  final TextEditingController _formExpenseTagsController = TextEditingController();
+
+  static const _expenseCategories = [
+    'Groceries', 'Entertainment', 'Education', 'Personal Care',
+    'Physical Wellness', 'Mental Wellness', 'Convenience Food',
+    'Senior Care', 'Pet Care', 'Vacation', 'Party',
+  ];
+
   void _closeAllPanels() {
     _showAddExpensePanel = false;
     _showImportPanel = false;
@@ -73,7 +87,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   }
 
   bool get _anyPanelOpen =>
-      _showAddExpensePanel || _showImportPanel || _showHistoricalPanel ||
+      _showHistoricalPanel ||
       _showAnalyticsPanel || _selectedExpenseDetail != null;
 
   @override
@@ -85,7 +99,172 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   @override
   void dispose() {
     _infoCardScrollController.dispose();
+    _formExpenseAmountController.dispose();
+    _formExpenseDescController.dispose();
+    _formExpenseTagsController.dispose();
     super.dispose();
+  }
+
+  void _openExpenseForm({Expense? existing}) {
+    setState(() {
+      _editingExpense = existing;
+      _showInlineExpenseForm = true;
+      _formExpenseCategory = existing?.category ?? _expenseCategories.first;
+      _formExpenseAmountController.text = existing == null ? '' : existing.amount.toStringAsFixed(2);
+      _formExpenseDescController.text = existing?.description ?? '';
+      _formExpenseTagsController.text = joinTags(existing?.tags);
+    });
+  }
+
+  void _closeExpenseForm() {
+    setState(() {
+      _showInlineExpenseForm = false;
+      _editingExpense = null;
+      _formExpenseAmountController.clear();
+      _formExpenseDescController.clear();
+      _formExpenseTagsController.clear();
+    });
+  }
+
+  Future<void> _saveExpenseForm() async {
+    final amount = double.tryParse(_formExpenseAmountController.text.trim());
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid amount')),
+      );
+      return;
+    }
+    final description = _formExpenseDescController.text.trim();
+    if (description.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a description')),
+      );
+      return;
+    }
+    final isEditing = _editingExpense != null;
+    final authService = Provider.of<AuthService>(context, listen: false);
+    try {
+      final tags = parseTags(_formExpenseTagsController.text);
+      if (isEditing) {
+        await _expenseService.updateExpense(
+          expenseId: _editingExpense!.id,
+          amount: amount,
+          category: _formExpenseCategory,
+          description: description,
+          date: _editingExpense!.date,
+          tags: tags,
+          supabaseUrl: authService.supabaseUrl,
+          idToken: await authService.getIdToken(),
+        );
+      } else {
+        await _expenseService.createExpense(
+          amount: amount,
+          category: _formExpenseCategory,
+          description: description,
+          date: DateTime.now(),
+          tags: tags,
+          supabaseUrl: authService.supabaseUrl,
+          idToken: await authService.getIdToken(),
+        );
+      }
+      if (!mounted) return;
+      _loadExpenses();
+      if (!isEditing) {
+        _formExpenseAmountController.clear();
+        _formExpenseDescController.clear();
+        _formExpenseTagsController.clear();
+      } else {
+        _closeExpenseForm();
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isEditing ? 'Expense updated' : 'Expense added'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
+  Future<void> _uploadExpenseFile() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv', 'xlsx', 'xls', 'pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'webp'],
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      if (file.bytes == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not read file data')),
+        );
+        return;
+      }
+
+      String text;
+      try {
+        text = utf8.decode(file.bytes!);
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('File must be UTF-8 encoded')),
+        );
+        return;
+      }
+
+      if (text.trim().isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Selected file is empty')),
+        );
+        return;
+      }
+
+      final svc = ImportService(supabaseUrl: authService.supabaseUrl, authService: authService);
+      final preview = await svc.preview(type: 'expenses', csvText: text);
+
+      if (!mounted) return;
+      // Show a confirmation dialog with preview count
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Import Preview'),
+          content: Text('Found ${preview.validCount} expense(s) to import.\nProceed?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Import')),
+          ],
+        ),
+      );
+
+      if (confirmed != true || !mounted) return;
+
+      final commitResult = await svc.commit(type: 'expenses', csvText: text);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Imported ${commitResult.imported} expense(s) successfully')),
+      );
+      _loadExpenses();
+    } on ImportException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Import error: ${e.message}')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to import: $e')),
+      );
+    }
   }
 
   Future<void> _loadExpenses() async {
@@ -752,10 +931,6 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                               flex: 3,
                               child: Column(
                                 children: [
-                                  if (_showAddExpensePanel)
-                                    Expanded(child: _buildInlineAddExpensePanel(isDark, primary)),
-                                  if (_showImportPanel)
-                                    Expanded(child: _buildInlineImportPanel(isDark, primary)),
                                   if (_showHistoricalPanel)
                                     Expanded(child: _buildHistoricalPerformancePanel(isDark, primary)),
                                   if (_showAnalyticsPanel)
@@ -3328,37 +3503,166 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             splashRadius: 18,
           ),
         ),
-        // 7. Import
+        // 7. Import (direct file picker, like budget screen)
         Tooltip(
-          message: _showImportPanel ? 'Close Import' : 'Import',
+          message: 'Import File',
           child: IconButton(
-            icon: Icon(Icons.upload_file, color: _showImportPanel ? activeColor : iconColor, size: iconSize),
-            onPressed: () => setState(() {
-              final opening = !_showImportPanel;
-              _closeAllPanels();
-              _showImportPanel = opening;
-            }),
+            icon: const Icon(Icons.upload_file, color: iconColor, size: iconSize),
+            onPressed: _uploadExpenseFile,
             constraints: btnConstraints,
             padding: EdgeInsets.zero,
             splashRadius: 18,
           ),
         ),
-        // 8. Add Expense
+        // 8. Add Expense (inline form toggle)
         Tooltip(
-          message: _showAddExpensePanel ? 'Close' : 'Add Expense',
+          message: _showInlineExpenseForm ? 'Close' : 'Add Expense',
           child: IconButton(
-            icon: Icon(Icons.add_rounded, color: _showAddExpensePanel ? activeColor : iconColor, size: iconSize),
-            onPressed: () => setState(() {
-              final opening = !_showAddExpensePanel;
-              _closeAllPanels();
-              _showAddExpensePanel = opening;
-            }),
+            icon: Icon(Icons.add_rounded, color: _showInlineExpenseForm ? activeColor : iconColor, size: iconSize),
+            onPressed: () {
+              if (_showInlineExpenseForm) { _closeExpenseForm(); } else { _openExpenseForm(); }
+            },
             constraints: btnConstraints,
             padding: EdgeInsets.zero,
             splashRadius: 18,
           ),
         ),
       ],
+    );
+  }
+
+  // ── Web: Inline Expense Form (matches budget inline form pattern) ──────
+
+  Widget _buildInlineExpenseForm() {
+    final isEditing = _editingExpense != null;
+    const controlColor = Color(0xFF64748B);
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+      ),
+      child: Row(
+        children: [
+          // Label
+          Icon(
+            isEditing ? Icons.edit_note_rounded : Icons.add_rounded,
+            color: AppColors.primary, size: 18,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            isEditing ? 'Edit Expense' : 'Add Expense',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155)),
+          ),
+          const SizedBox(width: 12),
+          // Category dropdown
+          SizedBox(
+            width: 130, height: 32,
+            child: DropdownButtonFormField<String>(
+              value: _formExpenseCategory,
+              isDense: true,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF334155)),
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AppColors.primary)),
+              ),
+              items: _expenseCategories.map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 12)))).toList(),
+              onChanged: (v) { if (v != null) setState(() => _formExpenseCategory = v); },
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Amount
+          SizedBox(
+            width: 90, height: 32,
+            child: TextField(
+              controller: _formExpenseAmountController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              style: const TextStyle(fontSize: 12),
+              decoration: InputDecoration(
+                hintText: '₹ 0.00',
+                hintStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AppColors.primary)),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Description
+          Expanded(
+            flex: 2,
+            child: SizedBox(
+              height: 32,
+              child: TextField(
+                controller: _formExpenseDescController,
+                style: const TextStyle(fontSize: 12),
+                decoration: InputDecoration(
+                  hintText: 'Description',
+                  hintStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AppColors.primary)),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Tags
+          Expanded(
+            child: SizedBox(
+              height: 32,
+              child: TextField(
+                controller: _formExpenseTagsController,
+                style: const TextStyle(fontSize: 12),
+                decoration: InputDecoration(
+                  hintText: 'e.g. mom, school',
+                  hintStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AppColors.primary)),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Action icons
+          IconButton(
+            tooltip: isEditing ? 'Update' : 'Save',
+            onPressed: _saveExpenseForm,
+            icon: const Icon(Icons.check_circle_outline_rounded),
+            color: controlColor, iconSize: 20,
+            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+            padding: EdgeInsets.zero, splashRadius: 18,
+          ),
+          if (!isEditing)
+            IconButton(
+              tooltip: 'Add & new',
+              onPressed: () async { await _saveExpenseForm(); },
+              icon: const Icon(Icons.add_circle_outline_rounded),
+              color: controlColor, iconSize: 20,
+              constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+              padding: EdgeInsets.zero, splashRadius: 18,
+            ),
+          IconButton(
+            tooltip: 'Close',
+            onPressed: _closeExpenseForm,
+            icon: const Icon(Icons.close_rounded),
+            color: controlColor, iconSize: 20,
+            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+            padding: EdgeInsets.zero, splashRadius: 18,
+          ),
+        ],
+      ),
     );
   }
 
@@ -3386,6 +3690,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                     children: [controls],
                   ),
                 ),
+                if (_showInlineExpenseForm)
+                  _buildInlineExpenseForm(),
                 Expanded(
                   child: Center(
                     child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -3481,6 +3787,9 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                 ),
               ),
               const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              // Inline expense form slides down, pushing rows
+              if (_showInlineExpenseForm)
+                _buildInlineExpenseForm(),
               // Transaction rows (scrollable) — grouped or flat
               Expanded(
                 child: SingleChildScrollView(

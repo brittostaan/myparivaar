@@ -4355,17 +4355,12 @@ class _CategoryEditorState extends State<_CategoryEditor> {
           },
           decoration: InputDecoration(
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16),
             suffixIconConstraints: const BoxConstraints(maxWidth: 24, maxHeight: 30),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide(color: AppColors.grey200),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide(color: AppColors.grey200),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AppColors.primary)),
           ),
           onSubmitted: (_) {
             final text = _controller.text.toLowerCase().trim();

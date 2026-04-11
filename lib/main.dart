@@ -9,7 +9,7 @@ import 'screens/savings_goals_screen.dart';
 import 'screens/family_management_screen.dart';
 import 'screens/expense_management_screen.dart';
 import 'screens/budget_screen.dart';
-import 'screens/budget2_screen.dart';
+
 import 'screens/investments_screen.dart';
 import 'screens/upcoming_bills_screen.dart';
 import 'screens/reports_screen.dart';
@@ -20,19 +20,16 @@ import 'screens/assets_screen.dart';
 import 'screens/key_contacts_screen.dart';
 import 'screens/email_settings_screen.dart';
 import 'screens/user_settings_screen.dart';
-import 'screens/admin_settings_screen.dart';
+
 import 'screens/admin_center_screen.dart';
 import 'screens/notifications_screen.dart';
-import 'screens/more_screen.dart';
-import 'screens/voice_expense_screen.dart';
-import 'screens/anomaly_detection_screen.dart';
-import 'screens/financial_simulator_screen.dart';
+
 import 'screens/dashboard_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/legal_page_screen.dart';
 import 'screens/landing_page_screen.dart';
 import 'screens/idea_board_screen.dart';
-import 'screens/subscription_screen.dart';
+
 import 'services/admin_service.dart';
 import 'services/auth_service.dart';
 import 'services/family_service.dart';
@@ -70,17 +67,13 @@ const Set<String> _authenticatedRoutes = {
   '/parents-dashboard',
   '/email-settings',
   '/user-settings',
-  '/admin-settings',
   '/admin-center',
-  '/more',
   '/notifications',
   '/savings',
-  '/voice-expense',
   '/profile',
   '/family',
   '/csv-import',
   '/featureboard',
-  '/subscription',
   '/assets',
   '/key-contacts',
 };
@@ -414,14 +407,7 @@ class MyParivaaarApp extends StatelessWidget {
           ),
         );
 
-      case '/budget2':
-        return MaterialPageRoute(
-          settings: settings,
-          builder: (_) => NavigationShell(
-            currentRoute: routeName,
-            child: const Budget2Screen(),
-          ),
-        );
+
 
       case '/investments':
         return MaterialPageRoute(
@@ -513,23 +499,7 @@ class MyParivaaarApp extends StatelessWidget {
           ),
         );
 
-      case '/subscription':
-        return MaterialPageRoute(
-          settings: settings,
-          builder: (_) => NavigationShell(
-            currentRoute: routeName,
-            child: SubscriptionScreen(supabaseUrl: _kSupabaseUrl),
-          ),
-        );
 
-      case '/admin-settings':
-        return MaterialPageRoute(
-          settings: settings,
-          builder: (_) => NavigationShell(
-            currentRoute: routeName,
-            child: const AdminSettingsScreen(),
-          ),
-        );
 
       case '/admin-center':
         return MaterialPageRoute(
@@ -543,11 +513,7 @@ class MyParivaaarApp extends StatelessWidget {
           builder: (_) => const IdeaBoardScreen(supabaseUrl: _kSupabaseUrl),
         );
 
-      case '/more':
-        return MaterialPageRoute(
-          settings: settings,
-          builder: (_) => const MoreScreen(),
-        );
+
 
       case '/notifications':
         return MaterialPageRoute(
@@ -567,32 +533,7 @@ class MyParivaaarApp extends StatelessWidget {
           ),
         );
 
-      case '/voice-expense':
-        return MaterialPageRoute(
-          settings: settings,
-          builder: (_) => NavigationShell(
-            currentRoute: routeName,
-            child: const VoiceExpenseScreen(),
-          ),
-        );
 
-      case '/anomaly-detection':
-        return MaterialPageRoute(
-          settings: settings,
-          builder: (_) => NavigationShell(
-            currentRoute: routeName,
-            child: const AnomalyDetectionScreen(),
-          ),
-        );
-
-      case '/financial-simulator':
-        return MaterialPageRoute(
-          settings: settings,
-          builder: (_) => NavigationShell(
-            currentRoute: routeName,
-            child: const FinancialSimulatorScreen(),
-          ),
-        );
 
       case '/profile':
         return PageRouteBuilder(

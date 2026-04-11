@@ -1,25 +1,33 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../main.dart' show ViewModeProvider, ViewMode;
 import '../models/budget.dart';
 import '../models/expense.dart';
 import '../models/investment.dart';
+import '../models/bill.dart';
+import '../models/planner_item.dart';
+import '../models/savings_goal.dart';
 import '../services/auth_service.dart';
 import '../services/budget_service.dart';
 import '../services/expense_service.dart';
-import '../models/bill.dart';
-import '../models/planner_item.dart';
 import '../services/bill_service.dart';
 import '../services/family_planner_service.dart';
 import '../services/investment_service.dart';
+import '../services/savings_service.dart';
 import '../services/ai_service.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/quick_actions_grid.dart';
 import '../widgets/recent_activity_list.dart';
-import '../widgets/app_header.dart';
 import '../theme/app_icons.dart';
 import '../theme/app_colors.dart';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Family Financial Command Center — Unified Dashboard
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -29,18 +37,24 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  // ── Services ───────────────────────────────────────────────────────────────
   final ExpenseService _expenseService = ExpenseService();
   final BudgetService _budgetService = BudgetService();
   final InvestmentService _investmentService = InvestmentService();
   final BillService _billService = BillService();
   final FamilyPlannerService _plannerService = FamilyPlannerService();
+  final SavingsService _savingsService = SavingsService();
 
+  // ── State ──────────────────────────────────────────────────────────────────
   List<Expense> _allExpenses = [];
   List<Expense> _recentExpenses = [];
   List<Budget> _budgets = [];
   List<Investment> _investments = [];
+  List<Bill> _allBills = [];
   List<Bill> _upcomingBills = [];
+  List<PlannerItem> _allPlannerItems = [];
   List<PlannerItem> _upcomingEvents = [];
+  List<SavingsGoal> _savingsGoals = [];
   double _totalBalance = 0.0;
   double _percentageChange = 0.0;
   bool _isLoading = true;
@@ -51,6 +65,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _aiForecastLoading = false;
   String? _aiForecastProjection;
   String? _aiForecastError;
+
+  // ── Kids / Parents keyword constants (from kids & parents dashboards) ──────
+  static const List<String> _educationKeywords = [
+    'school', 'fees', 'fee', 'tuition', 'books', 'book', 'stationary',
+    'stationery', 'school van', 'uniform', 'exam', 'class', 'coaching',
+  ];
+  static const List<String> _kidMoneySentKeywords = [
+    'sent', 'send', 'transfer', 'upi', 'allowance', 'pocket money', 'recharge',
+  ];
+  static const List<String> _parentKeywords = [
+    'mom', 'mother', 'dad', 'father', 'amma', 'appa', 'mummy', 'papa', 'parent',
+  ];
+  static const List<String> _healthKeywords = [
+    'health', 'checkup', 'doctor', 'hospital', 'clinic', 'medical', 'medicine',
+    'lab', 'test', 'scan', 'dental', 'vision', 'eye', 'physio', 'surgery',
+  ];
+  static const List<String> _insuranceKeywords = [
+    'insurance', 'mediclaim', 'policy', 'premium', 'renewal', 'coverage',
+    'retirement', 'pension',
+  ];
+
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   @override
   void initState() {
@@ -71,20 +107,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final supabaseUrl = authService.supabaseUrl;
       final idToken = await authService.getIdToken();
 
-      // Fetch all expenses once and derive slices for each card.
+      // ── Expenses ──
       final expenses = await _expenseService.getExpenses(
         supabaseUrl: supabaseUrl,
         idToken: idToken,
       );
       final sortedExpenses = [...expenses]
         ..sort((a, b) => b.date.compareTo(a.date));
-      final recentExpenses = sortedExpenses.take(10).toList();
 
-      // Try to fetch expense stats, but fallback to calculation if endpoint doesn't exist
-      double totalBalance = 0.0;
-      double percentageChange = 0.0;
+      // ── Budgets ──
       List<Budget> budgets = [];
-
       try {
         final now = DateTime.now();
         final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
@@ -93,192 +125,573 @@ class _DashboardScreenState extends State<DashboardScreen> {
           idToken: idToken,
           month: month,
         );
-      } catch (budgetError) {
-        debugPrint('Budget endpoint not available for dashboard: $budgetError');
-      }
+      } catch (_) {}
 
+      // ── Investments ──
       List<Investment> investments = [];
       try {
         investments = await _investmentService.getInvestments(
           supabaseUrl: supabaseUrl,
           idToken: idToken,
         );
-      } catch (investmentError) {
-        debugPrint('Investment endpoint not available for dashboard: $investmentError');
-      }
+      } catch (_) {}
 
-      List<Bill> bills = [];
+      // ── Bills ──
+      List<Bill> allBills = [];
       try {
-        final allBills = await _billService.getBills(
+        allBills = await _billService.getBills(
           supabaseUrl: supabaseUrl,
           idToken: idToken,
         );
-        bills = allBills.where((b) => b.isUpcoming).toList()
-          ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
-      } catch (billError) {
-        debugPrint('Bill endpoint not available for dashboard: $billError');
-      }
+      } catch (_) {}
 
-      List<PlannerItem> events = [];
+      // ── Planner ──
+      List<PlannerItem> allPlannerItems = [];
       try {
-        final allItems = await _plannerService.getItems(
+        allPlannerItems = await _plannerService.getItems(
           supabaseUrl: supabaseUrl,
           idToken: idToken,
         );
-        events = allItems.where((e) => e.isUpcoming).toList()
-          ..sort((a, b) => a.daysUntil.compareTo(b.daysUntil));
-      } catch (plannerError) {
-        debugPrint('Family planner endpoint not available for dashboard: $plannerError');
-      }
+      } catch (_) {}
 
+      // ── Savings Goals ──
+      List<SavingsGoal> savingsGoals = [];
+      try {
+        savingsGoals = await _savingsService.getGoals(
+          supabaseUrl: supabaseUrl,
+          idToken: idToken,
+        );
+      } catch (_) {}
+
+      // ── Balance ──
+      double totalBalance = 0.0;
+      double percentageChange = 0.0;
       try {
         final stats = await _expenseService.getExpenseStats(
           supabaseUrl: supabaseUrl,
           idToken: idToken,
         );
         totalBalance = (stats['total_balance'] as num?)?.toDouble() ?? 0.0;
-        percentageChange =
-            (stats['percentage_change'] as num?)?.toDouble() ?? 0.0;
-      } catch (statsError) {
-        // Stats endpoint not available — compute balance from the already-fetched
-        // expenses list instead of making a second redundant API call.
-        debugPrint(
-            'Stats endpoint not available, calculating from expenses: $statsError');
-
+        percentageChange = (stats['percentage_change'] as num?)?.toDouble() ?? 0.0;
+      } catch (_) {
         for (final expense in expenses) {
           final isIncome = expense.category.toLowerCase() == 'income' ||
               expense.category.toLowerCase() == 'salary';
           totalBalance += isIncome ? expense.amount : -expense.amount;
         }
-
-        percentageChange = 0.0;
       }
 
+      final upcomingBills = allBills.where((b) => b.isUpcoming).toList()
+        ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+      final upcomingEvents = allPlannerItems.where((e) => e.isUpcoming).toList()
+        ..sort((a, b) => a.daysUntil.compareTo(b.daysUntil));
+
+      if (!mounted) return;
       setState(() {
         _allExpenses = sortedExpenses;
-        _recentExpenses = recentExpenses;
+        _recentExpenses = sortedExpenses.take(10).toList();
         _budgets = budgets;
         _investments = investments;
-        _upcomingBills = bills;
-        _upcomingEvents = events;
+        _allBills = allBills;
+        _upcomingBills = upcomingBills;
+        _allPlannerItems = allPlannerItems;
+        _upcomingEvents = upcomingEvents;
+        _savingsGoals = savingsGoals;
         _totalBalance = totalBalance;
         _percentageChange = percentageChange;
         _isLoading = false;
         _isFetching = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;
         _isFetching = false;
       });
-      debugPrint('Error loading dashboard data: $e');
     }
   }
 
+  // ═════════════════════════════════════════════════════════════════════════════
+  // COMPUTED PROPERTIES — Financial Metrics
+  // ═════════════════════════════════════════════════════════════════════════════
+
   String _getGreeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) {
-      return 'Good Morning';
-    } else if (hour < 17) {
-      return 'Good Afternoon';
-    } else {
-      return 'Good Evening';
-    }
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
   }
 
   String _formatCurrency(double amount) {
     final abs = amount.abs();
     final formatted = abs.toStringAsFixed(0).replaceAllMapped(
         RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
-    return '₹$formatted';
+    return amount < 0 ? '-₹$formatted' : '₹$formatted';
   }
 
-  // ── Computed helpers ───────────────────────────────────────────────────────
+  String _capitalize(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1).toLowerCase();
+
+  String _monthAbbr(int month) {
+    const abbrs = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return abbrs[(month - 1).clamp(0, 11)];
+  }
+
+  // ── Monthly aggregates ─────────────────────────────────────────────────────
 
   double get _monthlySpend {
     final now = DateTime.now();
     return _allExpenses
         .where((e) =>
-            e.date.year == now.year &&
-            e.date.month == now.month &&
-            e.category.toLowerCase() != 'income' &&
-            e.category.toLowerCase() != 'salary')
+            e.date.year == now.year && e.date.month == now.month &&
+            e.category.toLowerCase() != 'income' && e.category.toLowerCase() != 'salary')
         .fold(0.0, (sum, e) => sum + e.amount);
-  }
-
-  Map<String, double> get _categoryTotals {
-    final now = DateTime.now();
-    final totals = <String, double>{};
-    for (final e in _allExpenses) {
-      if (e.date.year == now.year &&
-          e.date.month == now.month &&
-          e.category.toLowerCase() != 'income' &&
-          e.category.toLowerCase() != 'salary') {
-        totals[e.category] = (totals[e.category] ?? 0) + e.amount;
-      }
-    }
-    return totals;
   }
 
   double get _monthlyIncome {
     final now = DateTime.now();
     return _allExpenses
         .where((e) =>
-            e.date.year == now.year &&
-            e.date.month == now.month &&
-            (e.category.toLowerCase() == 'income' ||
-                e.category.toLowerCase() == 'salary'))
+            e.date.year == now.year && e.date.month == now.month &&
+            (e.category.toLowerCase() == 'income' || e.category.toLowerCase() == 'salary'))
         .fold(0.0, (sum, e) => sum + e.amount);
   }
 
   double get _monthlyBudgetTotal =>
-      _budgets.fold(0.0, (sum, budget) => sum + budget.amount);
-
+      _budgets.fold(0.0, (sum, b) => sum + b.amount);
   double get _monthlyBudgetSpent =>
-      _budgets.fold(0.0, (sum, budget) => sum + budget.spent);
+      _budgets.fold(0.0, (sum, b) => sum + b.spent);
+
+  Map<String, double> get _categoryTotals {
+    final now = DateTime.now();
+    final totals = <String, double>{};
+    for (final e in _allExpenses) {
+      if (e.date.year == now.year && e.date.month == now.month &&
+          e.category.toLowerCase() != 'income' && e.category.toLowerCase() != 'salary') {
+        totals[e.category] = (totals[e.category] ?? 0) + e.amount;
+      }
+    }
+    return totals;
+  }
+
+  // ── Financial health metrics ───────────────────────────────────────────────
 
   double get _savingsRate {
     if (_monthlyIncome <= 0) return 0;
-    return ((_monthlyIncome - _monthlySpend) / _monthlyIncome) * 100;
+    return ((_monthlyIncome - _monthlySpend) / _monthlyIncome * 100).clamp(-100, 100);
   }
 
   double get _emergencyFundMonths {
     if (_monthlySpend <= 0) return 0;
-    final months = _totalBalance / _monthlySpend;
-    return months < 0 ? 0 : months;
+    return (_totalBalance / _monthlySpend).clamp(0, 99);
   }
 
-  int get _budgetRiskCount {
-    return _budgets.where((budget) => budget.usagePercent >= 90).length;
+  double get _netWorth {
+    final investmentValue = _investments.fold(0.0, (s, i) => s + i.currentValue);
+    final savingsValue = _savingsGoals.fold(0.0, (s, g) => s + g.currentAmount);
+    return _totalBalance + investmentValue + savingsValue;
   }
+
+  double get _monthlyCashFlow => _monthlyIncome - _monthlySpend;
+
+  int get _budgetsOnTrack =>
+      _budgets.where((b) => b.usagePercent < 90).length;
+
+  int get _budgetRiskCount =>
+      _budgets.where((b) => b.usagePercent >= 90).length;
+
+  double get _budgetUsage {
+    if (_monthlyBudgetTotal <= 0) return 0;
+    return (_monthlyBudgetSpent / _monthlyBudgetTotal).clamp(0, 2);
+  }
+
+  int get _overdueBillsCount => _allBills.where((b) => b.isOverdue).length;
+
+  double get _overdueBillsTotal =>
+      _allBills.where((b) => b.isOverdue).fold(0.0, (s, b) => s + b.amount);
+
+  double get _upcomingBillsTotal =>
+      _upcomingBills.fold(0.0, (s, b) => s + b.amount);
+
+  double get _debtPayments =>
+      _allBills
+          .where((b) =>
+              (b.category == BillCategory.loan || b.category == BillCategory.creditCard) &&
+              b.isUpcoming)
+          .fold(0.0, (s, b) => s + b.amount);
 
   double get _totalInvestedValue =>
-      _investments.fold(0.0, (sum, inv) => sum + inv.currentValue);
+      _investments.fold(0.0, (s, i) => s + i.currentValue);
+  double get _totalInvestedAmount =>
+      _investments.fold(0.0, (s, i) => s + i.amountInvested);
+  double get _totalInvestmentReturns => _totalInvestedValue - _totalInvestedAmount;
 
-  bool get _hasCoreExpenseData {
-    return _allExpenses.any((e) {
-      final category = e.category.toLowerCase();
-      return category != 'income' && category != 'salary';
-    });
+  double get _savingsGoalProgress {
+    final target = _savingsGoals.fold(0.0, (s, g) => s + g.targetAmount);
+    final current = _savingsGoals.fold(0.0, (s, g) => s + g.currentAmount);
+    if (target <= 0) return 0;
+    return (current / target * 100).clamp(0, 100);
   }
 
-  double get _forecastBudget {
-    if (_monthlyBudgetTotal > 0) return _monthlyBudgetTotal * 1.08;
-    if (_monthlySpend > 0) return _monthlySpend * 1.15;
-    return 0;
+  // ── Financial Health Score (0-100) ─────────────────────────────────────────
+  // Weighted: Savings Rate (25), Emergency Fund (25), Budget Adherence (25),
+  //           Investment Health (15), Debt Management (10)
+  int get _financialHealthScore {
+    // Savings Rate score: 20%+ = full marks
+    final savingsScore = (_savingsRate / 20.0).clamp(0, 1) * 25;
+
+    // Emergency Fund: 6+ months = full marks
+    final emergencyScore = (_emergencyFundMonths / 6.0).clamp(0, 1) * 25;
+
+    // Budget adherence: <80% usage = full marks, >100% = 0
+    double budgetScore = 25.0;
+    if (_monthlyBudgetTotal > 0) {
+      budgetScore = ((1.0 - (_budgetUsage - 0.5).clamp(0, 0.5) / 0.5) * 25).clamp(0, 25);
+    }
+
+    // Investment: having any investments and positive returns
+    double investScore = 0;
+    if (_investments.isNotEmpty) {
+      investScore = 7.5;
+      if (_totalInvestmentReturns >= 0) investScore = 15;
+    }
+
+    // Debt: no overdue bills = full marks
+    double debtScore = 10;
+    if (_overdueBillsCount > 0) {
+      debtScore = (10 - _overdueBillsCount * 3.0).clamp(0, 10);
+    }
+
+    return (savingsScore + emergencyScore + budgetScore + investScore + debtScore)
+        .round()
+        .clamp(0, 100);
   }
 
-  double get _forecastExpenses {
-    if (_monthlySpend > 0) return _monthlySpend * 1.05;
-    return 0;
+  Color _healthScoreColor(int score) {
+    if (score >= 75) return const Color(0xFF16A34A);
+    if (score >= 50) return const Color(0xFFEA580C);
+    return const Color(0xFFDC2626);
   }
+
+  String _healthScoreLabel(int score) {
+    if (score >= 80) return 'Excellent';
+    if (score >= 65) return 'Good';
+    if (score >= 50) return 'Fair';
+    if (score >= 35) return 'Needs Work';
+    return 'Critical';
+  }
+
+  // ── Kids / Parents spending ────────────────────────────────────────────────
+
+  bool _containsAny(String source, List<String> keywords) {
+    final text = source.toLowerCase();
+    for (final kw in keywords) {
+      if (text.contains(kw)) return true;
+    }
+    return false;
+  }
+
+  String _expenseBlob(Expense e) =>
+      '${e.category} ${e.description} ${e.notes ?? ''} ${e.tags.join(' ')}'.toLowerCase();
+
+  double get _kidsSpendingThisMonth {
+    final now = DateTime.now();
+    return _allExpenses
+        .where((e) =>
+            e.date.year == now.year && e.date.month == now.month &&
+            (_containsAny(_expenseBlob(e), _educationKeywords) ||
+             _containsAny(_expenseBlob(e), _kidMoneySentKeywords)))
+        .fold(0.0, (s, e) => s + e.amount);
+  }
+
+  double get _parentsSpendingThisMonth {
+    final now = DateTime.now();
+    return _allExpenses
+        .where((e) =>
+            e.date.year == now.year && e.date.month == now.month &&
+            (_containsAny(_expenseBlob(e), _parentKeywords) ||
+             _containsAny(_expenseBlob(e), _healthKeywords) ||
+             _containsAny(_expenseBlob(e), _insuranceKeywords)))
+        .fold(0.0, (s, e) => s + e.amount);
+  }
+
+  // ── Previous month comparison ──────────────────────────────────────────────
+
+  double get _previousMonthSpend {
+    final now = DateTime.now();
+    final prev = DateTime(now.year, now.month - 1);
+    return _allExpenses
+        .where((e) =>
+            e.date.year == prev.year && e.date.month == prev.month &&
+            e.category.toLowerCase() != 'income' && e.category.toLowerCase() != 'salary')
+        .fold(0.0, (sum, e) => sum + e.amount);
+  }
+
+  // ── Smart tips engine ──────────────────────────────────────────────────────
+
+  List<_SmartTip> get _smartTips {
+    final tips = <_SmartTip>[];
+
+    if (_monthlyIncome > 0 && _savingsRate < 20) {
+      tips.add(_SmartTip(
+        icon: Icons.savings_outlined,
+        color: const Color(0xFFEA580C),
+        title: 'Boost Your Savings',
+        message: 'You\'re saving ${_savingsRate.toStringAsFixed(0)}% of income. The 50/30/20 rule recommends saving at least 20%.',
+        priority: 1,
+      ));
+    }
+
+    if (_emergencyFundMonths < 6 && _monthlySpend > 0) {
+      tips.add(_SmartTip(
+        icon: Icons.shield_outlined,
+        color: const Color(0xFFDC2626),
+        title: 'Emergency Fund Gap',
+        message: 'Your emergency fund covers ${_emergencyFundMonths.toStringAsFixed(1)} months. Aim for 6 months of expenses (${_formatCurrency(_monthlySpend * 6)}).',
+        priority: 2,
+      ));
+    }
+
+    if (_overdueBillsCount > 0) {
+      tips.add(_SmartTip(
+        icon: Icons.warning_amber_rounded,
+        color: const Color(0xFFDC2626),
+        title: 'Overdue Bills',
+        message: 'You have $_overdueBillsCount overdue bill${_overdueBillsCount > 1 ? 's' : ''} totaling ${_formatCurrency(_overdueBillsTotal)}. Late payments hurt your financial health.',
+        priority: 0,
+      ));
+    }
+
+    if (_budgetRiskCount > 0) {
+      final worstBudget = _budgets
+          .where((b) => b.usagePercent >= 90)
+          .reduce((a, b) => a.usagePercent > b.usagePercent ? a : b);
+      tips.add(_SmartTip(
+        icon: Icons.pie_chart_outline,
+        color: const Color(0xFFEA580C),
+        title: 'Budget Alert',
+        message: '${_capitalize(worstBudget.category)} is at ${worstBudget.usagePercent.toStringAsFixed(0)}% — consider reallocating or reducing spend.',
+        priority: 1,
+      ));
+    }
+
+    if (_investments.isNotEmpty && _totalInvestmentReturns < 0) {
+      tips.add(_SmartTip(
+        icon: Icons.trending_down,
+        color: const Color(0xFFDC2626),
+        title: 'Portfolio Check',
+        message: 'Your investments show ${_formatCurrency(_totalInvestmentReturns)} in losses. Review underperforming assets.',
+        priority: 3,
+      ));
+    }
+
+    if (_investments.isEmpty && _monthlyIncome > 0) {
+      tips.add(_SmartTip(
+        icon: Icons.query_stats,
+        color: const Color(0xFF7C3AED),
+        title: 'Start Investing',
+        message: 'No investments tracked yet. Even small SIPs can grow significantly over time with compounding.',
+        priority: 4,
+      ));
+    }
+
+    final insuranceBills = _allBills.where((b) => b.category == BillCategory.insurance).toList();
+    if (insuranceBills.isEmpty) {
+      tips.add(_SmartTip(
+        icon: Icons.health_and_safety_outlined,
+        color: const Color(0xFF2563EB),
+        title: 'Insurance Coverage',
+        message: 'No insurance premiums tracked. Term life & health insurance are essential for family financial protection.',
+        priority: 5,
+      ));
+    }
+
+    if (_previousMonthSpend > 0 && _monthlySpend > _previousMonthSpend * 1.2) {
+      final increase = ((_monthlySpend / _previousMonthSpend - 1) * 100).toStringAsFixed(0);
+      tips.add(_SmartTip(
+        icon: Icons.trending_up,
+        color: const Color(0xFFEA580C),
+        title: 'Spending Spike',
+        message: 'This month\'s spending is $increase% higher than last month. Review recent transactions for optimization.',
+        priority: 2,
+      ));
+    }
+
+    tips.sort((a, b) => a.priority.compareTo(b.priority));
+    return tips.take(4).toList();
+  }
+
+  // ── Smart Alerts ───────────────────────────────────────────────────────────
+
+  List<_AlertItem> get _smartAlerts {
+    final alerts = <_AlertItem>[];
+
+    for (final bill in _allBills.where((b) => b.isOverdue)) {
+      alerts.add(_AlertItem(
+        icon: Icons.error_outline,
+        color: const Color(0xFFDC2626),
+        bgColor: const Color(0xFFFEE2E2),
+        text: '${bill.name} overdue',
+        priority: 0,
+      ));
+    }
+
+    for (final bill in _upcomingBills.where((b) => b.daysUntilDue <= 3)) {
+      alerts.add(_AlertItem(
+        icon: Icons.payment,
+        color: const Color(0xFFEA580C),
+        bgColor: const Color(0xFFFFEDD5),
+        text: '${bill.name} due ${bill.daysUntilDue == 0 ? "today" : "in ${bill.daysUntilDue}d"}',
+        priority: 1,
+      ));
+    }
+
+    for (final b in _budgets.where((b) => b.usagePercent >= 90)) {
+      alerts.add(_AlertItem(
+        icon: Icons.pie_chart,
+        color: const Color(0xFFEA580C),
+        bgColor: const Color(0xFFFFEDD5),
+        text: '${_capitalize(b.category)} budget ${b.usagePercent.toStringAsFixed(0)}%',
+        priority: 2,
+      ));
+    }
+
+    for (final event in _upcomingEvents.where((e) => e.daysUntil <= 7)) {
+      final label = event.daysUntil == 0
+          ? 'Today' : event.daysUntil == 1
+          ? 'Tomorrow' : 'In ${event.daysUntil}d';
+      alerts.add(_AlertItem(
+        icon: _plannerTypeIcon(event.type),
+        color: _plannerTypeColors(event.type).$2,
+        bgColor: _plannerTypeColors(event.type).$1,
+        text: '${event.title} — $label',
+        priority: 3,
+      ));
+    }
+
+    alerts.sort((a, b) => a.priority.compareTo(b.priority));
+    return alerts;
+  }
+
+  // ── Unified Timeline items ─────────────────────────────────────────────────
+
+  List<_TimelineEntry> get _unifiedTimeline {
+    final entries = <_TimelineEntry>[];
+    final now = DateTime.now();
+    final cutoff = now.add(const Duration(days: 30));
+
+    for (final bill in _upcomingBills.where((b) => b.dueDate.isBefore(cutoff))) {
+      entries.add(_TimelineEntry(
+        date: bill.dueDate,
+        icon: Bill.iconForCategory(bill.category),
+        color: const Color(0xFFDC2626),
+        bgColor: const Color(0xFFFEE2E2),
+        title: bill.name,
+        subtitle: '${_formatCurrency(bill.amount)} • ${Bill.categoryLabel(bill.category)}',
+        tag: 'Bill',
+        tagColor: const Color(0xFFDC2626),
+      ));
+    }
+
+    for (final event in _upcomingEvents.where((e) =>
+        e.startDate.isBefore(cutoff) && !e.startDate.isBefore(now.subtract(const Duration(days: 1))))) {
+      final colors = _plannerTypeColors(event.type);
+      entries.add(_TimelineEntry(
+        date: event.startDate,
+        icon: _plannerTypeIcon(event.type),
+        color: colors.$2,
+        bgColor: colors.$1,
+        title: event.title,
+        subtitle: _plannerTypeLabel(event.type),
+        tag: _plannerTypeLabel(event.type),
+        tagColor: colors.$2,
+      ));
+    }
+
+    for (final goal in _savingsGoals.where((g) =>
+        g.targetDate != null && g.targetDate!.isBefore(cutoff) && g.targetDate!.isAfter(now))) {
+      entries.add(_TimelineEntry(
+        date: goal.targetDate!,
+        icon: Icons.flag_outlined,
+        color: const Color(0xFF059669),
+        bgColor: const Color(0xFFDCFCE7),
+        title: '${goal.name} deadline',
+        subtitle: '${goal.progressPercent.toStringAsFixed(0)}% complete • ${_formatCurrency(goal.remaining)} remaining',
+        tag: 'Goal',
+        tagColor: const Color(0xFF059669),
+      ));
+    }
+
+    entries.sort((a, b) => a.date.compareTo(b.date));
+    return entries.take(8).toList();
+  }
+
+  // ── Spending trend (category comparison vs last month) ─────────────────────
+  List<_SpendingTrend> get _spendingTrends {
+    final now = DateTime.now();
+    final prev = DateTime(now.year, now.month - 1);
+    final currentTotals = <String, double>{};
+    final prevTotals = <String, double>{};
+
+    for (final e in _allExpenses) {
+      final cat = e.category.toLowerCase();
+      if (cat == 'income' || cat == 'salary') continue;
+      if (e.date.year == now.year && e.date.month == now.month) {
+        currentTotals[e.category] = (currentTotals[e.category] ?? 0) + e.amount;
+      } else if (e.date.year == prev.year && e.date.month == prev.month) {
+        prevTotals[e.category] = (prevTotals[e.category] ?? 0) + e.amount;
+      }
+    }
+
+    final trends = <_SpendingTrend>[];
+    for (final entry in currentTotals.entries) {
+      final prevAmount = prevTotals[entry.key] ?? 0;
+      if (prevAmount > 0) {
+        final changePercent = ((entry.value - prevAmount) / prevAmount * 100);
+        if (changePercent.abs() >= 10) {
+          trends.add(_SpendingTrend(
+            category: entry.key,
+            current: entry.value,
+            previous: prevAmount,
+            changePercent: changePercent,
+          ));
+        }
+      }
+    }
+    trends.sort((a, b) => b.changePercent.abs().compareTo(a.changePercent.abs()));
+    return trends.take(3).toList();
+  }
+
+  // ── Budget run-rate projection ─────────────────────────────────────────────
+  List<_BudgetProjection> get _budgetProjections {
+    final now = DateTime.now();
+    final dayOfMonth = now.day;
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    if (dayOfMonth < 3) return [];
+
+    final projections = <_BudgetProjection>[];
+    for (final b in _budgets) {
+      if (b.spent <= 0) continue;
+      final dailyRate = b.spent / dayOfMonth;
+      final projected = dailyRate * daysInMonth;
+      if (projected > b.amount * 1.1) {
+        projections.add(_BudgetProjection(
+          category: b.category,
+          budgeted: b.amount,
+          projected: projected,
+          overshoot: projected - b.amount,
+        ));
+      }
+    }
+    projections.sort((a, b) => b.overshoot.compareTo(a.overshoot));
+    return projections.take(3).toList();
+  }
+
+  // ── AI Forecast ────────────────────────────────────────────────────────────
 
   Future<void> _loadAIForecast() async {
-    setState(() {
-      _aiForecastLoading = true;
-      _aiForecastError = null;
-    });
+    setState(() { _aiForecastLoading = true; _aiForecastError = null; });
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       final result = await AIService().runFinancialSimulation(
@@ -290,20 +703,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         idToken: await authService.getIdToken(),
       );
       if (!mounted) return;
-      setState(() {
-        _aiForecastProjection = result['projection'] as String?;
-        _aiForecastLoading = false;
-      });
+      setState(() { _aiForecastProjection = result['projection'] as String?; _aiForecastLoading = false; });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _aiForecastLoading = false;
-        _aiForecastError = e.toString();
-      });
+      setState(() { _aiForecastLoading = false; _aiForecastError = e.toString(); });
     }
   }
 
-  // ── Build ──────────────────────────────────────────────────────────────────
+  // ═════════════════════════════════════════════════════════════════════════════
+  // BUILD
+  // ═════════════════════════════════════════════════════════════════════════════
 
   @override
   Widget build(BuildContext context) {
@@ -314,7 +723,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return _buildMobileLayout(context);
   }
 
-  // ── Mobile Layout (original) ───────────────────────────────────────────────
+  // ═════════════════════════════════════════════════════════════════════════════
+  // MOBILE LAYOUT
+  // ═════════════════════════════════════════════════════════════════════════════
 
   Widget _buildMobileLayout(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
@@ -326,7 +737,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Action Pane ──────────────────────────────────────
+            // ── Header ──
             Container(
               color: Colors.white,
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
@@ -337,24 +748,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            '${_getGreeting()},',
-                            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                          ),
+                          Text('${_getGreeting()},',
+                              style: TextStyle(fontSize: 12, color: Colors.grey[500])),
                           const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Text(
-                                userName,
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.3,
-                                ),
-                              ),
-                              const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
-                            ],
-                          ),
+                          Row(children: [
+                            Text(userName,
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+                            const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+                          ]),
                         ],
                       ),
                       const Spacer(),
@@ -366,50 +767,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const Divider(height: 1, color: Color(0xFFE2E8F0)),
 
-            // Content
+            // ── Content ──
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  AppIcons.error,
-                                  size: 64,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Failed to load dashboard',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _error!,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[500],
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 24),
-                                ElevatedButton.icon(
-                                  onPressed: _loadDashboardData,
-                                  icon: const Icon(AppIcons.refresh),
-                                  label: const Text('Retry'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
+                      ? _buildErrorState()
                       : RefreshIndicator(
                           onRefresh: _loadDashboardData,
                           child: SingleChildScrollView(
@@ -417,96 +780,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Balance Card
-                                BalanceCard(
-                                  balance: _totalBalance,
-                                  percentageChange: _percentageChange,
-                                  onDeposit: null, // Hide for now
-                                  onViewDetails: () {
-                                    Navigator.of(context)
-                                        .pushNamed('/expenses');
-                                  },
-                                ),
-                                const SizedBox(height: 32),
+                                // ── Smart Alerts ──
+                                if (_smartAlerts.isNotEmpty)
+                                  _buildMobileAlerts(),
 
-                                // Quick Actions
-                                QuickActionsGrid(
-                                  actions: [
-                                    QuickAction(
-                                      label: 'Expense',
-                                      icon: AppIcons.addCircle,
-                                      onTap: () {
-                                        Navigator.of(context)
-                                            .pushNamed('/expenses');
-                                      },
-                                    ),
-                                    QuickAction(
-                                      label: 'Budget',
-                                      icon: AppIcons.pieChart,
-                                      onTap: () {
-                                        Navigator.of(context)
-                                            .pushNamed('/budget');
-                                      },
-                                    ),
-                                    QuickAction(
-                                      label: 'Investments',
-                                      icon: Icons.query_stats,
-                                      onTap: () {
-                                        Navigator.of(context)
-                                            .pushNamed('/investments');
-                                      },
-                                    ),
-                                    QuickAction(
-                                      label: 'Planner',
-                                      icon: Icons.event_note_outlined,
-                                      onTap: () {
-                                        Navigator.of(context)
-                                            .pushNamed('/family-planner');
-                                      },
-                                    ),
-                                    QuickAction(
-                                      label: 'Kids',
-                                      icon: Icons.child_care_outlined,
-                                      onTap: () {
-                                        Navigator.of(context)
-                                            .pushNamed('/kids-dashboard');
-                                      },
-                                    ),
-                                    QuickAction(
-                                      label: 'Parents',
-                                      icon: Icons.family_restroom_outlined,
-                                      onTap: () {
-                                        Navigator.of(context)
-                                            .pushNamed('/parents-dashboard');
-                                      },
-                                    ),
-                                    QuickAction(
-                                      label: 'Assets',
-                                      icon: Icons.account_balance_outlined,
-                                      onTap: () {
-                                        Navigator.of(context)
-                                            .pushNamed('/assets');
-                                      },
-                                    ),
-                                    QuickAction(
-                                      label: 'Key Contacts',
-                                      icon: Icons.contacts_outlined,
-                                      onTap: () {
-                                        Navigator.of(context)
-                                            .pushNamed('/key-contacts');
-                                      },
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 32),
+                                // ── Financial Pulse (compact) ──
+                                _buildMobileFinancialPulse(),
 
-                                // Recent Activity
+                                // ── Quick Actions ──
+                                const SizedBox(height: 16),
+                                QuickActionsGrid(actions: _quickActions),
+
+                                // ── 360° Status Cards (2-col grid) ──
+                                const SizedBox(height: 24),
+                                _buildMobileStatusCards(),
+
+                                // ── What's Ahead (compact timeline) ──
+                                if (_unifiedTimeline.isNotEmpty) ...[
+                                  const SizedBox(height: 24),
+                                  _buildMobileTimeline(),
+                                ],
+
+                                // ── AI Smart Tips ──
+                                if (_smartTips.isNotEmpty) ...[
+                                  const SizedBox(height: 24),
+                                  _buildMobileSmartTips(),
+                                ],
+
+                                // ── Recent Activity ──
+                                const SizedBox(height: 24),
                                 RecentActivityList(
                                   expenses: _recentExpenses,
-                                  onSeeAll: () {
-                                    Navigator.of(context)
-                                        .pushNamed('/expenses');
-                                  },
+                                  onSeeAll: () => Navigator.of(context).pushNamed('/expenses'),
                                 ),
                                 const SizedBox(height: 24),
                               ],
@@ -520,238 +825,690 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ── Web (Desktop) Layout ───────────────────────────────────────────────────
+  List<QuickAction> get _quickActions => [
+    QuickAction(label: 'Expense', icon: AppIcons.addCircle,
+        onTap: () => Navigator.of(context).pushNamed('/expenses')),
+    QuickAction(label: 'Budget', icon: AppIcons.pieChart,
+        onTap: () => Navigator.of(context).pushNamed('/budget')),
+    QuickAction(label: 'Investments', icon: Icons.query_stats,
+        onTap: () => Navigator.of(context).pushNamed('/investments')),
+    QuickAction(label: 'Planner', icon: Icons.event_note_outlined,
+        onTap: () => Navigator.of(context).pushNamed('/family-planner')),
+    QuickAction(label: 'Bills', icon: Icons.receipt_long_outlined,
+        onTap: () => Navigator.of(context).pushNamed('/bills')),
+    QuickAction(label: 'Savings', icon: Icons.savings_outlined,
+        onTap: () => Navigator.of(context).pushNamed('/savings')),
+    QuickAction(label: 'Assets', icon: Icons.account_balance_outlined,
+        onTap: () => Navigator.of(context).pushNamed('/assets')),
+    QuickAction(label: 'AI Advisor', icon: Icons.auto_awesome,
+        onTap: () => Navigator.of(context).pushNamed('/ai')),
+  ];
+
+  Widget _buildMobileAlerts() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: SizedBox(
+        height: 36,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: _smartAlerts.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            final alert = _smartAlerts[index];
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: alert.bgColor,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(alert.icon, size: 14, color: alert.color),
+                const SizedBox(width: 6),
+                Text(alert.text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: alert.color)),
+              ]),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileFinancialPulse() {
+    final score = _financialHealthScore;
+    final scoreColor = _healthScoreColor(score);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 8))],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              // Score circle
+              SizedBox(
+                width: 72,
+                height: 72,
+                child: CustomPaint(
+                  painter: _GaugePainter(score: score / 100, color: scoreColor),
+                  child: Center(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Text('$score', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white)),
+                      Text(_healthScoreLabel(score),
+                          style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: scoreColor)),
+                    ]),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Financial Health', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                  const SizedBox(height: 4),
+                  Text('Net Worth: ${_formatCurrency(_netWorth)}',
+                      style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.7))),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Cash Flow: ${_monthlyCashFlow >= 0 ? '+' : ''}${_formatCurrency(_monthlyCashFlow)}/mo',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _monthlyCashFlow >= 0 ? const Color(0xFF4ADE80) : const Color(0xFFF87171),
+                    ),
+                  ),
+                ]),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Mini metrics row
+          Row(children: [
+            _mobilePulseMetric('Savings', '${_savingsRate.toStringAsFixed(0)}%',
+                _savingsRate >= 20 ? const Color(0xFF4ADE80) : const Color(0xFFFBBF24)),
+            _mobilePulseMetric('Emergency', '${_emergencyFundMonths.toStringAsFixed(1)}mo',
+                _emergencyFundMonths >= 6 ? const Color(0xFF4ADE80) : const Color(0xFFFBBF24)),
+            _mobilePulseMetric('Budget', '${(_budgetUsage * 100).toStringAsFixed(0)}%',
+                _budgetUsage <= 0.8 ? const Color(0xFF4ADE80) : const Color(0xFFF87171)),
+            _mobilePulseMetric('Bills', '$_overdueBillsCount due',
+                _overdueBillsCount == 0 ? const Color(0xFF4ADE80) : const Color(0xFFF87171)),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _mobilePulseMetric(String label, String value, Color color) {
+    return Expanded(
+      child: Column(children: [
+        Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)),
+        const SizedBox(height: 2),
+        Text(label, style: TextStyle(fontSize: 9, color: Colors.white.withValues(alpha: 0.5))),
+      ]),
+    );
+  }
+
+  Widget _buildMobileStatusCards() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Your Money Right Now', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: _statusCardMini(
+              'Cash Flow', Icons.swap_vert_circle_outlined,
+              _formatCurrency(_monthlyCashFlow),
+              _monthlyCashFlow >= 0 ? 'Positive' : 'Negative',
+              const [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+              onTap: () => Navigator.of(context).pushNamed('/expenses'),
+            )),
+            const SizedBox(width: 10),
+            Expanded(child: _statusCardMini(
+              'Budget', Icons.pie_chart_outline,
+              '${_budgetsOnTrack}/${_budgets.length}',
+              'On Track',
+              const [Color(0xFFF59E0B), Color(0xFFD97706)],
+              onTap: () => Navigator.of(context).pushNamed('/budget'),
+            )),
+          ]),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: _statusCardMini(
+              'Bills', Icons.receipt_long_outlined,
+              _upcomingBills.isEmpty ? 'None' : '${_upcomingBills.length} upcoming',
+              _overdueBillsCount > 0 ? '$_overdueBillsCount overdue' : 'All clear',
+              const [Color(0xFFEF4444), Color(0xFFDC2626)],
+              onTap: () => Navigator.of(context).pushNamed('/bills'),
+            )),
+            const SizedBox(width: 10),
+            Expanded(child: _statusCardMini(
+              'Savings', Icons.flag_outlined,
+              '${_savingsGoalProgress.toStringAsFixed(0)}%',
+              '${_savingsGoals.length} goal${_savingsGoals.length != 1 ? 's' : ''}',
+              const [Color(0xFF22C55E), Color(0xFF16A34A)],
+              onTap: () => Navigator.of(context).pushNamed('/savings'),
+            )),
+          ]),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: _statusCardMini(
+              'Investments', Icons.query_stats,
+              _formatCurrency(_totalInvestedValue),
+              _totalInvestmentReturns >= 0
+                  ? '+${_formatCurrency(_totalInvestmentReturns)}'
+                  : _formatCurrency(_totalInvestmentReturns),
+              const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
+              onTap: () => Navigator.of(context).pushNamed('/investments'),
+            )),
+            const SizedBox(width: 10),
+            Expanded(child: _statusCardMini(
+              'Family', Icons.family_restroom_outlined,
+              _formatCurrency(_kidsSpendingThisMonth + _parentsSpendingThisMonth),
+              'Kids + Parents',
+              const [Color(0xFF14B8A6), Color(0xFF0D9488)],
+              onTap: () => Navigator.of(context).pushNamed('/kids-dashboard'),
+            )),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusCardMini(String label, IconData icon, String value, String sub, List<Color> gradient, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: gradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: gradient.first.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))],
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(icon, size: 16, color: Colors.white.withValues(alpha: 0.8)),
+            const SizedBox(width: 6),
+            Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.8))),
+          ]),
+          const SizedBox(height: 8),
+          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
+          const SizedBox(height: 2),
+          Text(sub, style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.7))),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildMobileTimeline() {
+    final items = _unifiedTimeline.take(5).toList();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Text("What's Ahead", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Spacer(),
+            TextButton(
+              onPressed: () => Navigator.of(context).pushNamed('/family-planner'),
+              child: const Text('View all', style: TextStyle(fontSize: 11)),
+            ),
+          ]),
+          const SizedBox(height: 8),
+          ...items.map((entry) => _buildTimelineRow(entry, compact: true)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileSmartTips() {
+    final tips = _smartTips.take(2).toList();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.auto_awesome, size: 16, color: Color(0xFF7C3AED)),
+            const SizedBox(width: 6),
+            const Text('Smart Tips', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ]),
+          const SizedBox(height: 8),
+          ...tips.map((tip) => _buildTipCard(tip, compact: true)),
+        ],
+      ),
+    );
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // WEB (DESKTOP) LAYOUT
+  // ═════════════════════════════════════════════════════════════════════════════
 
   Widget _buildWebLayout(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor:
-          isDark ? AppColors.backgroundDark : const Color(0xFFF5F7F8),
+      backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF5F7F8),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _buildWebError(context)
-              : _buildWebContent(context, isDark, theme),
-    );
-  }
-
-  Widget _buildSidebar(BuildContext context, bool isDark, ThemeData theme) {
-    final primary = theme.colorScheme.primary;
-    final bg = isDark ? AppColors.surfaceDark : Colors.white;
-    final border = isDark ? AppColors.grey800 : const Color(0xFFE2E8F0);
-
-    final navItems = [
-      _DashNavItem(
-          label: 'Dashboard',
-          icon: Icons.grid_view_rounded,
-          route: '/home',
-          active: true,
-          connected: true),
-      _DashNavItem(
-        label: 'Family Planner',
-        icon: Icons.event_note_outlined,
-        route: '/family-planner',
-        active: false,
-        connected: true),
-      _DashNavItem(
-        label: 'Kids Dashboard',
-        icon: Icons.child_care_outlined,
-        route: '/kids-dashboard',
-        active: false,
-        connected: true),
-      _DashNavItem(
-        label: 'Parents Dashboard',
-        icon: Icons.family_restroom_outlined,
-        route: '/parents-dashboard',
-        active: false,
-        connected: true),
-      _DashNavItem(
-          label: 'Transactions',
-          icon: Icons.receipt_long_outlined,
-          route: '/expenses',
-          active: false,
-          connected: true),
-      _DashNavItem(
-          label: 'Budgets',
-          icon: Icons.savings_outlined,
-          route: '/budget',
-          active: false,
-          connected: true),
-      _DashNavItem(
-          label: 'Accounts',
-          icon: Icons.account_balance_outlined,
-          route: '',
-          active: false,
-          connected: false),
-      _DashNavItem(
-          label: 'Investments',
-          icon: Icons.query_stats,
-          route: '/investments',
-          active: false,
-          connected: true),
-      _DashNavItem(
-          label: 'Assets',
-          icon: Icons.account_balance_outlined,
-          route: '/assets',
-          active: false,
-          connected: true),
-      _DashNavItem(
-          label: 'Key Contacts',
-          icon: Icons.contacts_outlined,
-          route: '/key-contacts',
-          active: false,
-          connected: true),
-      _DashNavItem(
-          label: 'Reports',
-          icon: Icons.description_outlined,
-          route: '',
-          active: false,
-          connected: false),
-    ];
-
-    return Container(
-      width: 256,
-      decoration: BoxDecoration(
-        color: bg,
-        border: Border(right: BorderSide(color: border)),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: primary,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.account_balance_wallet,
-                      color: Colors.white, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('myparivaar',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold)),
-                    Text('Finance',
-                        style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey[500],
-                            letterSpacing: 1.1,
-                            fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Column(
-                children: navItems
-                    .map((item) =>
-                        _buildSidebarNavItem(context, item, primary, isDark))
-                    .toList(),
-              ),
-            ),
-          ),
-          // Pro plan card (coming soon)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: primary.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: primary.withOpacity(0.12)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
+              ? _buildErrorState()
+              : RefreshIndicator(
+                  onRefresh: _loadDashboardData,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(32),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // ── Smart Alerts Banner ──
+                        if (_smartAlerts.isNotEmpty)
+                          _buildWebAlerts(isDark),
+
+                        // ── Section 1: Financial Pulse ──
+                        const SizedBox(height: 8),
+                        _buildWebFinancialPulse(isDark),
+
+                        // ── Section 2: 360° Status Cards ──
+                        const SizedBox(height: 32),
+                        _buildWebStatusSection(isDark),
+
+                        // ── Section 3: Spending Spotlight + Upcoming Timeline ──
+                        const SizedBox(height: 32),
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Pro Plan',
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    color: primary)),
-                            const SizedBox(width: 6),
-                            const Tooltip(
-                              message: 'Feature coming soon',
-                              child: Icon(Icons.close_rounded,
-                                  size: 12, color: Colors.red),
-                            ),
+                            Expanded(child: _buildWebSpendingSpotlight(isDark)),
+                            const SizedBox(width: 24),
+                            Expanded(child: _buildWebTimeline(isDark)),
                           ],
                         ),
-                        const SizedBox(height: 2),
-                        Text('Upgrade for more features',
-                            style: TextStyle(
-                                fontSize: 11, color: Colors.grey[500])),
+
+                        // ── Section 4: AI Financial Advisor ──
+                        const SizedBox(height: 32),
+                        _buildWebAISection(isDark),
+
+                        // ── Section 5: Family Lens (Kids + Parents) ──
+                        const SizedBox(height: 32),
+                        _buildWebFamilyLens(isDark),
+
+                        // ── Section 6: Recent Transactions ──
+                        const SizedBox(height: 32),
+                        _buildWebTransactionsTable(isDark),
                       ],
                     ),
                   ),
-                ],
+                ),
+    );
+  }
+
+  // ── Web: Smart Alerts ──────────────────────────────────────────────────────
+
+  Widget _buildWebAlerts(bool isDark) {
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _smartAlerts.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final alert = _smartAlerts[index];
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: alert.bgColor,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: alert.color.withValues(alpha: 0.3)),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(alert.icon, size: 15, color: alert.color),
+              const SizedBox(width: 8),
+              Text(alert.text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: alert.color)),
+            ]),
+          );
+        },
+      ),
+    );
+  }
+
+  // ── Web: Financial Pulse ───────────────────────────────────────────────────
+
+  Widget _buildWebFinancialPulse(bool isDark) {
+    final score = _financialHealthScore;
+    final scoreColor = _healthScoreColor(score);
+
+    return Container(
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 24, offset: const Offset(0, 10))],
+      ),
+      child: Row(
+        children: [
+          // Score gauge
+          SizedBox(
+            width: 120,
+            height: 120,
+            child: CustomPaint(
+              painter: _GaugePainter(score: score / 100, color: scoreColor, strokeWidth: 10),
+              child: Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Text('$score', style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Colors.white)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(color: scoreColor.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(999)),
+                    child: Text(_healthScoreLabel(score),
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: scoreColor)),
+                  ),
+                ]),
               ),
             ),
+          ),
+          const SizedBox(width: 32),
+          // Metrics
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Family Financial Health', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+                const SizedBox(height: 4),
+                Text('360° overview of your household finances',
+                    style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.5))),
+                const SizedBox(height: 20),
+                Row(children: [
+                  _webPulseMetric('Net Worth', _formatCurrency(_netWorth), Icons.account_balance_wallet, const Color(0xFF60A5FA)),
+                  const SizedBox(width: 24),
+                  _webPulseMetric('Monthly Cash Flow',
+                      '${_monthlyCashFlow >= 0 ? '+' : ''}${_formatCurrency(_monthlyCashFlow)}',
+                      Icons.swap_vert_circle_outlined,
+                      _monthlyCashFlow >= 0 ? const Color(0xFF4ADE80) : const Color(0xFFF87171)),
+                  const SizedBox(width: 24),
+                  _webPulseMetric('Savings Rate', '${_savingsRate.toStringAsFixed(0)}%',
+                      Icons.savings_outlined,
+                      _savingsRate >= 20 ? const Color(0xFF4ADE80) : const Color(0xFFFBBF24)),
+                  const SizedBox(width: 24),
+                  _webPulseMetric('Budget Health',
+                      _budgets.isEmpty ? 'Not Set' : '${(_budgetUsage * 100).toStringAsFixed(0)}% used',
+                      Icons.pie_chart_outline,
+                      _budgetUsage <= 0.8 ? const Color(0xFF4ADE80) : const Color(0xFFF87171)),
+                ]),
+              ],
+            ),
+          ),
+          // Balance
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(children: [
+              Text('Balance', style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.5))),
+              const SizedBox(height: 4),
+              Text(_formatCurrency(_totalBalance),
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
+              const SizedBox(height: 4),
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(
+                  _percentageChange >= 0 ? Icons.trending_up : Icons.trending_down,
+                  size: 14,
+                  color: _percentageChange >= 0 ? const Color(0xFF4ADE80) : const Color(0xFFF87171),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${_percentageChange >= 0 ? '+' : ''}${_percentageChange.toStringAsFixed(1)}%',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _percentageChange >= 0 ? const Color(0xFF4ADE80) : const Color(0xFFF87171),
+                  ),
+                ),
+              ]),
+            ]),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSidebarNavItem(
-      BuildContext context, _DashNavItem item, Color primary, bool isDark) {
-    final isActive = item.active;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: InkWell(
-        onTap: item.connected && item.route.isNotEmpty
-            ? () {
-                if (!isActive) {
-                  Navigator.of(context).pushReplacementNamed(item.route);
-                }
-              }
-            : null,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: isActive ? primary.withOpacity(0.1) : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            children: [
-              Icon(item.icon,
-                  size: 20,
-                  color: isActive
-                      ? primary
-                      : (isDark ? AppColors.grey600 : Colors.grey[600])),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(item.label,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: isActive
-                          ? primary
-                          : (isDark ? AppColors.grey600 : Colors.grey[700]),
-                    )),
-              ),
-              if (!item.connected)
-                const Tooltip(
-                  message: 'Feature coming soon',
-                  child: Icon(Icons.close_rounded, size: 13, color: Colors.red),
+  Widget _webPulseMetric(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Row(children: [
+        Container(
+          width: 36, height: 36,
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+          child: Icon(icon, size: 18, color: color),
+        ),
+        const SizedBox(width: 10),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
+          Text(label, style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.5))),
+        ]),
+      ]),
+    );
+  }
+
+  // ── Web: 360° Status Cards ─────────────────────────────────────────────────
+
+  Widget _buildWebStatusSection(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Your Money Right Now', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+        Row(children: [
+          Expanded(child: _webStatusCard(
+            title: 'Monthly Cash Flow',
+            icon: Icons.swap_vert_circle_outlined,
+            gradient: const [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+            isDark: isDark,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(_formatCurrency(_monthlyCashFlow),
+                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white)),
+              const SizedBox(height: 10),
+              _cashFlowBar(),
+              const SizedBox(height: 10),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text('Income: ${_formatCurrency(_monthlyIncome)}',
+                    style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
+                Text('Spend: ${_formatCurrency(_monthlySpend)}',
+                    style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
+              ]),
+            ]),
+            onTap: () => Navigator.of(context).pushNamed('/expenses'),
+          )),
+          const SizedBox(width: 16),
+          Expanded(child: _webStatusCard(
+            title: 'Budget Tracker',
+            icon: Icons.pie_chart_outline,
+            gradient: const [Color(0xFFF59E0B), Color(0xFFD97706)],
+            isDark: isDark,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('$_budgetsOnTrack of ${_budgets.length} on track',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white)),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: _budgetUsage.clamp(0, 1),
+                  minHeight: 8,
+                  backgroundColor: Colors.white.withValues(alpha: 0.2),
+                  color: _budgetUsage > 0.9 ? Colors.red[300] : Colors.white,
                 ),
+              ),
+              const SizedBox(height: 8),
+              Text('${(_budgetUsage * 100).toStringAsFixed(0)}% of total budget used',
+                  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
+            ]),
+            onTap: () => Navigator.of(context).pushNamed('/budget'),
+          )),
+          const SizedBox(width: 16),
+          Expanded(child: _webStatusCard(
+            title: 'Bills & Commitments',
+            icon: Icons.receipt_long_outlined,
+            gradient: const [Color(0xFFEF4444), Color(0xFFDC2626)],
+            isDark: isDark,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(_formatCurrency(_upcomingBillsTotal),
+                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white)),
+              const SizedBox(height: 8),
+              Text('${_upcomingBills.length} upcoming bill${_upcomingBills.length != 1 ? 's' : ''}',
+                  style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
+              if (_overdueBillsCount > 0) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(999)),
+                  child: Text('⚠ $_overdueBillsCount overdue',
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
+                ),
+              ],
+            ]),
+            onTap: () => Navigator.of(context).pushNamed('/bills'),
+          )),
+        ]),
+        const SizedBox(height: 16),
+        Row(children: [
+          Expanded(child: _webStatusCard(
+            title: 'Savings Goals',
+            icon: Icons.flag_outlined,
+            gradient: const [Color(0xFF22C55E), Color(0xFF16A34A)],
+            isDark: isDark,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${_savingsGoalProgress.toStringAsFixed(0)}%',
+                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white)),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: (_savingsGoalProgress / 100).clamp(0, 1),
+                  minHeight: 8,
+                  backgroundColor: Colors.white.withValues(alpha: 0.2),
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text('${_savingsGoals.length} goal${_savingsGoals.length != 1 ? 's' : ''} active',
+                  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
+            ]),
+            onTap: () => Navigator.of(context).pushNamed('/savings'),
+          )),
+          const SizedBox(width: 16),
+          Expanded(child: _webStatusCard(
+            title: 'Investments',
+            icon: Icons.query_stats,
+            gradient: const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
+            isDark: isDark,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(_formatCurrency(_totalInvestedValue),
+                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white)),
+              const SizedBox(height: 8),
+              Row(children: [
+                Icon(
+                  _totalInvestmentReturns >= 0 ? Icons.trending_up : Icons.trending_down,
+                  size: 16, color: _totalInvestmentReturns >= 0 ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${_totalInvestmentReturns >= 0 ? '+' : ''}${_formatCurrency(_totalInvestmentReturns)}',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+                      color: _totalInvestmentReturns >= 0 ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5)),
+                ),
+              ]),
+              const SizedBox(height: 6),
+              Text('${_investments.length} asset${_investments.length != 1 ? 's' : ''} tracked',
+                  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
+            ]),
+            onTap: () => Navigator.of(context).pushNamed('/investments'),
+          )),
+          const SizedBox(width: 16),
+          Expanded(child: _webStatusCard(
+            title: 'Family Spending',
+            icon: Icons.family_restroom_outlined,
+            gradient: const [Color(0xFF14B8A6), Color(0xFF0D9488)],
+            isDark: isDark,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(_formatCurrency(_kidsSpendingThisMonth + _parentsSpendingThisMonth),
+                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white)),
+              const SizedBox(height: 8),
+              Row(children: [
+                const Icon(Icons.child_care, size: 14, color: Colors.white70),
+                const SizedBox(width: 4),
+                Text('Kids: ${_formatCurrency(_kidsSpendingThisMonth)}',
+                    style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
+                const SizedBox(width: 12),
+                const Icon(Icons.elderly, size: 14, color: Colors.white70),
+                const SizedBox(width: 4),
+                Text('Parents: ${_formatCurrency(_parentsSpendingThisMonth)}',
+                    style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
+              ]),
+            ]),
+            onTap: () => Navigator.of(context).pushNamed('/kids-dashboard'),
+          )),
+        ]),
+      ],
+    );
+  }
+
+  Widget _cashFlowBar() {
+    final total = _monthlyIncome + _monthlySpend;
+    final incomeRatio = total > 0 ? _monthlyIncome / total : 0.5;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: SizedBox(
+        height: 8,
+        child: Row(children: [
+          Expanded(flex: (incomeRatio * 100).round(), child: Container(color: const Color(0xFF86EFAC))),
+          Expanded(flex: ((1 - incomeRatio) * 100).round(), child: Container(color: const Color(0xFFFCA5A5))),
+        ]),
+      ),
+    );
+  }
+
+  Widget _webStatusCard({
+    required String title,
+    required IconData icon,
+    required List<Color> gradient,
+    required bool isDark,
+    required Widget child,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: MouseRegion(
+        cursor: onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: gradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [BoxShadow(color: gradient.first.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6))],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Icon(icon, size: 18, color: Colors.white.withValues(alpha: 0.8)),
+                const SizedBox(width: 8),
+                Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.8))),
+                const Spacer(),
+                Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Colors.white.withValues(alpha: 0.4)),
+              ]),
+              const SizedBox(height: 12),
+              child,
             ],
           ),
         ),
@@ -759,1430 +1516,773 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildWebError(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(AppIcons.error, size: 48, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text('Failed to load dashboard',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[600])),
-          const SizedBox(height: 8),
-          Text(_error!, style: TextStyle(color: Colors.grey[500])),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: _loadDashboardData,
-            icon: const Icon(AppIcons.refresh),
-            label: const Text('Retry'),
-          ),
-        ],
-      ),
-    );
-  }
+  // ── Web: Spending Spotlight ────────────────────────────────────────────────
 
-  Widget _buildWebContent(BuildContext context, bool isDark, ThemeData theme) {
-    final primary = theme.colorScheme.primary;
-    return RefreshIndicator(
-      onRefresh: _loadDashboardData,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+  Widget _buildWebSpendingSpotlight(bool isDark) {
+    final totals = _categoryTotals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final grandTotal = totals.fold(0.0, (sum, item) => sum + item.value);
+    final top = totals.take(5).toList();
+    final primary = Theme.of(context).colorScheme.primary;
+    final colors = [primary, Colors.orange, const Color(0xFF22C55E), const Color(0xFF8B5CF6), Colors.grey.shade400];
+
+    return _webCard(
+      isDark: isDark,
+      child: SizedBox(
+        height: 340,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHomeOverviewRow(isDark, primary),
-            const SizedBox(height: 32),
-            _buildForecastSection(isDark),
-            const SizedBox(height: 32),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: _buildSpendingSpotlightCard(isDark, primary)),
-                const SizedBox(width: 24),
-                Expanded(child: _buildUpcomingBillsCard(isDark)),
-              ],
-            ),
-            const SizedBox(height: 32),
-            _buildImportantDatesCard(isDark),
+            const Text('Spending Spotlight', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text('This month by category', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+            const SizedBox(height: 16),
+            if (top.isEmpty)
+              Expanded(child: Center(child: Text('No expenses this month', style: TextStyle(color: Colors.grey[400]))))
+            else
+              Expanded(
+                child: Row(
+                  children: [
+                    // Donut chart
+                    Expanded(
+                      child: Center(
+                        child: SizedBox(
+                          width: 140, height: 140,
+                          child: Stack(alignment: Alignment.center, children: [
+                            CustomPaint(
+                              size: const Size(140, 140),
+                              painter: _DonutPainter(
+                                segments: top.asMap().entries.map((e) => _DonutSegment(
+                                  share: grandTotal > 0 ? e.value.value / grandTotal : 0,
+                                  color: colors[e.key % colors.length],
+                                )).toList(),
+                                trackColor: isDark ? AppColors.grey800 : const Color(0xFFF1F5F9),
+                                strokeWidth: 18,
+                              ),
+                            ),
+                            Column(mainAxisSize: MainAxisSize.min, children: [
+                              Text(_formatCurrency(grandTotal),
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+                              Text('Total', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                            ]),
+                          ]),
+                        ),
+                      ),
+                    ),
+                    // Legend
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: top.asMap().entries.map((entry) {
+                          final i = entry.key;
+                          final item = entry.value;
+                          final pct = grandTotal > 0 ? (item.value / grandTotal * 100) : 0;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Row(children: [
+                              Container(width: 8, height: 8,
+                                  decoration: BoxDecoration(color: colors[i % colors.length], shape: BoxShape.circle)),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(_capitalize(item.key), style: TextStyle(fontSize: 12, color: Colors.grey[600]))),
+                              Text('${pct.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                              const SizedBox(width: 8),
+                              Text(_formatCurrency(item.value), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                            ]),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHomeOverviewRow(bool isDark, Color primary) {
-    final budgetUsage = _monthlyBudgetTotal > 0
-        ? (_monthlyBudgetSpent / _monthlyBudgetTotal).clamp(0.0, 1.0)
-        : 0.0;
-    final budgetStatus = _monthlyBudgetTotal <= 0
-        ? 'Not Set'
-        : budgetUsage >= 1
-            ? 'At Risk'
-            : 'On Track';
+  // ── Web: Unified Timeline ──────────────────────────────────────────────────
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: _buildHomeCard(
-            isDark: isDark,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Financial Health',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-                ),
-                const SizedBox(height: 8),
-                _buildHealthMetricRow(
-                  'Savings Rate',
-                  '${_savingsRate.toStringAsFixed(0)}%',
-                  _savingsRate >= 20 ? 'Good' : 'Improve',
-                  _savingsRate >= 20
-                      ? const Color(0xFFDCFCE7)
-                      : const Color(0xFFFFEDD5),
-                  _savingsRate >= 20
-                      ? const Color(0xFF16A34A)
-                      : const Color(0xFFEA580C),
-                ),
-                const SizedBox(height: 6),
-                _buildHealthMetricRow(
-                  'Emergency Fund',
-                  '${_emergencyFundMonths.toStringAsFixed(1)}m',
-                  _emergencyFundMonths >= 6 ? 'Strong' : 'Improve',
-                  _emergencyFundMonths >= 6
-                      ? const Color(0xFFDCFCE7)
-                      : const Color(0xFFFFEDD5),
-                  _emergencyFundMonths >= 6
-                      ? const Color(0xFF16A34A)
-                      : const Color(0xFFEA580C),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.only(top: 6),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      top: BorderSide(
-                        color: isDark
-                            ? AppColors.grey800
-                            : const Color(0xFFF1F5F9),
-                      ),
+  Widget _buildWebTimeline(bool isDark) {
+    return _webCard(
+      isDark: isDark,
+      child: SizedBox(
+        height: 340,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              const Text("What's Ahead", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Spacer(),
+              TextButton(
+                onPressed: () => Navigator.of(context).pushNamed('/family-planner'),
+                child: Text('View all', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            Expanded(
+              child: _unifiedTimeline.isEmpty
+                  ? Center(child: Text('Nothing upcoming in the next 30 days', style: TextStyle(color: Colors.grey[400])))
+                  : ListView(
+                      children: _unifiedTimeline.map((e) => _buildTimelineRow(e)).toList(),
                     ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Budget Risk',
-                            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                          ),
-                          Text(
-                            _budgets.isEmpty
-                                ? 'Budget sync pending'
-                                : '$_budgetRiskCount categories over',
-                            style: TextStyle(fontSize: 10, color: Colors.grey[400]),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        _budgetRiskCount > 0 ? 'High' : 'Low',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: _budgetRiskCount > 0
-                              ? AppColors.error
-                              : AppColors.success,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ),
-          ),
+          ],
         ),
-        const SizedBox(width: 20),
-        Expanded(
-          child: _buildHomeCard(
-            isDark: isDark,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Monthly Spending',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _formatCurrency(_monthlySpend),
-                  style: const TextStyle(
-                      fontSize: 28, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 18),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: budgetUsage,
-                    minHeight: 7,
-                    backgroundColor:
-                        isDark ? AppColors.grey800 : const Color(0xFFF1F5F9),
-                    color: Colors.orange,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  _monthlyBudgetTotal > 0
-                      ? '${(budgetUsage * 100).toStringAsFixed(0)}% of your monthly budget used'
-                      : 'Monthly budget not configured yet',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 20),
-        Expanded(
-          child: _buildHomeCard(
-            isDark: isDark,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Budget Current Month',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-                      ),
-                    ),
-                    if (_monthlyBudgetTotal <= 0) _comingSoonBadge(),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      _monthlyBudgetTotal > 0
-                          ? _formatCurrency(_monthlyBudgetTotal)
-                          : '—',
-                      style: const TextStyle(
-                          fontSize: 28, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _monthlyBudgetTotal > 0 ? '(Budgeted)' : 'Coming soon',
-                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: budgetUsage,
-                    minHeight: 7,
-                    backgroundColor:
-                        isDark ? AppColors.grey800 : const Color(0xFFF1F5F9),
-                    color: primary,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _monthlyBudgetTotal > 0
-                          ? 'Spent ${_formatCurrency(_monthlyBudgetSpent)} (${(budgetUsage * 100).toStringAsFixed(0)}%)'
-                          : 'Budget backend not connected',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        budgetStatus,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: budgetStatus == 'At Risk'
-                              ? AppColors.error
-                              : primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildForecastSection(bool isDark) {
+  Widget _buildTimelineRow(_TimelineEntry entry, {bool compact = false}) {
+    final now = DateTime.now();
+    final days = entry.date.difference(DateTime(now.year, now.month, now.day)).inDays;
+    final daysLabel = days == 0 ? 'Today' : days == 1 ? 'Tomorrow' : 'In ${days}d';
+
+    return Container(
+      margin: EdgeInsets.only(bottom: compact ? 8 : 10),
+      padding: EdgeInsets.all(compact ? 10 : 12),
+      decoration: BoxDecoration(
+        color: entry.bgColor.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border(left: BorderSide(color: entry.color, width: 3)),
+      ),
+      child: Row(children: [
+        Container(
+          width: compact ? 28 : 32,
+          height: compact ? 28 : 32,
+          decoration: BoxDecoration(color: entry.bgColor, borderRadius: BorderRadius.circular(8)),
+          child: Icon(entry.icon, size: compact ? 14 : 16, color: entry.color),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(entry.title, style: TextStyle(fontSize: compact ? 12 : 13, fontWeight: FontWeight.w600),
+              maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(entry.subtitle, style: TextStyle(fontSize: compact ? 10 : 11, color: Colors.grey[500]),
+              maxLines: 1, overflow: TextOverflow.ellipsis),
+        ])),
+        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(color: entry.tagColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(999)),
+            child: Text(entry.tag, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: entry.tagColor)),
+          ),
+          const SizedBox(height: 2),
+          Text(daysLabel, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
+              color: days <= 1 ? const Color(0xFFDC2626) : days <= 3 ? const Color(0xFFEA580C) : Colors.grey[500])),
+        ]),
+      ]),
+    );
+  }
+
+  // ── Web: AI Financial Advisor ──────────────────────────────────────────────
+
+  Widget _buildWebAISection(bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text(
-              'AI Forecasted - ${_monthAbbr((DateTime.now().month % 12) + 1)}',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE0E7FF),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: const Text(
-                'BETA',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF4F46E5),
-                ),
-              ),
-            ),
-            const Spacer(),
-            if (_aiForecastLoading)
-              const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            else
-              FilledButton.icon(
-                onPressed: _loadAIForecast,
-                icon: const Icon(Icons.auto_awesome, size: 16),
-                label: Text(_aiForecastProjection != null ? 'Refresh' : 'Analyze with AI'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF4F46E5),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            Expanded(
-              child: _buildForecastCard(
-                colors: const [Color(0xFFFFFFFF), Color(0xFFEEF2FF)],
-                borderColor: const Color(0xFFC7D2FE),
-                accent: const Color(0xFF4F46E5),
-                title: 'Forecasted Budget',
-                value: _forecastBudget > 0
-                    ? _formatCurrency(_forecastBudget)
-                    : '—',
-                message: _forecastBudget > 0
-                    ? 'Estimated from your current budget setup and recent spending trend.'
-                    : 'Budget forecasting unlocks once monthly budgets are configured.',
-                icon: Icons.auto_awesome,
-                showComingSoon: _forecastBudget <= 0,
+        Row(children: [
+          const Icon(Icons.auto_awesome, size: 22, color: Color(0xFF7C3AED)),
+          const SizedBox(width: 8),
+          const Text('AI Financial Advisor', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(color: const Color(0xFFE0E7FF), borderRadius: BorderRadius.circular(999)),
+            child: const Text('BETA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
+          ),
+          const Spacer(),
+          if (_aiForecastLoading)
+            const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          else
+            FilledButton.icon(
+              onPressed: _loadAIForecast,
+              icon: const Icon(Icons.auto_awesome, size: 16),
+              label: Text(_aiForecastProjection != null ? 'Refresh Forecast' : 'Analyze with AI'),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF4F46E5),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: _buildForecastCard(
-                colors: const [Color(0xFFFFFFFF), Color(0xFFF5F3FF)],
-                borderColor: const Color(0xFFDDD6FE),
-                accent: const Color(0xFF7C3AED),
-                title: 'Forecasted Expenses',
-                value: _forecastExpenses > 0
-                    ? _formatCurrency(_forecastExpenses)
-                    : '—',
-                message: _forecastExpenses > 0
-                    ? 'Based on your recent approved expenses and current category mix.'
-                    : 'We need more transaction history to estimate upcoming expenses.',
-                icon: Icons.insights,
-                showComingSoon: _forecastExpenses <= 0,
-              ),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: _buildForecastCard(
-                colors: const [Color(0xFFFFFFFF), Color(0xFFECFDF5)],
-                borderColor: const Color(0xFFA7F3D0),
-                accent: const Color(0xFF059669),
-                title: 'Forecasted Investments',
-                value: _totalInvestedValue > 0
-                    ? _formatCurrency(_totalInvestedValue)
-                    : '—',
-                message: _totalInvestedValue > 0
-                    ? 'Total portfolio value based on your current investments.'
-                    : 'Investment account sync is not connected yet for personalized forecasts.',
-                icon: Icons.account_balance,
-                showComingSoon: _totalInvestedValue <= 0,
-              ),
-            ),
-          ],
-        ),
+        ]),
+        const SizedBox(height: 16),
+
+        // AI Prediction + Trends + Risk row
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Spending Trends
+          Expanded(child: _webCard(isDark: isDark, child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                const Icon(Icons.insights, size: 16, color: Color(0xFF7C3AED)),
+                const SizedBox(width: 6),
+                const Text('Spending Trends', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              ]),
+              const SizedBox(height: 12),
+              if (_spendingTrends.isEmpty)
+                Text('Not enough data to compare trends yet', style: TextStyle(fontSize: 12, color: Colors.grey[400]))
+              else
+                ..._spendingTrends.map((trend) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(children: [
+                    Container(
+                      width: 28, height: 28,
+                      decoration: BoxDecoration(
+                        color: trend.changePercent > 0 ? const Color(0xFFFEE2E2) : const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(8)),
+                      child: Icon(
+                        trend.changePercent > 0 ? Icons.trending_up : Icons.trending_down,
+                        size: 14,
+                        color: trend.changePercent > 0 ? const Color(0xFFDC2626) : const Color(0xFF16A34A)),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(_capitalize(trend.category), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      Text('${trend.changePercent > 0 ? '+' : ''}${trend.changePercent.toStringAsFixed(0)}% vs last month',
+                          style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                    ])),
+                    Text(_formatCurrency(trend.current), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                  ]),
+                )),
+            ],
+          ))),
+          const SizedBox(width: 16),
+
+          // Budget Risk Projections
+          Expanded(child: _webCard(isDark: isDark, child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFEA580C)),
+                const SizedBox(width: 6),
+                const Text('Budget Risk Alert', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              ]),
+              const SizedBox(height: 12),
+              if (_budgetProjections.isEmpty)
+                Text('All budgets on track at current pace', style: TextStyle(fontSize: 12, color: Colors.grey[400]))
+              else
+                ..._budgetProjections.map((proj) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                      Text(_capitalize(proj.category), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: const Color(0xFFFEE2E2), borderRadius: BorderRadius.circular(999)),
+                        child: Text('+${_formatCurrency(proj.overshoot)}',
+                            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFFDC2626))),
+                      ),
+                    ]),
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (proj.projected / proj.budgeted).clamp(0, 1.5),
+                        minHeight: 6,
+                        backgroundColor: isDark ? AppColors.grey800 : const Color(0xFFF1F5F9),
+                        color: const Color(0xFFEF4444),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text('Projected: ${_formatCurrency(proj.projected)} of ${_formatCurrency(proj.budgeted)}',
+                        style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                  ]),
+                )),
+            ],
+          ))),
+          const SizedBox(width: 16),
+
+          // Smart Tips
+          Expanded(child: _webCard(isDark: isDark, child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                const Icon(Icons.lightbulb_outline, size: 16, color: Color(0xFFF59E0B)),
+                const SizedBox(width: 6),
+                const Text('Smart Tips', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              ]),
+              const SizedBox(height: 12),
+              if (_smartTips.isEmpty)
+                Text('Looking good! No urgent financial tips.', style: TextStyle(fontSize: 12, color: Colors.grey[400]))
+              else
+                ..._smartTips.map((tip) => _buildTipCard(tip)),
+            ],
+          ))),
+        ]),
+
+        // AI Forecast result
         if (_aiForecastError != null) ...[
           const SizedBox(height: 12),
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.errorLight,
-              borderRadius: BorderRadius.circular(8),
-            ),
+            width: double.infinity, padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: AppColors.errorLight, borderRadius: BorderRadius.circular(8)),
             child: Text(_aiForecastError!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
           ),
         ],
         if (_aiForecastProjection != null) ...[
           const SizedBox(height: 16),
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(18),
+            width: double.infinity, padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFF5F3FF), Color(0xFFEEF2FF)],
-              ),
+              gradient: const LinearGradient(colors: [Color(0xFFF5F3FF), Color(0xFFEEF2FF)]),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: const Color(0xFFDDD6FE)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.auto_awesome, size: 16, color: Color(0xFF7C3AED)),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'AI Projection',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF7C3AED)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(_aiForecastProjection!, style: const TextStyle(fontSize: 13, height: 1.5)),
-              ],
-            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Row(children: [
+                Icon(Icons.auto_awesome, size: 16, color: Color(0xFF7C3AED)),
+                SizedBox(width: 8),
+                Text('AI Projection', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF7C3AED))),
+              ]),
+              const SizedBox(height: 10),
+              Text(_aiForecastProjection!, style: const TextStyle(fontSize: 13, height: 1.5)),
+            ]),
           ),
         ],
+        // Ask AI button
+        const SizedBox(height: 16),
+        Center(
+          child: OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).pushNamed('/ai'),
+            icon: const Icon(Icons.chat_outlined, size: 16),
+            label: const Text('Ask AI about your finances'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF7C3AED),
+              side: const BorderSide(color: Color(0xFFDDD6FE)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildSpendingSpotlightCard(bool isDark, Color primary) {
-    final totals = _categoryTotals.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final grandTotal = totals.fold(0.0, (sum, item) => sum + item.value);
-    final top = totals.take(4).toList();
-    final dominant = top.isNotEmpty ? top.first : null;
-    final dominantShare =
-        dominant == null || grandTotal <= 0 ? 0.0 : dominant.value / grandTotal;
-    final colors = [primary, Colors.orange, Colors.green, Colors.grey.shade400];
-
-    return _buildHomeCard(
-      isDark: isDark,
-      child: SizedBox(
-        height: 280,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Major Expense',
-                          style:
-                              TextStyle(fontSize: 10, color: Colors.grey[500])),
-                      Text(
-                        dominant == null
-                            ? 'No data yet'
-                            : _capitalize(dominant.key),
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.pie_chart, color: Colors.grey[400], size: 18),
-              ],
-            ),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 160,
-                    height: 160,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CustomPaint(
-                          size: const Size(160, 160),
-                          painter: _DonutPainter(
-                            segments: top.asMap().entries.map((e) {
-                              final share = grandTotal > 0
-                                  ? e.value.value / grandTotal
-                                  : 0.0;
-                              return _DonutSegment(
-                                share: share,
-                                color: colors[e.key % colors.length],
-                              );
-                            }).toList(),
-                            trackColor: isDark
-                                ? AppColors.grey800
-                                : const Color(0xFFF1F5F9),
-                            strokeWidth: 18,
-                          ),
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '${(dominantShare * 100).toStringAsFixed(0)}%',
-                              style: const TextStyle(
-                                  fontSize: 24, fontWeight: FontWeight.bold),
-                            ),
-                            Text(
-                              dominant == null
-                                  ? 'Waiting'
-                                  : _capitalize(dominant.key),
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Wrap(
-                    spacing: 18,
-                    runSpacing: 12,
-                    children: top.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final item = entry.value;
-                      return SizedBox(
-                        width: 150,
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: colors[index % colors.length],
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _capitalize(item.key),
-                                    style: TextStyle(
-                                        fontSize: 10, color: Colors.grey[500]),
-                                  ),
-                                  Text(
-                                    _formatCurrency(item.value),
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+  Widget _buildTipCard(_SmartTip tip, {bool compact = false}) {
+    return Container(
+      margin: EdgeInsets.only(bottom: compact ? 8 : 10),
+      padding: EdgeInsets.all(compact ? 10 : 12),
+      decoration: BoxDecoration(
+        color: tip.color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border(left: BorderSide(color: tip.color, width: 3)),
       ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(tip.icon, size: compact ? 16 : 18, color: tip.color),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(tip.title, style: TextStyle(fontSize: compact ? 11 : 12, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
+          Text(tip.message, style: TextStyle(fontSize: compact ? 10 : 11, color: Colors.grey[600], height: 1.3)),
+        ])),
+      ]),
     );
   }
 
-  Widget _buildUpcomingBillsCard(bool isDark) {
-    return _buildHomeCard(
-      isDark: isDark,
-      child: SizedBox(
-        height: 280,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Upcoming Bills',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 14),
-            Expanded(
-              child: _upcomingBills.isEmpty
-                  ? Column(
-                      children: [
-                        _buildUpcomingBillRow(
-                          icon: Icons.credit_card,
-                          iconBg: const Color(0xFFFEE2E2),
-                          iconColor: const Color(0xFFDC2626),
-                          title: 'Credit Card Sync',
-                          subtitle: 'Auto-detected statement due dates',
-                          amount: 'Coming soon',
-                        ),
-                        _buildUpcomingBillRow(
-                          icon: Icons.bolt,
-                          iconBg: const Color(0xFFDBEAFE),
-                          iconColor: const Color(0xFF2563EB),
-                          title: 'Utility Tracking',
-                          subtitle: 'Electricity and recurring bills',
-                          amount: 'Coming soon',
-                        ),
-                        _buildUpcomingBillRow(
-                          icon: Icons.wifi,
-                          iconBg: const Color(0xFFDCFCE7),
-                          iconColor: const Color(0xFF16A34A),
-                          title: 'Internet & Subscriptions',
-                          subtitle: 'Recurring household expenses',
-                          amount: 'Coming soon',
-                          isLast: true,
-                        ),
-                      ],
-                    )
-                  : Column(
-                      children: List.generate(
-                        _upcomingBills.take(3).length,
-                        (i) {
-                          final bill = _upcomingBills[i];
-                          final colors = _billCategoryColors(bill.category);
-                          final days = bill.daysUntilDue;
-                          final subtitle = bill.provider != null
-                              ? '${bill.provider} • ${days == 0 ? 'due today' : 'due in ${days}d'}'
-                              : (days == 0 ? 'Due today' : 'Due in ${days}d');
-                          return _buildUpcomingBillRow(
-                            icon: Bill.iconForCategory(bill.category),
-                            iconBg: colors.$1,
-                            iconColor: colors.$2,
-                            title: bill.name,
-                            subtitle: subtitle,
-                            amount: _formatCurrency(bill.amount),
-                            isLast: i == _upcomingBills.take(3).length - 1,
-                            showComingSoon: false,
-                          );
-                        },
-                      ),
-                    ),
-            ),
-            InkWell(
-              borderRadius: BorderRadius.circular(10),
-              onTap: () => Navigator.of(context).pushReplacementNamed('/bills'),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.grey800 : const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10),
+  // ── Web: Family Lens (Kids + Parents) ──────────────────────────────────────
+
+  Widget _buildWebFamilyLens(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Family Lens', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text('Kids & parents spending insights', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+        const SizedBox(height: 16),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Kids
+          Expanded(child: _webCard(isDark: isDark, child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Container(
+                  width: 32, height: 32,
+                  decoration: BoxDecoration(color: const Color(0xFFDBEAFE), borderRadius: BorderRadius.circular(8)),
+                  child: const Icon(Icons.child_care, size: 18, color: Color(0xFF2563EB)),
                 ),
-                child: const Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'View All Bills',
-                        style:
-                            TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(width: 6),
-                      Icon(Icons.arrow_forward_rounded, size: 13),
-                    ],
-                  ),
+                const SizedBox(width: 10),
+                const Text('Kids Corner', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pushNamed('/kids-dashboard'),
+                  child: const Text('Details →', style: TextStyle(fontSize: 11)),
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
+              ]),
+              const SizedBox(height: 14),
+              _familyMetricRow('Education & School', _formatCurrency(_kidsSpendingThisMonth), const Color(0xFF2563EB)),
+              const SizedBox(height: 8),
+              _familyMetricRow('Money Sent', _formatCurrency(_kidMoneySentTotal), const Color(0xFF0D9488)),
+              const SizedBox(height: 8),
+              _familyMetricRow('Kid Investments', _formatCurrency(_kidInvestmentsTotal), const Color(0xFF7C3AED)),
+              const SizedBox(height: 12),
+              if (_nextKidEvent != null)
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF9C3),
+                    borderRadius: BorderRadius.circular(8)),
+                  child: Row(children: [
+                    const Icon(Icons.event, size: 14, color: Color(0xFFCA8A04)),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_nextKidEvent!,
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF854D0E)))),
+                  ]),
+                ),
+            ],
+          ))),
+          const SizedBox(width: 24),
+          // Parents
+          Expanded(child: _webCard(isDark: isDark, child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Container(
+                  width: 32, height: 32,
+                  decoration: BoxDecoration(color: const Color(0xFFFCE7F3), borderRadius: BorderRadius.circular(8)),
+                  child: const Icon(Icons.elderly, size: 18, color: Color(0xFFDB2777)),
+                ),
+                const SizedBox(width: 10),
+                const Text('Parents Care', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pushNamed('/parents-dashboard'),
+                  child: const Text('Details →', style: TextStyle(fontSize: 11)),
+                ),
+              ]),
+              const SizedBox(height: 14),
+              _familyMetricRow('Health & Medical', _formatCurrency(_parentHealthSpend), const Color(0xFFDC2626)),
+              const SizedBox(height: 8),
+              _familyMetricRow('Insurance Premiums', _formatCurrency(_parentInsuranceSpend), const Color(0xFF059669)),
+              const SizedBox(height: 8),
+              _familyMetricRow('Total Support', _formatCurrency(_parentsSpendingThisMonth), const Color(0xFFDB2777)),
+              const SizedBox(height: 12),
+              if (_nextParentReminder != null)
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEE2E2),
+                    borderRadius: BorderRadius.circular(8)),
+                  child: Row(children: [
+                    const Icon(Icons.health_and_safety, size: 14, color: Color(0xFFDC2626)),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_nextParentReminder!,
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF991B1B)))),
+                  ]),
+                ),
+            ],
+          ))),
+        ]),
+      ],
     );
   }
 
-  (Color, Color) _plannerTypeColors(PlannerItemType type) {
-    switch (type) {
-      case PlannerItemType.birthday:
-        return (const Color(0xFFFCE7F3), const Color(0xFFDB2777));
-      case PlannerItemType.anniversary:
-        return (const Color(0xFFF3E8FF), const Color(0xFF9333EA));
-      case PlannerItemType.vacation:
-        return (const Color(0xFFDBEAFE), const Color(0xFF2563EB));
-      case PlannerItemType.event:
-        return (const Color(0xFFFEE2E2), const Color(0xFFDC2626));
-      case PlannerItemType.reminder:
-        return (const Color(0xFFFFEDD5), const Color(0xFFEA580C));
-      case PlannerItemType.task:
-        return (const Color(0xFFDCFCE7), const Color(0xFF16A34A));
-    }
+  // Additional family computed properties
+  double get _kidMoneySentTotal {
+    final now = DateTime.now();
+    return _allExpenses
+        .where((e) => e.date.year == now.year && e.date.month == now.month &&
+            _containsAny(_expenseBlob(e), _kidMoneySentKeywords))
+        .fold(0.0, (s, e) => s + e.amount);
   }
 
-  IconData _plannerTypeIcon(PlannerItemType type) {
-    switch (type) {
-      case PlannerItemType.birthday:
-        return Icons.cake_outlined;
-      case PlannerItemType.anniversary:
-        return Icons.favorite;
-      case PlannerItemType.vacation:
-        return Icons.flight_takeoff_outlined;
-      case PlannerItemType.event:
-        return Icons.event_outlined;
-      case PlannerItemType.reminder:
-        return Icons.notifications_outlined;
-      case PlannerItemType.task:
-        return Icons.task_alt_outlined;
-    }
+  double get _kidInvestmentsTotal =>
+      _investments.where((i) => i.childName != null && i.childName!.isNotEmpty)
+          .fold(0.0, (s, i) => s + i.currentValue);
+
+  double get _parentHealthSpend {
+    final now = DateTime.now();
+    return _allExpenses
+        .where((e) => e.date.year == now.year && e.date.month == now.month &&
+            _containsAny(_expenseBlob(e), _healthKeywords))
+        .fold(0.0, (s, e) => s + e.amount);
   }
 
-  String _plannerTypeLabel(PlannerItemType type) {
-    switch (type) {
-      case PlannerItemType.birthday:
-        return 'Birthday';
-      case PlannerItemType.anniversary:
-        return 'Anniversary';
-      case PlannerItemType.vacation:
-        return 'Vacation';
-      case PlannerItemType.event:
-        return 'Event';
-      case PlannerItemType.reminder:
-        return 'Reminder';
-      case PlannerItemType.task:
-        return 'Task';
-    }
+  double get _parentInsuranceSpend {
+    final now = DateTime.now();
+    return _allExpenses
+        .where((e) => e.date.year == now.year && e.date.month == now.month &&
+            _containsAny(_expenseBlob(e), _insuranceKeywords))
+        .fold(0.0, (s, e) => s + e.amount);
   }
 
-  Widget _buildImportantDatesCard(bool isDark) {
-    final hasData = _upcomingEvents.isNotEmpty;
-    final displayItems = _upcomingEvents.take(4).toList();
+  String? get _nextKidEvent {
+    final now = DateTime.now();
+    final schoolKeywords = ['school', 'ptm', 'sports day', 'annual day', 'graduation'];
+    for (final item in _upcomingEvents) {
+      final text = '${item.title} ${item.description ?? ''}'.toLowerCase();
+      if (schoolKeywords.any((kw) => text.contains(kw))) {
+        final days = item.daysUntil;
+        final dLabel = days == 0 ? 'Today' : days == 1 ? 'Tomorrow' : 'In ${days}d';
+        return '${item.title} — $dLabel';
+      }
+    }
+    return null;
+  }
 
-    // Placeholder tiles shown when no data is loaded yet
-    final placeholders = [
-      (Icons.cake_outlined, const Color(0xFFFCE7F3), const Color(0xFFDB2777), 'Birthdays'),
-      (Icons.favorite, const Color(0xFFF3E8FF), const Color(0xFF9333EA), 'Anniversaries'),
-      (Icons.volunteer_activism, const Color(0xFFFEE2E2), const Color(0xFFDC2626), 'Celebrations'),
-      (Icons.celebration, const Color(0xFFFFEDD5), const Color(0xFFEA580C), 'Festivals'),
-    ];
+  String? get _nextParentReminder {
+    final now = DateTime.now();
+    for (final item in _upcomingEvents) {
+      final text = '${item.title} ${item.description ?? ''}'.toLowerCase();
+      if (_containsAny(text, _healthKeywords) || _containsAny(text, _parentKeywords)) {
+        final days = item.daysUntil;
+        final dLabel = days == 0 ? 'Today' : days == 1 ? 'Tomorrow' : 'In ${days}d';
+        return '${item.title} — $dLabel';
+      }
+    }
+    return null;
+  }
 
-    return _buildHomeCard(
+  Widget _familyMetricRow(String label, String value, Color color) {
+    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+      Row(children: [
+        Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 8),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+      ]),
+      Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+    ]);
+  }
+
+  // ── Web: Recent Transactions ───────────────────────────────────────────────
+
+  Widget _buildWebTransactionsTable(bool isDark) {
+    return _webCard(
       isDark: isDark,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Text(
-                'Upcoming Events',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const Spacer(),
-              InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () => Navigator.of(context).pushNamed('/family-planner'),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Row(
-                    children: [
-                      Text('View all', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-                      const SizedBox(width: 4),
-                      Icon(Icons.arrow_forward_rounded, size: 13, color: Colors.grey[500]),
-                    ],
-                  ),
+          Row(children: [
+            const Text('Recent Transactions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Spacer(),
+            TextButton(
+              onPressed: () => Navigator.of(context).pushNamed('/expenses'),
+              child: Text('View all', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          if (_recentExpenses.isEmpty)
+            Padding(padding: const EdgeInsets.all(24),
+                child: Center(child: Text('No transactions yet', style: TextStyle(color: Colors.grey[400]))))
+          else
+            ..._recentExpenses.take(8).map((expense) {
+              final isIncome = expense.category.toLowerCase() == 'income' || expense.category.toLowerCase() == 'salary';
+              final bgColor = AppColors.getCategoryColor(expense.category);
+              final iconColor = AppColors.getCategoryIconColor(expense.category);
+              final d = expense.date;
+              final dateStr = '${_monthAbbr(d.month)} ${d.day}';
+
+              return Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: isDark ? AppColors.grey800 : const Color(0xFFF1F5F9))),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: hasData
-                ? displayItems.map((item) {
-                    final colors = _plannerTypeColors(item.type);
-                    final days = item.daysUntil;
-                    final daysLabel = days == 0
-                        ? 'Today'
-                        : days == 1
-                            ? 'Tomorrow'
-                            : 'In ${days}d';
-                    return InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => Navigator.of(context).pushNamed('/family-planner'),
-                      child: Container(
-                        width: 230,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppColors.grey800 : const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: colors.$1,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(_plannerTypeIcon(item.type), color: colors.$2, size: 20),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _plannerTypeLabel(item.type),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey[500],
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    item.title,
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    daysLabel,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: days == 0
-                                          ? AppColors.error
-                                          : days <= 7
-                                              ? const Color(0xFFEA580C)
-                                              : Colors.grey[500],
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList()
-                : placeholders.map((p) {
-                    return InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => Navigator.of(context).pushNamed('/family-planner'),
-                      child: Container(
-                        width: 230,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppColors.grey800 : const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: p.$2,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(p.$1, color: p.$3, size: 20),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    p.$4,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey[500],
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    'No upcoming events',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.grey[400],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-          ),
+                child: Row(children: [
+                  Container(
+                    width: 36, height: 36,
+                    decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
+                    child: Icon(AppIcons.getCategoryIcon(expense.category), size: 18, color: iconColor),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 3,
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(expense.description, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                          overflow: TextOverflow.ellipsis),
+                      Text(dateStr, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                    ]),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(4)),
+                    child: Text(_capitalize(expense.category), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: iconColor)),
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    '${isIncome ? '+' : '-'}${_formatCurrency(expense.amount)}',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13,
+                        color: isIncome ? AppColors.success : AppColors.error),
+                  ),
+                ]),
+              );
+            }),
         ],
       ),
     );
   }
 
-  Widget _buildHomeCard({
-    required bool isDark,
-    required Widget child,
-  }) {
+  // ═════════════════════════════════════════════════════════════════════════════
+  // SHARED WIDGETS
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  Widget _webCard({required bool isDark, required Widget child}) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0),
-        ),
-        boxShadow: isDark
-            ? null
-            : const [
-                BoxShadow(
-                  color: Color(0x0A0F172A),
-                  blurRadius: 16,
-                  offset: Offset(0, 6),
-                ),
-              ],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+        boxShadow: isDark ? null : const [BoxShadow(color: Color(0x0A0F172A), blurRadius: 16, offset: Offset(0, 6))],
       ),
       child: child,
     );
   }
 
-  Widget _buildHealthMetricRow(
-    String label,
-    String value,
-    String status,
-    Color badgeBg,
-    Color badgeFg,
-  ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-        Row(
-          children: [
-            Text(value,
-                style:
-                    const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-              decoration: BoxDecoration(
-                color: badgeBg,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                status.toUpperCase(),
-                style: TextStyle(
-                    fontSize: 9, fontWeight: FontWeight.bold, color: badgeFg),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildForecastCard({
-    required List<Color> colors,
-    required Color borderColor,
-    required Color accent,
-    required String title,
-    required String value,
-    required String message,
-    required IconData icon,
-    required bool showComingSoon,
-    List<String> details = const [],
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-            colors: colors,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: TextStyle(fontSize: 14, color: Colors.grey[500])),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Text(
-                      value,
-                      style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: accent),
-                    ),
-                    if (showComingSoon) ...[
-                      const SizedBox(width: 8),
-                      _comingSoonBadge(),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(message,
-                    style: TextStyle(
-                        fontSize: 11, color: Colors.grey[600], height: 1.4)),
-                if (details.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  ...details.map((detail) => Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Text(
-                          detail,
-                          style:
-                              TextStyle(fontSize: 11, color: Colors.grey[600]),
-                        ),
-                      )),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: accent,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: Colors.white, size: 20),
-          ),
-        ],
-      ),
-    );
-  }
-
-  (Color, Color) _billCategoryColors(BillCategory category) {
-    switch (category) {
-      case BillCategory.rent:
-        return (const Color(0xFFDBEAFE), const Color(0xFF2563EB));
-      case BillCategory.utilities:
-        return (const Color(0xFFFFF7ED), const Color(0xFFEA580C));
-      case BillCategory.internet:
-        return (const Color(0xFFDCFCE7), const Color(0xFF16A34A));
-      case BillCategory.insurance:
-        return (const Color(0xFFDCFCE7), const Color(0xFF059669));
-      case BillCategory.creditCard:
-        return (const Color(0xFFFEE2E2), const Color(0xFFDC2626));
-      case BillCategory.subscription:
-        return (const Color(0xFFEDE9FE), const Color(0xFF7C3AED));
-      case BillCategory.loan:
-        return (const Color(0xFFDBEAFE), const Color(0xFF1D4ED8));
-      case BillCategory.school:
-        return (const Color(0xFFFEF9C3), const Color(0xFFCA8A04));
-      case BillCategory.other:
-        return (const Color(0xFFF1F5F9), const Color(0xFF64748B));
-    }
-  }
-
-  Widget _buildUpcomingBillRow({
-    required IconData icon,
-    required Color iconBg,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required String amount,
-    bool isLast = false,
-    bool showComingSoon = true,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: BoxDecoration(
-        border: isLast
-            ? null
-            : const Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 2),
-                Text(subtitle,
-                    style: TextStyle(fontSize: 10, color: Colors.grey[500])),
-              ],
-            ),
-          ),
-          Text(amount,
-              style:
-                  const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-          if (showComingSoon) ...[
-            const SizedBox(width: 6),
-            const Icon(Icons.close_rounded, size: 12, color: Colors.red),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard({
-    required bool isDark,
-    required String label,
-    required String value,
-    Widget? badge,
-    Widget? footer,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(label,
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[500],
-                      fontWeight: FontWeight.w500)),
-              if (badge != null) badge,
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(value,
-              style:
-                  const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-          if (footer != null) ...[
-            const SizedBox(height: 12),
-            footer,
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionCard({
-    required bool isDark,
-    required String title,
-    Widget? trailing,
-    required Widget child,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 16, 0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.bold)),
-                if (trailing != null) trailing,
-              ],
-            ),
-          ),
-          child,
-        ],
-      ),
-    );
-  }
-
-  Widget _comingSoonPlaceholder(IconData icon, String message) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(icon, size: 40, color: Colors.grey[300]),
-            const SizedBox(height: 12),
-            Text(message,
-                style: TextStyle(color: Colors.grey[400], fontSize: 13)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryBreakdown(
-      BuildContext context, bool isDark, Color primary) {
-    final totals = _categoryTotals;
-    final grandTotal = totals.values.fold(0.0, (s, v) => s + v);
-
-    if (totals.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(20),
-        child: Text('No expense data yet',
-            style: TextStyle(color: Colors.grey[400])),
-      );
-    }
-
-    final sorted = totals.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final top = sorted.take(4).toList();
-    final colors = [primary, Colors.orange, Colors.green, Colors.red];
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-      child: Column(
-        children: top.asMap().entries.map((entry) {
-          final i = entry.key;
-          final cat = entry.value;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(_capitalize(cat.key),
-                        style: TextStyle(
-                            fontSize: 13,
-                            color:
-                                isDark ? Colors.grey[300] : Colors.grey[700])),
-                    Text(_formatCurrency(cat.value),
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 13)),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: grandTotal > 0 ? cat.value / grandTotal : 0,
-                    backgroundColor:
-                        isDark ? AppColors.grey800 : const Color(0xFFF1F5F9),
-                    color: colors[i % colors.length],
-                    minHeight: 8,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildTransactionsTable(BuildContext context, bool isDark) {
-    if (_recentExpenses.isEmpty) {
-      return Padding(
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Center(
-            child: Text('No transactions yet',
-                style: TextStyle(color: Colors.grey[400]))),
-      );
-    }
-
-    final headerStyle = TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.bold,
-        color: Colors.grey[400],
-        letterSpacing: 0.5);
-    final rowBorder =
-        BorderSide(color: isDark ? AppColors.grey800 : const Color(0xFFF1F5F9));
-
-    return Column(children: [
-      // Header row
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        decoration: BoxDecoration(border: Border(bottom: rowBorder)),
-        child: Row(children: [
-          Expanded(flex: 3, child: Text('DESCRIPTION', style: headerStyle)),
-          Expanded(child: Text('SOURCE', style: headerStyle)),
-          Expanded(child: Text('CATEGORY', style: headerStyle)),
-          Expanded(child: Text('DATE', style: headerStyle)),
-          Expanded(
-              child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Text('AMOUNT', style: headerStyle))),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(AppIcons.error, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text('Failed to load dashboard',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[600])),
+          const SizedBox(height: 8),
+          Text(_error!, style: TextStyle(fontSize: 14, color: Colors.grey[500]), textAlign: TextAlign.center),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: _loadDashboardData,
+            icon: const Icon(AppIcons.refresh),
+            label: const Text('Retry'),
+          ),
         ]),
       ),
-      // Data rows
-      ..._recentExpenses.map((expense) {
-        final isIncome = expense.category.toLowerCase() == 'income' ||
-            expense.category.toLowerCase() == 'salary';
-        final bgColor = AppColors.getCategoryColor(expense.category);
-        final iconColor = AppColors.getCategoryIconColor(expense.category);
-        final d = expense.date;
-        final dateStr = '${_monthAbbr(d.month)} ${d.day}, ${d.year}';
-        return InkWell(
-          onTap: () => Navigator.of(context).pushNamed('/expenses'),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            decoration: BoxDecoration(border: Border(bottom: rowBorder)),
-            child: Row(children: [
-              Expanded(
-                flex: 3,
-                child: Row(children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                        color: bgColor, borderRadius: BorderRadius.circular(8)),
-                    child: Icon(AppIcons.getCategoryIcon(expense.category),
-                        size: 18, color: iconColor),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(expense.description,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 13),
-                        overflow: TextOverflow.ellipsis),
-                  ),
-                ]),
-              ),
-              Expanded(
-                  child: Text(expense.source.toUpperCase(),
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500]))),
-              Expanded(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    _capitalize(expense.category),
-                    style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: iconColor),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-              Expanded(
-                  child: Text(dateStr,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500]))),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    '${isIncome ? '+' : '-'}${_formatCurrency(expense.amount)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: isIncome ? AppColors.success : AppColors.error,
-                    ),
-                  ),
-                ),
-              ),
-            ]),
-          ),
-        );
-      }),
-    ]);
+    );
   }
 
-  Widget _comingSoonBadge() => const Tooltip(
-        message: 'Feature coming soon',
-        child: Icon(Icons.close_rounded, size: 14, color: Colors.red),
-      );
+  // ── Planner helpers ────────────────────────────────────────────────────────
 
-  String _capitalize(String cat) =>
-      cat.isEmpty ? cat : cat[0].toUpperCase() + cat.substring(1).toLowerCase();
+  (Color, Color) _plannerTypeColors(PlannerItemType type) {
+    switch (type) {
+      case PlannerItemType.birthday:    return (const Color(0xFFFCE7F3), const Color(0xFFDB2777));
+      case PlannerItemType.anniversary: return (const Color(0xFFF3E8FF), const Color(0xFF9333EA));
+      case PlannerItemType.vacation:    return (const Color(0xFFDBEAFE), const Color(0xFF2563EB));
+      case PlannerItemType.event:       return (const Color(0xFFFEE2E2), const Color(0xFFDC2626));
+      case PlannerItemType.reminder:    return (const Color(0xFFFFEDD5), const Color(0xFFEA580C));
+      case PlannerItemType.task:        return (const Color(0xFFDCFCE7), const Color(0xFF16A34A));
+    }
+  }
 
-  String _monthAbbr(int month) {
-    const abbrs = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ];
-    return abbrs[(month - 1).clamp(0, 11)];
+  IconData _plannerTypeIcon(PlannerItemType type) {
+    switch (type) {
+      case PlannerItemType.birthday:    return Icons.cake_outlined;
+      case PlannerItemType.anniversary: return Icons.favorite;
+      case PlannerItemType.vacation:    return Icons.flight_takeoff_outlined;
+      case PlannerItemType.event:       return Icons.event_outlined;
+      case PlannerItemType.reminder:    return Icons.notifications_outlined;
+      case PlannerItemType.task:        return Icons.task_alt_outlined;
+    }
+  }
+
+  String _plannerTypeLabel(PlannerItemType type) {
+    switch (type) {
+      case PlannerItemType.birthday:    return 'Birthday';
+      case PlannerItemType.anniversary: return 'Anniversary';
+      case PlannerItemType.vacation:    return 'Vacation';
+      case PlannerItemType.event:       return 'Event';
+      case PlannerItemType.reminder:    return 'Reminder';
+      case PlannerItemType.task:        return 'Task';
+    }
   }
 }
 
-// ── Helper data class for sidebar nav items ────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATA CLASSES
+// ═══════════════════════════════════════════════════════════════════════════════
 
-class _DashNavItem {
-  final String label;
+class _SmartTip {
   final IconData icon;
-  final String route;
-  final bool active;
-  final bool connected;
+  final Color color;
+  final String title;
+  final String message;
+  final int priority;
+  const _SmartTip({required this.icon, required this.color, required this.title, required this.message, required this.priority});
+}
 
-  const _DashNavItem({
-    required this.label,
-    required this.icon,
-    required this.route,
-    required this.active,
-    required this.connected,
+class _AlertItem {
+  final IconData icon;
+  final Color color;
+  final Color bgColor;
+  final String text;
+  final int priority;
+  const _AlertItem({required this.icon, required this.color, required this.bgColor, required this.text, required this.priority});
+}
+
+class _TimelineEntry {
+  final DateTime date;
+  final IconData icon;
+  final Color color;
+  final Color bgColor;
+  final String title;
+  final String subtitle;
+  final String tag;
+  final Color tagColor;
+  const _TimelineEntry({
+    required this.date, required this.icon, required this.color, required this.bgColor,
+    required this.title, required this.subtitle, required this.tag, required this.tagColor,
   });
 }
 
-// ── Multi-color donut chart painter ───────────────────────────────────────
+class _SpendingTrend {
+  final String category;
+  final double current;
+  final double previous;
+  final double changePercent;
+  const _SpendingTrend({required this.category, required this.current, required this.previous, required this.changePercent});
+}
 
-class _DonutSegment {
-  final double share; // 0.0 - 1.0
+class _BudgetProjection {
+  final String category;
+  final double budgeted;
+  final double projected;
+  final double overshoot;
+  const _BudgetProjection({required this.category, required this.budgeted, required this.projected, required this.overshoot});
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CUSTOM PAINTERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Circular gauge painter for the Financial Health Score
+class _GaugePainter extends CustomPainter {
+  final double score; // 0.0 - 1.0
   final Color color;
+  final double strokeWidth;
 
+  const _GaugePainter({required this.score, required this.color, this.strokeWidth = 6});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width / 2) - strokeWidth;
+    const startAngle = -math.pi * 0.75;
+    const totalSweep = math.pi * 1.5;
+
+    // Track
+    final trackPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.1)
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), startAngle, totalSweep, false, trackPaint);
+
+    // Filled arc
+    final fillPaint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), startAngle, totalSweep * score.clamp(0, 1), false, fillPaint);
+  }
+
+  @override
+  bool shouldRepaint(_GaugePainter old) => old.score != score || old.color != color;
+}
+
+/// Multi-color donut chart painter (reused from original)
+class _DonutSegment {
+  final double share;
+  final Color color;
   const _DonutSegment({required this.share, required this.color});
 }
 
@@ -2191,11 +2291,7 @@ class _DonutPainter extends CustomPainter {
   final Color trackColor;
   final double strokeWidth;
 
-  const _DonutPainter({
-    required this.segments,
-    required this.trackColor,
-    required this.strokeWidth,
-  });
+  const _DonutPainter({required this.segments, required this.trackColor, required this.strokeWidth});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2213,7 +2309,6 @@ class _DonutPainter extends CustomPainter {
     canvas.drawCircle(center, radius, trackPaint);
 
     if (segments.isEmpty) return;
-
     final totalShare = segments.fold(0.0, (sum, seg) => sum + seg.share);
     if (totalShare <= 0) return;
 
@@ -2227,25 +2322,15 @@ class _DonutPainter extends CustomPainter {
       if (seg.share <= 0) continue;
       final sweepDeg = (seg.share / totalShare) * 360.0 - gapDeg;
       if (sweepDeg <= 0) continue;
-
       paint.color = seg.color;
-      canvas.drawArc(
-        rect,
-        _toRad(currentAngle),
-        _toRad(sweepDeg),
-        false,
-        paint,
-      );
+      canvas.drawArc(rect, _toRad(currentAngle), _toRad(sweepDeg), false, paint);
       currentAngle += sweepDeg + gapDeg;
     }
   }
 
-  double _toRad(double deg) => deg * 3.141592653589793 / 180.0;
+  double _toRad(double deg) => deg * math.pi / 180.0;
 
   @override
-  bool shouldRepaint(_DonutPainter oldDelegate) {
-    return oldDelegate.segments != segments ||
-        oldDelegate.trackColor != trackColor ||
-        oldDelegate.strokeWidth != strokeWidth;
-  }
+  bool shouldRepaint(_DonutPainter old) =>
+      old.segments != segments || old.trackColor != trackColor || old.strokeWidth != strokeWidth;
 }

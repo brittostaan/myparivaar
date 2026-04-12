@@ -327,9 +327,9 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
         TabBar(
           controller: _tabController,
           isScrollable: true,
-          labelColor: const Color(0xFF2563EB),
+          labelColor: AppColors.activeBlue,
           unselectedLabelColor: AppColors.grey600,
-          indicatorColor: const Color(0xFF2563EB),
+          indicatorColor: AppColors.activeBlue,
           tabAlignment: TabAlignment.start,
           labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           tabs: _tabs,
@@ -396,7 +396,7 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
                       h.suspended ? 'Reactivate' : 'Suspend'),
                   style: FilledButton.styleFrom(
                     backgroundColor: h.suspended
-                        ? const Color(0xFF2563EB)
+                        ? AppColors.activeBlue
                         : const Color(0xFFB91C1C),
                   ),
                 ),
@@ -964,7 +964,7 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
                 children: [
                   Icon(
                     Icons.auto_awesome,
-                    color: aiEnabled ? const Color(0xFF2563EB) : AppColors.grey600,
+                    color: aiEnabled ? AppColors.activeBlue : AppColors.grey600,
                     size: 28,
                   ),
                   const SizedBox(width: 12),
@@ -1107,7 +1107,7 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: enabled ? const Color(0xFF2563EB) : AppColors.grey400),
+            Icon(icon, size: 20, color: enabled ? AppColors.activeBlue : AppColors.grey400),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -1130,7 +1130,7 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
                         isOverLimit
                             ? const Color(0xFFB91C1C)
                             : enabled
-                                ? const Color(0xFF2563EB)
+                                ? AppColors.activeBlue
                                 : AppColors.grey400,
                       ),
                       minHeight: 6,
@@ -1280,7 +1280,7 @@ class _AdminHouseholdDetailTabsState extends State<AdminHouseholdDetailTabs>
       case 'update':
       case 'upgrade_plan':
       case 'downgrade_plan':
-        return const Color(0xFF2563EB);
+        return AppColors.activeBlue;
       default:
         return AppColors.grey600;
     }

@@ -214,7 +214,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: const Color(0xFFE2E8F0)),
+          child: Container(height: 1, color: AppColors.borderLight),
         ),
         actions: [
           if (user != null && !_isEditing) ...[
@@ -407,7 +407,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: AppColors.surfaceHoverLight),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -515,7 +515,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         fontFamily: AppTextStyles.fontFamily,
                         fontSize: 10,
                         fontWeight: AppTextStyles.bold,
-                        color: Color(0xFF2563EB),
+                        color: AppColors.activeBlue,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -530,14 +530,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.mail_outline_rounded, size: 16, color: Color(0xFF64748B)),
+                      const Icon(Icons.mail_outline_rounded, size: 16, color: AppColors.slate500),
                       const SizedBox(width: 4),
                       Text(
                         user.email,
                         style: const TextStyle(
                           fontFamily: AppTextStyles.fontFamily,
                           fontSize: 13,
-                          color: Color(0xFF64748B),
+                          color: AppColors.slate500,
                         ),
                       ),
                     ],
@@ -546,14 +546,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.phone_outlined, size: 16, color: Color(0xFF64748B)),
+                        const Icon(Icons.phone_outlined, size: 16, color: AppColors.slate500),
                         const SizedBox(width: 4),
                         Text(
                           user.phoneNumber!,
                           style: const TextStyle(
                             fontFamily: AppTextStyles.fontFamily,
                             fontSize: 13,
-                            color: Color(0xFF64748B),
+                            color: AppColors.slate500,
                           ),
                         ),
                       ],
@@ -605,7 +605,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF475569),
                         disabledForegroundColor: const Color(0xFF475569),
-                        side: const BorderSide(color: Color(0xFFE2E8F0)),
+                        side: const BorderSide(color: AppColors.borderLight),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         textStyle: const TextStyle(
@@ -767,7 +767,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: AppColors.surfaceHoverLight),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -795,7 +795,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ]),
           ),
-          Container(height: 1, color: const Color(0xFFF1F5F9)),
+          Container(height: 1, color: AppColors.surfaceHoverLight),
           Padding(
             padding: const EdgeInsets.all(20),
             child: Column(

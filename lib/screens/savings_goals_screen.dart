@@ -352,7 +352,7 @@ class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
                 ],
               ),
             ),
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+            const Divider(height: 1, color: AppColors.borderLight),
             if (!_isLoading && _errorInfo == null && _goals.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),

@@ -202,11 +202,11 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
   }
 
   Color _dueColor(Investment inv) {
-    if (inv.dueDate == null) return const Color(0xFF64748B);
+    if (inv.dueDate == null) return AppColors.slate500;
     final today = _atMidnight(DateTime.now());
     final due = _atMidnight(inv.dueDate!);
     final diff = due.difference(today).inDays;
-    if (diff < 0) return const Color(0xFFDC2626);
+    if (diff < 0) return AppColors.scorePoor;
     if (diff <= 7) return const Color(0xFFD97706);
     return const Color(0xFF059669);
   }
@@ -545,7 +545,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
+            style: TextButton.styleFrom(foregroundColor: AppColors.scorePoor),
             child: const Text('Delete'),
           ),
         ],
@@ -601,7 +601,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(Icons.error_outline_rounded,
-                              size: 34, color: Color(0xFFDC2626)),
+                              size: 34, color: AppColors.scorePoor),
                           const SizedBox(height: 10),
                           Text(_error!, textAlign: TextAlign.center),
                           const SizedBox(height: 10),
@@ -624,7 +624,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                                border: Border.all(color: AppColors.borderLight),
                               ),
                               child: Column(
                                 children: [
@@ -700,8 +700,8 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                                           ? Icons.trending_up_rounded
                                           : Icons.trending_down_rounded,
                                       tint: _totalReturns >= 0
-                                          ? const Color(0xFF16A34A)
-                                          : const Color(0xFFDC2626),
+                                          ? AppColors.scoreGood
+                                          : AppColors.scorePoor,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -742,8 +742,8 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                                         ? Icons.trending_up_rounded
                                         : Icons.trending_down_rounded,
                                     tint: _totalReturns >= 0
-                                        ? const Color(0xFF16A34A)
-                                        : const Color(0xFFDC2626),
+                                        ? AppColors.scoreGood
+                                        : AppColors.scorePoor,
                                   ),
                                   _metricCard(
                                     label: 'Upcoming Due (14d)',
@@ -766,11 +766,11 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                  border: Border.all(color: AppColors.borderLight),
                                 ),
                                 child: const Text(
                                   'No investments yet. Add your first investment to start tracking.',
-                                  style: TextStyle(color: Color(0xFF64748B)),
+                                  style: TextStyle(color: AppColors.slate500),
                                 ),
                               )
                             else if (isWebDesktop)
@@ -836,7 +836,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -951,7 +951,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -979,9 +979,9 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
+                color: AppColors.surfaceHoverLight,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: AppColors.borderLight),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1042,8 +1042,8 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                         'Returns',
                         '${positive ? '+' : '-'}${_formatCurrency(diff.abs())}',
                         color: positive
-                            ? const Color(0xFF16A34A)
-                            : const Color(0xFFDC2626),
+                            ? AppColors.scoreGood
+                            : AppColors.scorePoor,
                       ),
                       _kv('Frequency', inv.frequency),
                     ],
@@ -1088,7 +1088,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                       inv.notes!,
                       style: const TextStyle(
                         fontSize: 11,
-                        color: Color(0xFF64748B),
+                        color: AppColors.slate500,
                       ),
                     ),
                   ],
@@ -1109,7 +1109,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1232,12 +1232,12 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: const Color(0xFF64748B)),
+          Icon(icon, size: 14, color: AppColors.slate500),
           const SizedBox(width: 4),
           Text(
             text,

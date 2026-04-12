@@ -12,6 +12,7 @@ import '../services/expense_service.dart';
 import '../services/family_planner_service.dart';
 import '../services/family_service.dart';
 import '../services/investment_service.dart';
+import '../theme/app_colors.dart';
 
 class ParentsDashboardScreen extends StatefulWidget {
   const ParentsDashboardScreen({super.key});
@@ -410,7 +411,7 @@ class _ParentsDashboardScreenState extends State<ParentsDashboardScreen> {
         : 0.0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.surfaceHoverLight,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
@@ -422,7 +423,7 @@ class _ParentsDashboardScreenState extends State<ParentsDashboardScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildHeader(),
-                        const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                        const Divider(height: 1, color: AppColors.borderLight),
                         const SizedBox(height: 12),
                         _buildParentLensBar(),
                         const SizedBox(height: 12),
@@ -544,17 +545,17 @@ class _ParentsDashboardScreenState extends State<ParentsDashboardScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFF2563EB).withAlpha(20),
+              color: AppColors.activeBlue.withAlpha(20),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.family_restroom, size: 14, color: Color(0xFF2563EB)),
+                const Icon(Icons.family_restroom, size: 14, color: AppColors.activeBlue),
                 const SizedBox(width: 4),
                 Text(
                   'Health · Insurance · Support',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF2563EB)),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.activeBlue),
                 ),
               ],
             ),
@@ -571,7 +572,7 @@ class _ParentsDashboardScreenState extends State<ParentsDashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -651,21 +652,21 @@ class _ParentsDashboardScreenState extends State<ParentsDashboardScreen> {
             title: 'Care Reminders',
             value: '${_careReminders.length}',
             subtitle: 'Upcoming tasks and renewals',
-            color: const Color(0xFF2563EB),
+            color: AppColors.activeBlue,
           ),
           const SizedBox(width: 10),
           _StatCard(
             title: 'Health Spend',
             value: _fmtCurrency(_parentExpenseTotal),
             subtitle: '${_parentExpenses.length} tracked expenses',
-            color: const Color(0xFFDC2626),
+            color: AppColors.scorePoor,
           ),
           const SizedBox(width: 10),
           _StatCard(
             title: 'Coverage Value',
             value: _fmtCurrency(_parentInvestmentValue),
             subtitle: '${_parentInvestments.length} insurance or retirement records',
-            color: const Color(0xFF16A34A),
+            color: AppColors.scoreGood,
           ),
           const SizedBox(width: 10),
           _StatCard(
@@ -713,7 +714,7 @@ class _StatCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: AppColors.borderLight),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -764,7 +765,7 @@ class _InsightListCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -816,7 +817,7 @@ class _ExpenseInsightTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppColors.surfaceHoverLight,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -838,7 +839,7 @@ class _ExpenseInsightTile extends StatelessWidget {
                   subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  style: const TextStyle(fontSize: 11, color: AppColors.slate500),
                 ),
               ],
             ),
@@ -872,7 +873,7 @@ class _BudgetInsightTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppColors.surfaceHoverLight,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -890,7 +891,7 @@ class _BudgetInsightTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   'Month: $month · Spent: $spentAmount',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  style: const TextStyle(fontSize: 11, color: AppColors.slate500),
                 ),
               ],
             ),
@@ -922,7 +923,7 @@ class _InvestmentInsightTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppColors.surfaceHoverLight,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -944,7 +945,7 @@ class _InvestmentInsightTile extends StatelessWidget {
                   subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  style: const TextStyle(fontSize: 11, color: AppColors.slate500),
                 ),
               ],
             ),
@@ -976,7 +977,7 @@ class _PlannerInsightTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppColors.surfaceHoverLight,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -1006,7 +1007,7 @@ class _PlannerInsightTile extends StatelessWidget {
                   '${PlannerItem.typeLabel(item.type)} · $dateLabel',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  style: const TextStyle(fontSize: 11, color: AppColors.slate500),
                 ),
               ],
             ),
@@ -1032,7 +1033,7 @@ class _ErrorState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.error_outline_rounded,
-                color: Color(0xFFDC2626), size: 34),
+                color: AppColors.scorePoor, size: 34),
             const SizedBox(height: 10),
             Text(error, textAlign: TextAlign.center),
             const SizedBox(height: 12),

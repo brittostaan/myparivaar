@@ -129,8 +129,10 @@ class AppIcons {
   
   /// Get icon for expense category
   static IconData getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
+    final cat = category.toLowerCase().split(RegExp(r'\s*[-–—]\s*')).first.trim();
+    switch (cat) {
       case 'food':
+        return food;
       case 'groceries':
         return groceries;
       case 'transport':
@@ -142,16 +144,56 @@ class AppIcons {
         return utilities;
       case 'healthcare':
       case 'health':
+      case 'medical':
         return healthcare;
       case 'entertainment':
         return entertainment;
       case 'gifts':
+      case 'donation':
         return gifts;
       case 'income':
       case 'salary':
         return income;
       case 'education':
+      case 'school':
+      case 'classes':
+      case 'tuition':
         return education;
+      case 'rent':
+      case 'housing':
+      case 'household':
+        return Icons.house;
+      case 'insurance':
+        return Icons.shield;
+      case 'savings':
+        return Icons.savings;
+      case 'investment':
+      case 'investments':
+        return Icons.trending_up;
+      case 'travel':
+      case 'vacation':
+        return Icons.flight;
+      case 'subscriptions':
+        return Icons.autorenew;
+      case 'clothing':
+      case 'clothes':
+      case 'fashion':
+        return Icons.checkroom;
+      case 'fitness':
+      case 'gym':
+        return Icons.fitness_center;
+      case 'pets':
+      case 'pet':
+        return Icons.pets;
+      case 'kids':
+      case 'childcare':
+        return Icons.child_care;
+      case 'personal':
+        return Icons.person;
+      case 'other':
+      case 'others':
+      case 'miscellaneous':
+        return Icons.receipt_long;
       default:
         return AppIcons.category;
     }

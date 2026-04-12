@@ -639,7 +639,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                   // Sidebar
                   Container(
                     width: 256,
-                    color: const Color(0xFFF8FAFC),
+                    color: AppColors.surfaceHoverLight,
                     child: SingleChildScrollView(
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
@@ -1308,7 +1308,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: AppColors.surfaceHoverLight,
               border: Border.all(color: AppColors.grey200),
               borderRadius: BorderRadius.circular(8),
             ),
@@ -2098,7 +2098,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
       },
       {
         'role': 'Admin',
-        'color': Color(0xFFEA580C),
+        'color': AppColors.scoreMedium,
         'icon': Icons.admin_panel_settings_outlined,
         'actions': [
           'Manage households & users',
@@ -2300,7 +2300,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                   color: s.isSuperAdmin
                       ? const Color(0xFFD97706)
                       : s.isAdmin
-                          ? const Color(0xFFEA580C)
+                          ? AppColors.scoreMedium
                           : s.isCustomerService
                               ? const Color(0xFF7C3AED)
                               : s.isReader
@@ -4003,7 +4003,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                         label: 'Outlook Accounts',
                         value: _providerValue('outlook'),
                         icon: Icons.outbox_outlined,
-                        color: const Color(0xFF2563EB),
+                        color: AppColors.activeBlue,
                       ),
                     ),
                     SizedBox(
@@ -4039,7 +4039,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                         label: 'Email Tx Approved',
                         value: _emailTxValue('approved'),
                         icon: Icons.check_circle_outline,
-                        color: const Color(0xFF16A34A),
+                        color: AppColors.scoreGood,
                       ),
                     ),
                   ],
@@ -4139,7 +4139,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                 provider: 'microsoft',
                 title: 'Microsoft (Outlook)',
                 icon: Icons.outbox_outlined,
-                color: const Color(0xFF2563EB),
+                color: AppColors.activeBlue,
                 isConfigured: hasMicrosoft,
                 config: hasMicrosoft ? microsoftConfig.first : null,
               ),
@@ -4513,7 +4513,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
 
     Color healthColor(String? health) {
       switch (health) {
-        case 'healthy': return const Color(0xFF16A34A);
+        case 'healthy': return AppColors.scoreGood;
         case 'stale': return const Color(0xFFF59E0B);
         case 'critical': return Colors.red;
         default: return Colors.grey;
@@ -4522,7 +4522,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
 
     Color tokenColor(String? status) {
       switch (status) {
-        case 'valid': return const Color(0xFF16A34A);
+        case 'valid': return AppColors.scoreGood;
         case 'expiring_soon': return const Color(0xFFF59E0B);
         case 'expired': return Colors.red;
         default: return Colors.grey;
@@ -4578,7 +4578,7 @@ class _AdminCenterScreenState extends State<AdminCenterScreen> {
                 _InsightChip(
                   label: 'Healthy',
                   value: '${insights['healthy_accounts'] ?? 0}',
-                  color: const Color(0xFF16A34A),
+                  color: AppColors.scoreGood,
                 ),
                 _InsightChip(
                   label: 'Stale',
@@ -6227,7 +6227,7 @@ class _MiniTrendCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppColors.surfaceHoverLight,
         border: Border.all(color: AppColors.grey200),
         borderRadius: BorderRadius.circular(6),
       ),

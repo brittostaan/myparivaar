@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class LandingPageScreen extends StatelessWidget {
   const LandingPageScreen({super.key});
@@ -9,7 +10,7 @@ class LandingPageScreen extends StatelessWidget {
     final isMobile = width < 800;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.surfaceHoverLight,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -59,7 +60,7 @@ class LandingPageScreen extends StatelessWidget {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB),
+                      color: AppColors.activeBlue,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Center(
@@ -95,8 +96,8 @@ class LandingPageScreen extends StatelessWidget {
           OutlinedButton(
             onPressed: () => Navigator.pushNamed(context, '/login'),
             style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF2563EB),
-              side: const BorderSide(color: Color(0xFF2563EB)),
+              foregroundColor: AppColors.activeBlue,
+              side: const BorderSide(color: AppColors.activeBlue),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -108,7 +109,7 @@ class LandingPageScreen extends StatelessWidget {
           FilledButton(
             onPressed: () => Navigator.pushNamed(context, '/login'),
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
+              backgroundColor: AppColors.activeBlue,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -152,7 +153,7 @@ class LandingPageScreen extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFEFF6FF), Color(0xFFF8FAFC), Color(0xFFF0F9FF)],
+          colors: [Color(0xFFEFF6FF), AppColors.surfaceHoverLight, Color(0xFFF0F9FF)],
         ),
       ),
       child: Column(
@@ -160,13 +161,13 @@ class LandingPageScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFF2563EB).withOpacity(0.1),
+              color: AppColors.activeBlue.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Text(
               'AI-Powered Family Finance for India',
               style: TextStyle(
-                color: Color(0xFF2563EB),
+                color: AppColors.activeBlue,
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
@@ -207,7 +208,7 @@ class LandingPageScreen extends StatelessWidget {
                 icon: const Icon(Icons.arrow_forward_rounded, size: 18),
                 label: const Text('Start Free'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
+                  backgroundColor: AppColors.activeBlue,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 28,
                     vertical: 16,
@@ -261,7 +262,7 @@ class LandingPageScreen extends StatelessWidget {
     const features = [
       _Feature(
         icon: Icons.account_balance_wallet_outlined,
-        color: Color(0xFF2563EB),
+        color: AppColors.activeBlue,
         title: 'Expense Tracking',
         desc: 'Log and categorise daily expenses manually, via CSV import, or automatically from bank emails. Every rupee accounted for.',
       ),
@@ -285,7 +286,7 @@ class LandingPageScreen extends StatelessWidget {
       ),
       _Feature(
         icon: Icons.bar_chart_outlined,
-        color: Color(0xFFDC2626),
+        color: AppColors.scorePoor,
         title: 'Financial Reports',
         desc: 'Monthly spending breakdowns, category analysis, income vs expense trends, and exportable reports.',
       ),
@@ -338,9 +339,9 @@ class LandingPageScreen extends StatelessWidget {
       width: isMobile ? double.infinity : 350,
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppColors.surfaceHoverLight,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,7 +398,7 @@ class LandingPageScreen extends StatelessWidget {
         horizontal: isMobile ? 24 : 80,
         vertical: 64,
       ),
-      color: const Color(0xFFF8FAFC),
+      color: AppColors.surfaceHoverLight,
       child: Column(
         children: [
           const Text(
@@ -432,7 +433,7 @@ class LandingPageScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,7 +442,7 @@ class LandingPageScreen extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: const Color(0xFF2563EB),
+              color: AppColors.activeBlue,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
@@ -521,18 +522,18 @@ class LandingPageScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    const Color(0xFF2563EB).withOpacity(0.05),
+                    AppColors.activeBlue.withOpacity(0.05),
                     const Color(0xFF7C3AED).withOpacity(0.05),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: AppColors.borderLight),
               ),
               child: Column(
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.shield_outlined, color: Color(0xFF2563EB), size: 20),
+                      const Icon(Icons.shield_outlined, color: AppColors.activeBlue, size: 20),
                       const SizedBox(width: 8),
                       const Expanded(
                         child: Text(
@@ -747,7 +748,7 @@ class LandingPageScreen extends StatelessWidget {
           padding: const EdgeInsets.all(40),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
+              colors: [AppColors.activeBlue, Color(0xFF7C3AED)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -781,7 +782,7 @@ class LandingPageScreen extends StatelessWidget {
                 label: const Text('Create Free Account'),
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF2563EB),
+                  foregroundColor: AppColors.activeBlue,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 28,
                     vertical: 16,

@@ -472,7 +472,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
                         account.isActive ? Icons.check_circle : Icons.warning_amber,
                         size: 12,
                         color: account.isActive
-                            ? const Color(0xFF16A34A)
+                            ? AppColors.scoreGood
                             : const Color(0xFFD97706),
                       ),
                       const SizedBox(width: 4),
@@ -482,7 +482,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: account.isActive
-                              ? const Color(0xFF16A34A)
+                              ? AppColors.scoreGood
                               : const Color(0xFFD97706),
                         ),
                       ),
@@ -967,7 +967,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.check_circle, size: 16, color: Color(0xFF16A34A)),
+                const Icon(Icons.check_circle, size: 16, color: AppColors.scoreGood),
                 const SizedBox(width: 8),
                 Text(
                   'Last Scan: $totalEmails emails, $totalTx transactions found',

@@ -39,7 +39,7 @@ const _priorityMeta = <String, _PriorityMeta>{
   'low': _PriorityMeta('Low', Color(0xFF94A3B8), Icons.arrow_downward),
   'medium': _PriorityMeta('Medium', Color(0xFF3B82F6), Icons.remove),
   'high': _PriorityMeta('High', Color(0xFFF97316), Icons.arrow_upward),
-  'critical': _PriorityMeta('Critical', Color(0xFFDC2626), Icons.priority_high),
+  'critical': _PriorityMeta('Critical', AppColors.scorePoor, Icons.priority_high),
 };
 
 class _StatusMeta {
@@ -223,7 +223,7 @@ class _IdeaBoardScreenState extends State<IdeaBoardScreen> {
     final isPlatformAdmin = user?.isPlatformAdmin == true;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: AppColors.surfaceHoverLight,
       body: SafeArea(
         child: Column(
           children: [
@@ -273,7 +273,7 @@ class _IdeaBoardScreenState extends State<IdeaBoardScreen> {
   Widget _buildSidebar(BuildContext context) {
     return Container(
       width: 256,
-      color: const Color(0xFFF8FAFC),
+      color: AppColors.surfaceHoverLight,
       child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -536,7 +536,7 @@ class _IdeaBoardScreenState extends State<IdeaBoardScreen> {
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
+                      color: AppColors.surfaceHoverLight,
                       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
                     ),
                     child: items.isEmpty
@@ -1017,7 +1017,7 @@ class _IdeaBoardScreenState extends State<IdeaBoardScreen> {
                                 margin: const EdgeInsets.only(bottom: 8),
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF1F5F9),
+                                  color: AppColors.surfaceHoverLight,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
@@ -1259,9 +1259,9 @@ class _TagFieldWidgetState extends State<_TagFieldWidget> {
               value: '_custom_',
               child: Row(
                 children: [
-                  Icon(Icons.add_circle_outline, size: 16, color: Color(0xFF2563EB)),
+                  Icon(Icons.add_circle_outline, size: 16, color: AppColors.activeBlue),
                   SizedBox(width: 6),
-                  Text('Custom tag…', style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.w500)),
+                  Text('Custom tag…', style: TextStyle(color: AppColors.activeBlue, fontWeight: FontWeight.w500)),
                 ],
               ),
             ),

@@ -178,4 +178,63 @@ class AppTextStyles {
         color: color,
         letterSpacing: 0.1,
       );
+
+  /// Screen title (e.g., "Expenses", "Budget")
+  static TextStyle screenTitle(Color color) => TextStyle(
+        fontFamily: fontFamily,
+        fontSize: 22,
+        fontWeight: FontWeight.w800,
+        color: color,
+        letterSpacing: -0.3,
+      );
+
+  /// Section title within a screen
+  static TextStyle sectionTitle(Color color) => TextStyle(
+        fontFamily: fontFamily,
+        fontSize: 18,
+        fontWeight: bold,
+        color: color,
+      );
+
+  /// Large metric/stat value (e.g., dashboard score)
+  static TextStyle metricValue(Color color) => TextStyle(
+        fontFamily: fontFamily,
+        fontSize: 36,
+        fontWeight: FontWeight.w900,
+        color: color,
+        letterSpacing: -0.5,
+      );
+
+  /// Filter chip label text
+  static TextStyle filterLabel(Color color) => TextStyle(
+        fontFamily: fontFamily,
+        fontSize: 12,
+        fontWeight: semiBold,
+        color: color,
+      );
+
+  /// Status badge text
+  static TextStyle statusBadge(Color color) => TextStyle(
+        fontFamily: fontFamily,
+        fontSize: 11,
+        fontWeight: bold,
+        color: color,
+      );
+
+  /// Stat card value
+  static TextStyle statValue(Color color) => TextStyle(
+        fontFamily: fontFamily,
+        fontSize: 24,
+        fontWeight: FontWeight.w800,
+        color: color,
+        letterSpacing: -0.3,
+      );
+
+  /// Small muted text (amounts, secondary info)
+  static TextStyle caption(Color color) => TextStyle(
+        fontFamily: fontFamily,
+        fontSize: 11,
+        fontWeight: medium,
+        color: color,
+      );
 }

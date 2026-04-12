@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/expense.dart';
 import '../utils/category_icons.dart';
+import '../utils/category_emoji.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
 
@@ -139,7 +140,7 @@ class RecentActivityList extends StatelessWidget {
                     padding: const EdgeInsets.all(12),
                     child: Row(
                       children: [
-                        // Category Icon
+                        // Category Emoji
                         Container(
                           width: 48,
                           height: 48,
@@ -147,10 +148,11 @@ class RecentActivityList extends StatelessWidget {
                             color: CategoryIcons.getCategoryColor(expense.category),
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(
-                            CategoryIcons.getCategoryIcon(expense.category),
-                            color: CategoryIcons.getCategoryIconColor(expense.category),
-                            size: 24,
+                          child: Center(
+                            child: Text(
+                              CategoryEmoji.getCategoryEmoji(expense.category, description: expense.description),
+                              style: const TextStyle(fontSize: 24),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 16),

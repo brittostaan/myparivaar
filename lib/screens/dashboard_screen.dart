@@ -22,6 +22,7 @@ import '../widgets/quick_actions_grid.dart';
 import '../widgets/recent_activity_list.dart';
 import '../theme/app_icons.dart';
 import '../theme/app_colors.dart';
+import '../utils/category_emoji.dart';
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Family Financial Command Center â€” Unified Dashboard
@@ -225,7 +226,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final abs = amount.abs();
     final formatted = abs.toStringAsFixed(0).replaceAllMapped(
         RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
-    return amount < 0 ? '-â‚¹$formatted' : 'â‚¹$formatted';
+    return amount < 0 ? '-₹$formatted' : '₹$formatted';
   }
 
   String _capitalize(String s) =>
@@ -367,9 +368,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Color _healthScoreColor(int score) {
-    if (score >= 75) return const Color(0xFF16A34A);
-    if (score >= 50) return const Color(0xFFEA580C);
-    return const Color(0xFFDC2626);
+    if (score >= 75) return AppColors.scoreGood;
+    if (score >= 50) return AppColors.scoreMedium;
+    return AppColors.scorePoor;
   }
 
   String _healthScoreLabel(int score) {
@@ -434,7 +435,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (_monthlyIncome > 0 && _savingsRate < 20) {
       tips.add(_SmartTip(
         icon: Icons.savings_outlined,
-        color: const Color(0xFFEA580C),
+        color: AppColors.scoreMedium,
         title: 'Boost Your Savings',
         message: 'You\'re saving ${_savingsRate.toStringAsFixed(0)}% of income. The 50/30/20 rule recommends saving at least 20%.',
         priority: 1,
@@ -444,7 +445,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (_emergencyFundMonths < 6 && _monthlySpend > 0) {
       tips.add(_SmartTip(
         icon: Icons.shield_outlined,
-        color: const Color(0xFFDC2626),
+        color: AppColors.scorePoor,
         title: 'Emergency Fund Gap',
         message: 'Your emergency fund covers ${_emergencyFundMonths.toStringAsFixed(1)} months. Aim for 6 months of expenses (${_formatCurrency(_monthlySpend * 6)}).',
         priority: 2,
@@ -454,7 +455,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (_overdueBillsCount > 0) {
       tips.add(_SmartTip(
         icon: Icons.warning_amber_rounded,
-        color: const Color(0xFFDC2626),
+        color: AppColors.scorePoor,
         title: 'Overdue Bills',
         message: 'You have $_overdueBillsCount overdue bill${_overdueBillsCount > 1 ? 's' : ''} totaling ${_formatCurrency(_overdueBillsTotal)}. Late payments hurt your financial health.',
         priority: 0,
@@ -467,7 +468,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           .reduce((a, b) => a.usagePercent > b.usagePercent ? a : b);
       tips.add(_SmartTip(
         icon: Icons.pie_chart_outline,
-        color: const Color(0xFFEA580C),
+        color: AppColors.scoreMedium,
         title: 'Budget Alert',
         message: '${_capitalize(worstBudget.category)} is at ${worstBudget.usagePercent.toStringAsFixed(0)}% â€” consider reallocating or reducing spend.',
         priority: 1,
@@ -477,7 +478,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (_investments.isNotEmpty && _totalInvestmentReturns < 0) {
       tips.add(_SmartTip(
         icon: Icons.trending_down,
-        color: const Color(0xFFDC2626),
+        color: AppColors.scorePoor,
         title: 'Portfolio Check',
         message: 'Your investments show ${_formatCurrency(_totalInvestmentReturns)} in losses. Review underperforming assets.',
         priority: 3,
@@ -498,7 +499,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (insuranceBills.isEmpty) {
       tips.add(_SmartTip(
         icon: Icons.health_and_safety_outlined,
-        color: const Color(0xFF2563EB),
+        color: AppColors.activeBlue,
         title: 'Insurance Coverage',
         message: 'No insurance premiums tracked. Term life & health insurance are essential for family financial protection.',
         priority: 5,
@@ -509,7 +510,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final increase = ((_monthlySpend / _previousMonthSpend - 1) * 100).toStringAsFixed(0);
       tips.add(_SmartTip(
         icon: Icons.trending_up,
-        color: const Color(0xFFEA580C),
+        color: AppColors.scoreMedium,
         title: 'Spending Spike',
         message: 'This month\'s spending is $increase% higher than last month. Review recent transactions for optimization.',
         priority: 2,
@@ -528,7 +529,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     for (final bill in _allBills.where((b) => b.isOverdue)) {
       alerts.add(_AlertItem(
         icon: Icons.error_outline,
-        color: const Color(0xFFDC2626),
+        color: AppColors.scorePoor,
         bgColor: const Color(0xFFFEE2E2),
         text: '${bill.name} overdue',
         priority: 0,
@@ -538,7 +539,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     for (final bill in _upcomingBills.where((b) => b.daysUntilDue <= 3)) {
       alerts.add(_AlertItem(
         icon: Icons.payment,
-        color: const Color(0xFFEA580C),
+        color: AppColors.scoreMedium,
         bgColor: const Color(0xFFFFEDD5),
         text: '${bill.name} due ${bill.daysUntilDue == 0 ? "today" : "in ${bill.daysUntilDue}d"}',
         priority: 1,
@@ -548,7 +549,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     for (final b in _budgets.where((b) => b.usagePercent >= 90)) {
       alerts.add(_AlertItem(
         icon: Icons.pie_chart,
-        color: const Color(0xFFEA580C),
+        color: AppColors.scoreMedium,
         bgColor: const Color(0xFFFFEDD5),
         text: '${_capitalize(b.category)} budget ${b.usagePercent.toStringAsFixed(0)}%',
         priority: 2,
@@ -583,12 +584,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       entries.add(_TimelineEntry(
         date: bill.dueDate,
         icon: Bill.iconForCategory(bill.category),
-        color: const Color(0xFFDC2626),
+        color: AppColors.scorePoor,
         bgColor: const Color(0xFFFEE2E2),
         title: bill.name,
         subtitle: '${_formatCurrency(bill.amount)} â€¢ ${Bill.categoryLabel(bill.category)}',
         tag: 'Bill',
-        tagColor: const Color(0xFFDC2626),
+        tagColor: AppColors.scorePoor,
       ));
     }
 
@@ -988,7 +989,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Expanded(child: _webStatusCard(
             title: 'Bills & Commitments',
             icon: Icons.receipt_long_outlined,
-            gradient: const [Color(0xFFEF4444), Color(0xFFDC2626)],
+            gradient: const [Color(0xFFEF4444), AppColors.scorePoor],
             isDark: isDark,
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(_formatCurrency(_upcomingBillsTotal),
@@ -1001,7 +1002,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(999)),
-                  child: Text('âš  $_overdueBillsCount overdue',
+                  child: Text('⚠ $_overdueBillsCount overdue',
                       style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
                 ),
               ],
@@ -1014,7 +1015,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Expanded(child: _webStatusCard(
             title: 'Savings Goals',
             icon: Icons.flag_outlined,
-            gradient: const [Color(0xFF22C55E), Color(0xFF16A34A)],
+            gradient: const [Color(0xFF22C55E), AppColors.scoreGood],
             isDark: isDark,
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${_savingsGoalProgress.toStringAsFixed(0)}%',
@@ -1185,7 +1186,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   share: grandTotal > 0 ? e.value.value / grandTotal : 0,
                                   color: colors[e.key % colors.length],
                                 )).toList(),
-                                trackColor: isDark ? AppColors.grey800 : const Color(0xFFF1F5F9),
+                                trackColor: isDark ? AppColors.grey800 : AppColors.surfaceHoverLight,
                                 strokeWidth: 18,
                               ),
                             ),
@@ -1297,7 +1298,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 2),
           Text(daysLabel, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
-              color: days <= 1 ? const Color(0xFFDC2626) : days <= 3 ? const Color(0xFFEA580C) : Colors.grey[500])),
+              color: days <= 1 ? AppColors.scorePoor : days <= 3 ? AppColors.scoreMedium : Colors.grey[500])),
         ]),
       ]),
     );
@@ -1363,7 +1364,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Icon(
                         trend.changePercent > 0 ? Icons.trending_up : Icons.trending_down,
                         size: 14,
-                        color: trend.changePercent > 0 ? const Color(0xFFDC2626) : const Color(0xFF16A34A)),
+                        color: trend.changePercent > 0 ? AppColors.scorePoor : AppColors.scoreGood),
                     ),
                     const SizedBox(width: 10),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1383,7 +1384,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(children: [
-                const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFEA580C)),
+                const Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.scoreMedium),
                 const SizedBox(width: 6),
                 const Text('Budget Risk Alert', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
               ]),
@@ -1400,7 +1401,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(color: const Color(0xFFFEE2E2), borderRadius: BorderRadius.circular(999)),
                         child: Text('+${_formatCurrency(proj.overshoot)}',
-                            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFFDC2626))),
+                            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.scorePoor)),
                       ),
                     ]),
                     const SizedBox(height: 4),
@@ -1409,7 +1410,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: LinearProgressIndicator(
                         value: (proj.projected / proj.budgeted).clamp(0, 1.5),
                         minHeight: 6,
-                        backgroundColor: isDark ? AppColors.grey800 : const Color(0xFFF1F5F9),
+                        backgroundColor: isDark ? AppColors.grey800 : AppColors.surfaceHoverLight,
                         color: const Color(0xFFEF4444),
                       ),
                     ),
@@ -1514,7 +1515,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Container(
                   width: 32, height: 32,
                   decoration: BoxDecoration(color: const Color(0xFFDBEAFE), borderRadius: BorderRadius.circular(8)),
-                  child: const Icon(Icons.child_care, size: 18, color: Color(0xFF2563EB)),
+                  child: const Icon(Icons.child_care, size: 18, color: AppColors.activeBlue),
                 ),
                 const SizedBox(width: 10),
                 const Text('Kids Corner', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
@@ -1525,7 +1526,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ]),
               const SizedBox(height: 14),
-              _familyMetricRow('Education & School', _formatCurrency(_kidsSpendingThisMonth), const Color(0xFF2563EB)),
+              _familyMetricRow('Education & School', _formatCurrency(_kidsSpendingThisMonth), AppColors.activeBlue),
               const SizedBox(height: 8),
               _familyMetricRow('Money Sent', _formatCurrency(_kidMoneySentTotal), const Color(0xFF0D9488)),
               const SizedBox(height: 8),
@@ -1566,7 +1567,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ]),
               const SizedBox(height: 14),
-              _familyMetricRow('Health & Medical', _formatCurrency(_parentHealthSpend), const Color(0xFFDC2626)),
+              _familyMetricRow('Health & Medical', _formatCurrency(_parentHealthSpend), AppColors.scorePoor),
               const SizedBox(height: 8),
               _familyMetricRow('Insurance Premiums', _formatCurrency(_parentInsuranceSpend), const Color(0xFF059669)),
               const SizedBox(height: 8),
@@ -1579,7 +1580,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     color: const Color(0xFFFEE2E2),
                     borderRadius: BorderRadius.circular(8)),
                   child: Row(children: [
-                    const Icon(Icons.health_and_safety, size: 14, color: Color(0xFFDC2626)),
+                    const Icon(Icons.health_and_safety, size: 14, color: AppColors.scorePoor),
                     const SizedBox(width: 8),
                     Expanded(child: Text(_nextParentReminder!,
                         style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF991B1B)))),
@@ -1690,13 +1691,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
               return Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: isDark ? AppColors.grey800 : const Color(0xFFF1F5F9))),
+                  border: Border(bottom: BorderSide(color: isDark ? AppColors.grey800 : AppColors.surfaceHoverLight)),
                 ),
                 child: Row(children: [
                   Container(
                     width: 36, height: 36,
                     decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
-                    child: Icon(AppIcons.getCategoryIcon(expense.category), size: 18, color: iconColor),
+                    child: Center(
+                      child: Text(
+                        CategoryEmoji.getCategoryEmoji(expense.category, description: expense.description),
+                        style: const TextStyle(fontSize: 18),
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1736,7 +1742,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+        border: Border.all(color: isDark ? AppColors.grey800 : AppColors.borderLight),
         boxShadow: isDark ? null : const [BoxShadow(color: Color(0x0A0F172A), blurRadius: 16, offset: Offset(0, 6))],
       ),
       child: child,
@@ -1771,10 +1777,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     switch (type) {
       case PlannerItemType.birthday:    return (const Color(0xFFFCE7F3), const Color(0xFFDB2777));
       case PlannerItemType.anniversary: return (const Color(0xFFF3E8FF), const Color(0xFF9333EA));
-      case PlannerItemType.vacation:    return (const Color(0xFFDBEAFE), const Color(0xFF2563EB));
-      case PlannerItemType.event:       return (const Color(0xFFFEE2E2), const Color(0xFFDC2626));
-      case PlannerItemType.reminder:    return (const Color(0xFFFFEDD5), const Color(0xFFEA580C));
-      case PlannerItemType.task:        return (const Color(0xFFDCFCE7), const Color(0xFF16A34A));
+      case PlannerItemType.vacation:    return (const Color(0xFFDBEAFE), AppColors.activeBlue);
+      case PlannerItemType.event:       return (const Color(0xFFFEE2E2), AppColors.scorePoor);
+      case PlannerItemType.reminder:    return (const Color(0xFFFFEDD5), AppColors.scoreMedium);
+      case PlannerItemType.task:        return (const Color(0xFFDCFCE7), AppColors.scoreGood);
     }
   }
 

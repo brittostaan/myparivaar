@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class TagWrap extends StatelessWidget {
   final List<String> tags;
@@ -26,7 +27,7 @@ class TagWrap extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: AppColors.surfaceHoverLight,
               borderRadius: BorderRadius.circular(99),
             ),
             child: Text(
@@ -42,7 +43,7 @@ class TagWrap extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFFE2E8F0),
+              color: AppColors.borderLight,
               borderRadius: BorderRadius.circular(99),
             ),
             child: Text(

@@ -124,6 +124,59 @@ class AppColors {
   /// Secondary text color for dark mode
   static const Color textSecondaryDark = Color(0xFFB0B0B0);
 
+  // ── Border & Surface Variants ────────────────────────────────────────────
+
+  /// Light border color (used in cards, dividers)
+  static const Color borderLight = Color(0xFFE2E8F0);
+
+  /// Dark border color
+  static const Color borderDark = Color(0xFF334155);
+
+  /// Subtle surface for hover states, card backgrounds
+  static const Color surfaceHoverLight = Color(0xFFF8FAFC);
+
+  /// Progress bar background
+  static const Color progressBgLight = Color(0xFFEEF2F6);
+
+  /// Progress bar background dark
+  static const Color progressBgDark = Color(0xFF334155);
+
+  /// Active blue (selected tabs, active filters)
+  static const Color activeBlue = Color(0xFF2563EB);
+
+  /// Muted text / secondary icon color
+  static const Color slate500 = Color(0xFF64748B);
+
+  /// AI card gradient
+  static const Color aiCardGradientStart = Color(0xFFF3E5F5);
+  static const Color aiCardGradientEnd = Color(0xFFE8EAF6);
+
+  /// Calendar/date picker accent
+  static const Color calendarAccent = Color(0xFF7C4DFF);
+
+  // ── Chart Colors ────────────────────────────────────────────────────────────
+
+  /// Standard chart color palette (10 colors)
+  static const List<Color> chartPalette = [
+    Color(0xFF258CF4),
+    Color(0xFF4CAF50),
+    Color(0xFFFF9800),
+    Color(0xFFF44336),
+    Color(0xFF9C27B0),
+    Color(0xFF00BCD4),
+    Color(0xFFFF5722),
+    Color(0xFF3F51B5),
+    Color(0xFF8BC34A),
+    Color(0xFFE91E63),
+  ];
+
+  // ── Score Colors ────────────────────────────────────────────────────────────
+
+  /// Score colors for health/financial scores
+  static const Color scoreGood = Color(0xFF16A34A);
+  static const Color scoreMedium = Color(0xFFEA580C);
+  static const Color scorePoor = Color(0xFFDC2626);
+
   // ── Category Colors ─────────────────────────────────────────────────────────
   
   /// Category color palette for expenses
@@ -176,6 +229,74 @@ class AppColors {
       background: Color(0xFFC8E6C9),
       icon: Color(0xFF1B5E20),
     ),
+    'education': CategoryColorPair(
+      background: Color(0xFFE3F2FD),
+      icon: Color(0xFF1565C0),
+    ),
+    'rent': CategoryColorPair(
+      background: Color(0xFFFFF3E0),
+      icon: Color(0xFFE65100),
+    ),
+    'housing': CategoryColorPair(
+      background: Color(0xFFFFF3E0),
+      icon: Color(0xFFE65100),
+    ),
+    'household': CategoryColorPair(
+      background: Color(0xFFFFF3E0),
+      icon: Color(0xFFE65100),
+    ),
+    'insurance': CategoryColorPair(
+      background: Color(0xFFE8EAF6),
+      icon: Color(0xFF283593),
+    ),
+    'savings': CategoryColorPair(
+      background: Color(0xFFE0F2F1),
+      icon: Color(0xFF00695C),
+    ),
+    'investment': CategoryColorPair(
+      background: Color(0xFFE0F2F1),
+      icon: Color(0xFF00695C),
+    ),
+    'investments': CategoryColorPair(
+      background: Color(0xFFE0F2F1),
+      icon: Color(0xFF00695C),
+    ),
+    'travel': CategoryColorPair(
+      background: Color(0xFFE1F5FE),
+      icon: Color(0xFF01579B),
+    ),
+    'subscriptions': CategoryColorPair(
+      background: Color(0xFFF3E5F5),
+      icon: Color(0xFF6A1B9A),
+    ),
+    'other': CategoryColorPair(
+      background: Color(0xFFF5F5F5),
+      icon: Color(0xFF616161),
+    ),
+    'others': CategoryColorPair(
+      background: Color(0xFFF5F5F5),
+      icon: Color(0xFF616161),
+    ),
+    'personal': CategoryColorPair(
+      background: Color(0xFFE8EAF6),
+      icon: Color(0xFF3949AB),
+    ),
+    'kids': CategoryColorPair(
+      background: Color(0xFFFCE4EC),
+      icon: Color(0xFFC62828),
+    ),
+    'classes': CategoryColorPair(
+      background: Color(0xFFE3F2FD),
+      icon: Color(0xFF1565C0),
+    ),
+    'fees': CategoryColorPair(
+      background: Color(0xFFEDE7F6),
+      icon: Color(0xFF4527A0),
+    ),
+    'given': CategoryColorPair(
+      background: Color(0xFFE0F7FA),
+      icon: Color(0xFF00838F),
+    ),
   };
   
   /// Default category color for uncategorized items
@@ -186,13 +307,15 @@ class AppColors {
   
   /// Get category background color by category name
   static Color getCategoryColor(String category) {
-    final colorPair = categoryColors[category.toLowerCase()];
+    final cat = category.toLowerCase().split(RegExp(r'\s*[-–—]\s*')).first.trim();
+    final colorPair = categoryColors[cat];
     return colorPair?.background ?? defaultCategoryColor.background;
   }
   
   /// Get category icon color by category name
   static Color getCategoryIconColor(String category) {
-    final colorPair = categoryColors[category.toLowerCase()];
+    final cat = category.toLowerCase().split(RegExp(r'\s*[-–—]\s*')).first.trim();
+    final colorPair = categoryColors[cat];
     return colorPair?.icon ?? defaultCategoryColor.icon;
   }
 }

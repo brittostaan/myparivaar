@@ -565,7 +565,7 @@ class _KeyContactsScreenState extends State<KeyContactsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.surfaceHoverLight,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -653,7 +653,7 @@ class _KeyContactsScreenState extends State<KeyContactsScreen> {
                 ],
               ),
             ),
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+            const Divider(height: 1, color: AppColors.borderLight),
 
             // ── Content ────────────────────────────────────────────
             Expanded(

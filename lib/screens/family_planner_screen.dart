@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/planner_item.dart';
 import '../services/auth_service.dart';
 import '../services/family_planner_service.dart';
+import '../theme/app_colors.dart';
 
 class FamilyPlannerScreen extends StatefulWidget {
   const FamilyPlannerScreen({super.key});
@@ -166,7 +167,7 @@ class _FamilyPlannerScreenState extends State<FamilyPlannerScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
+            style: TextButton.styleFrom(foregroundColor: AppColors.scorePoor),
             child: const Text('Delete'),
           ),
         ],
@@ -266,13 +267,13 @@ class _FamilyPlannerScreenState extends State<FamilyPlannerScreen> {
     final vacations = _items.where((i) => i.type == PlannerItemType.vacation).length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.surfaceHoverLight,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+            const Divider(height: 1, color: AppColors.borderLight),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
@@ -386,23 +387,23 @@ class _FamilyPlannerScreenState extends State<FamilyPlannerScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFF2563EB).withAlpha(15) : Colors.transparent,
+          color: active ? AppColors.activeBlue.withAlpha(15) : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
           border: active
-              ? Border(bottom: BorderSide(color: const Color(0xFF2563EB), width: 2))
+              ? Border(bottom: BorderSide(color: AppColors.activeBlue, width: 2))
               : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 15, color: active ? const Color(0xFF2563EB) : Colors.grey[500]),
+            Icon(icon, size: 15, color: active ? AppColors.activeBlue : Colors.grey[500]),
             const SizedBox(width: 5),
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                color: active ? const Color(0xFF2563EB) : Colors.grey[600],
+                color: active ? AppColors.activeBlue : Colors.grey[600],
               ),
             ),
           ],
@@ -422,7 +423,7 @@ class _FamilyPlannerScreenState extends State<FamilyPlannerScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -458,9 +459,9 @@ class _FamilyPlannerScreenState extends State<FamilyPlannerScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
+          color: AppColors.surfaceHoverLight,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: AppColors.borderLight),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -477,7 +478,7 @@ class _FamilyPlannerScreenState extends State<FamilyPlannerScreen> {
             Text(
               label,
               style: const TextStyle(
-                color: Color(0xFF64748B),
+                color: AppColors.slate500,
                 fontSize: 11,
               ),
             ),
@@ -493,7 +494,7 @@ class _FamilyPlannerScreenState extends State<FamilyPlannerScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -603,7 +604,7 @@ class _FamilyPlannerScreenState extends State<FamilyPlannerScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -967,7 +968,7 @@ class _PlannerItemDialogState extends State<_PlannerItemDialog> {
                   child: Text(
                     _error!,
                     style: const TextStyle(
-                      color: Color(0xFFDC2626),
+                      color: AppColors.scorePoor,
                       fontSize: 12,
                     ),
                   ),
@@ -1003,7 +1004,7 @@ class _EmptyState extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: AppColors.borderLight),
         ),
         child: const Column(
           mainAxisSize: MainAxisSize.min,
@@ -1021,7 +1022,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               'Add birthdays, vacations, and events so everyone in the family can stay aligned.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
+              style: TextStyle(color: AppColors.slate500, fontSize: 12),
             ),
           ],
         ),
@@ -1045,7 +1046,7 @@ class _ErrorState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.error_outline_rounded,
-                size: 32, color: Color(0xFFDC2626)),
+                size: 32, color: AppColors.scorePoor),
             const SizedBox(height: 10),
             Text(error, textAlign: TextAlign.center),
             const SizedBox(height: 12),

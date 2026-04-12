@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 /// Reusable legal page shell for Privacy Policy and Terms of Service.
 class LegalPageScreen extends StatelessWidget {
@@ -36,7 +37,7 @@ class LegalPageScreen extends StatelessWidget {
     final isMobile = width < 800;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F1923) : const Color(0xFFF8FAFC),
+      backgroundColor: isDark ? const Color(0xFF0F1923) : AppColors.surfaceHoverLight,
       body: SelectionArea(
         child: SingleChildScrollView(
           child: Column(
@@ -121,7 +122,7 @@ class LegalPageScreen extends StatelessWidget {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB),
+                      color: AppColors.activeBlue,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Center(
@@ -157,8 +158,8 @@ class LegalPageScreen extends StatelessWidget {
           OutlinedButton(
             onPressed: () => Navigator.pushNamed(context, '/login'),
             style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF2563EB),
-              side: const BorderSide(color: Color(0xFF2563EB)),
+              foregroundColor: AppColors.activeBlue,
+              side: const BorderSide(color: AppColors.activeBlue),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -170,7 +171,7 @@ class LegalPageScreen extends StatelessWidget {
           FilledButton(
             onPressed: () => Navigator.pushNamed(context, '/login'),
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
+              backgroundColor: AppColors.activeBlue,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),

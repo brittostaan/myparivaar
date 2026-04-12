@@ -9,6 +9,7 @@ import '../services/auth_service.dart';
 import '../services/expense_service.dart';
 // app_bottom_navigation_bar removed (mobile-only)
 import 'global_header_actions.dart';
+import '../theme/app_colors.dart';
 
 /// A shell widget that wraps screens with bottom navigation.
 ///
@@ -291,7 +292,7 @@ class _NavigationShellState extends State<NavigationShell> {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: AppColors.surfaceHoverLight,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
@@ -415,7 +416,7 @@ class _NavigationShellState extends State<NavigationShell> {
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(right: BorderSide(color: Color(0xFFE2E8F0))),
+        border: Border(right: BorderSide(color: AppColors.borderLight)),
       ),
       child: Column(
         children: [
@@ -595,7 +596,7 @@ class _NavigationShellState extends State<NavigationShell> {
     final theme = Theme.of(context);
     final authService = context.watch<AuthService>();
     final primary = theme.colorScheme.primary;
-    final border = const Color(0xFFE2E8F0);
+    final border = AppColors.borderLight;
     final displayName = authService.currentUser?.displayName ??
         authService.currentUser?.email ??
         'User';
@@ -617,7 +618,7 @@ class _NavigationShellState extends State<NavigationShell> {
         children: [
           if (!showLabels && isDesktop) ...[
             Material(
-              color: const Color(0xFFF8FAFC),
+              color: AppColors.surfaceHoverLight,
               borderRadius: BorderRadius.circular(12),
               child: IconButton(
                 tooltip: 'Expand navigation',
@@ -633,9 +634,9 @@ class _NavigationShellState extends State<NavigationShell> {
                 Container(
                   height: 40,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
+                    color: AppColors.surfaceHoverLight,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    border: Border.all(color: AppColors.borderLight),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Row(
@@ -683,7 +684,7 @@ class _NavigationShellState extends State<NavigationShell> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      border: Border.all(color: AppColors.borderLight),
                       boxShadow: const [
                         BoxShadow(
                           color: Color(0x14000000),

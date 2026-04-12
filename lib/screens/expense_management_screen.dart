@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
@@ -20,6 +20,7 @@ import '../widgets/tag_input_section.dart';
 import '../widgets/tag_wrap.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../utils/category_emoji.dart';
 import '../utils/tag_utils.dart';
 import '../services/ai_service.dart';
 
@@ -213,7 +214,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   }
 
   /// Parse .xlsx bytes into structured expense rows (description, category, date, amount).
-  /// Handles: DD-MM-YYYY dates, â‚¹-prefixed amounts, Excel date serials.
+  /// Handles: DD-MM-YYYY dates, ₹-prefixed amounts, Excel date serials.
   static List<_ExpenseEditableRow> _parseExpenseExcel(Uint8List bytes) {
     final archive = ZipDecoder().decodeBytes(bytes);
 
@@ -315,8 +316,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       final rawDate = dateCol >= 0 && dateCol < vals.length ? vals[dateCol].trim() : '';
       final rawAmt = amtCol >= 0 && amtCol < vals.length ? vals[amtCol].trim() : '';
 
-      // Parse amount: strip â‚¹, commas, spaces
-      final cleanAmt = rawAmt.replaceAll(RegExp(r'[â‚¹,\s]'), '');
+      // Parse amount: strip ₹, commas, spaces
+      final cleanAmt = rawAmt.replaceAll(RegExp(r'[₹,\s]'), '');
       final amount = double.tryParse(cleanAmt);
 
       // Parse date: handle DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD, Excel serial
@@ -694,7 +695,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   }
 
   String _formatCurrency(double amount) {
-    return 'â‚¹${amount.toStringAsFixed(2)}';
+    return '₹${amount.toStringAsFixed(2)}';
   }
 
   String _formatDate(DateTime date) {
@@ -1203,7 +1204,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? const Color(0xFF333333) : const Color(0xFFE2E8F0)),
+        border: Border.all(color: isDark ? const Color(0xFF333333) : AppColors.borderLight),
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -1433,20 +1434,20 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
     // Build all 14 cards and distribute into 2 columns
     final allCards = <Widget>[
-      _aiCard('ðŸ’µ', 'Budget vs Expense', '${_fmtCurrency(totalSpend)} / ${_fmtCurrency(totalBudget)} spent (${usagePct.toStringAsFixed(0)}%)', withinBudget ? Colors.green : Colors.red, withinBudget ? 'On track' : 'Over budget'),
-      _aiCard('ðŸ“Š', 'Over Budget', overBudgetCount > 0 ? '$overBudgetCount categor${overBudgetCount == 1 ? 'y' : 'ies'} over budget' : 'All within budget!', overBudgetCount > 0 ? Colors.red : Colors.green, '$overBudgetCount'),
-      _aiCard('ðŸ’§', 'Spend Leakage', leakageCount > 0 ? '$leakageCount spending leak${leakageCount == 1 ? '' : 's'} detected' : 'No spending leaks detected! Your finances look healthy.', leakageCount > 0 ? Colors.pink : Colors.green, leakageCount > 0 ? 'Review' : 'Healthy'),
-      _aiCard('ðŸ’°', 'Projected Expense', 'â‚¹${projectedTotal.toStringAsFixed(0)} projected this month', Colors.green, 'â‚¹${dailyRate.toStringAsFixed(0)}/day'),
-      _aiCard('ðŸ””', 'Subscription Drain', currentMonthExpenses.isEmpty ? 'Connect email to track subscriptions' : '${catCount.length} active spending categories detected', Colors.red, 'Track recurring'),
-      _aiCard('âš¡', 'Impulse Spend', impulseCount > 0 ? '$impulseCount impulse spend${impulseCount == 1 ? '' : 's'} detected this month' : 'No impulse spending detected!', Colors.orange, impulseCount > 0 ? 'Review spending' : 'Great control!'),
-      _aiCard('ðŸ”', 'Silent Expenses', smallExpenses.isNotEmpty ? '${smallExpenses.length} small spends totaling â‚¹${smallTotal.toStringAsFixed(0)}' : 'No silent expenses detected', Colors.indigo, 'Under â‚¹200 each'),
-      _aiCard('ðŸ“ˆ', 'Lifestyle Creep', creepPct.abs() > 5 ? 'Spending ${creepPct > 0 ? 'up' : 'down'} ${creepPct.abs().toStringAsFixed(0)}% vs last quarter' : 'Spending stable vs last quarter', creepPct > 10 ? Colors.red : Colors.teal, 'Quarter comparison'),
-      _aiCard('ðŸŽ¯', 'Budget Drift', driftingCat != null ? '$driftingCat driftingâ€”${driftPct.toStringAsFixed(0)}% used with ${(100 - monthPct).toStringAsFixed(0)}% of month left' : 'All categories on track', Colors.amber, 'Budget pace'),
-      _aiCard('âš ï¸', 'Category Overshoot', overshootCat != null ? '$overshootCat spend up â‚¹${overshootAmt.toStringAsFixed(0)} vs last month' : 'No unusual category spikes', overshootCat != null ? Colors.deepOrange : Colors.green, 'Category watch'),
-      _aiCard('ðŸ“Š', 'Spend Volatility', volatilityPct.abs() > 20 ? 'Weekend spending ${volatilityPct > 0 ? '${volatilityPct.toStringAsFixed(0)}% higher' : '${volatilityPct.abs().toStringAsFixed(0)}% lower'} than weekdays' : 'Spending pattern is stable', Colors.purple, 'Daily patterns'),
-      _aiCard('ðŸ’¡', 'Smart Saving', totalBudget > 0 && totalSpend < totalBudget ? 'Potential to save â‚¹${(totalBudget - totalSpend).toStringAsFixed(0)} this month' : 'Set budgets to unlock saving tips', Colors.blue, 'Opportunity'),
-      _aiCard('âœ…', 'Good Spend Ratio', '${goodRatio.toStringAsFixed(0)}% of spending on essentials & goals', goodRatio >= 70 ? Colors.green : Colors.orange, goodRatio >= 70 ? 'Healthy!' : 'Could improve'),
-      _aiCard('ðŸ›¡ï¸', 'Avoided Spend', avoidedCount > 0 ? 'You avoided $avoidedCount impulse spend${avoidedCount == 1 ? '' : 's'} vs last month' : prevImpulse == 0 ? 'Clean record both months!' : '${impulseCount - prevImpulse} more impulse spends than last month', avoidedCount > 0 ? Colors.green : Colors.grey, 'Habit tracking'),
+      _aiCard('💵', 'Budget vs Expense', '${_fmtCurrency(totalSpend)} / ${_fmtCurrency(totalBudget)} spent (${usagePct.toStringAsFixed(0)}%)', withinBudget ? Colors.green : Colors.red, withinBudget ? 'On track' : 'Over budget'),
+      _aiCard('📊', 'Over Budget', overBudgetCount > 0 ? '$overBudgetCount categor${overBudgetCount == 1 ? 'y' : 'ies'} over budget' : 'All within budget!', overBudgetCount > 0 ? Colors.red : Colors.green, '$overBudgetCount'),
+      _aiCard('💧', 'Spend Leakage', leakageCount > 0 ? '$leakageCount spending leak${leakageCount == 1 ? '' : 's'} detected' : 'No spending leaks detected! Your finances look healthy.', leakageCount > 0 ? Colors.pink : Colors.green, leakageCount > 0 ? 'Review' : 'Healthy'),
+      _aiCard('💰', 'Projected Expense', '₹${projectedTotal.toStringAsFixed(0)} projected this month', Colors.green, '₹${dailyRate.toStringAsFixed(0)}/day'),
+      _aiCard('🔔', 'Subscription Drain', currentMonthExpenses.isEmpty ? 'Connect email to track subscriptions' : '${catCount.length} active spending categories detected', Colors.red, 'Track recurring'),
+      _aiCard('⚡', 'Impulse Spend', impulseCount > 0 ? '$impulseCount impulse spend${impulseCount == 1 ? '' : 's'} detected this month' : 'No impulse spending detected!', Colors.orange, impulseCount > 0 ? 'Review spending' : 'Great control!'),
+      _aiCard('📍', 'Silent Expenses', smallExpenses.isNotEmpty ? '${smallExpenses.length} small spends totaling ₹${smallTotal.toStringAsFixed(0)}' : 'No silent expenses detected', Colors.indigo, 'Under ₹200 each'),
+      _aiCard('📈', 'Lifestyle Creep', creepPct.abs() > 5 ? 'Spending ${creepPct > 0 ? 'up' : 'down'} ${creepPct.abs().toStringAsFixed(0)}% vs last quarter' : 'Spending stable vs last quarter', creepPct > 10 ? Colors.red : Colors.teal, 'Quarter comparison'),
+      _aiCard('🎯', 'Budget Drift', driftingCat != null ? '$driftingCat driftingâ€”${driftPct.toStringAsFixed(0)}% used with ${(100 - monthPct).toStringAsFixed(0)}% of month left' : 'All categories on track', Colors.amber, 'Budget pace'),
+      _aiCard('⚠️', 'Category Overshoot', overshootCat != null ? '$overshootCat spend up ₹${overshootAmt.toStringAsFixed(0)} vs last month' : 'No unusual category spikes', overshootCat != null ? Colors.deepOrange : Colors.green, 'Category watch'),
+      _aiCard('📊', 'Spend Volatility', volatilityPct.abs() > 20 ? 'Weekend spending ${volatilityPct > 0 ? '${volatilityPct.toStringAsFixed(0)}% higher' : '${volatilityPct.abs().toStringAsFixed(0)}% lower'} than weekdays' : 'Spending pattern is stable', Colors.purple, 'Daily patterns'),
+      _aiCard('💡', 'Smart Saving', totalBudget > 0 && totalSpend < totalBudget ? 'Potential to save ₹${(totalBudget - totalSpend).toStringAsFixed(0)} this month' : 'Set budgets to unlock saving tips', Colors.blue, 'Opportunity'),
+      _aiCard('✅', 'Good Spend Ratio', '${goodRatio.toStringAsFixed(0)}% of spending on essentials & goals', goodRatio >= 70 ? Colors.green : Colors.orange, goodRatio >= 70 ? 'Healthy!' : 'Could improve'),
+      _aiCard('🛡️', 'Avoided Spend', avoidedCount > 0 ? 'You avoided $avoidedCount impulse spend${avoidedCount == 1 ? '' : 's'} vs last month' : prevImpulse == 0 ? 'Clean record both months!' : '${impulseCount - prevImpulse} more impulse spends than last month', avoidedCount > 0 ? Colors.green : Colors.grey, 'Habit tracking'),
     ];
 
     // Distribute cards alternately into 2 columns
@@ -1586,7 +1587,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           decoration: BoxDecoration(
             color: isDark ? AppColors.surfaceDark : Colors.white,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+            border: Border.all(color: isDark ? AppColors.grey800 : AppColors.borderLight),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1809,7 +1810,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('â‚¹${projected.toStringAsFixed(0)}', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: projectedOverBudget ? Colors.orange.shade800 : Colors.green.shade800)),
+                    Text('₹${projected.toStringAsFixed(0)}', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: projectedOverBudget ? Colors.orange.shade800 : Colors.green.shade800)),
                     const SizedBox(height: 2),
                     Text('projected by month end', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
                   ],
@@ -1852,7 +1853,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           Row(
             children: [
               _projStatChip(
-                'â‚¹${dailyRate.toStringAsFixed(0)}',
+                '₹${dailyRate.toStringAsFixed(0)}',
                 'Daily Rate',
                 Icons.speed_rounded,
                 Colors.blue,
@@ -1889,7 +1890,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'May overflow budget by â‚¹${projectedOverflowAmt.toStringAsFixed(0)} based on current spending pattern',
+                      'May overflow budget by ₹${projectedOverflowAmt.toStringAsFixed(0)} based on current spending pattern',
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.orange.shade800),
                     ),
                   ),
@@ -2000,7 +2001,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   ],
                 ),
               ),
-              Text('â‚¹${item.amount.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: accent)),
+              Text('₹${item.amount.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: accent)),
             ],
           ),
         ),
@@ -2037,7 +2038,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         leakageItems.add(_LeakageItem(
           category: entry.key,
           amount: overAmt,
-          reason: 'Over budget by â‚¹${overAmt.toStringAsFixed(0)}',
+          reason: 'Over budget by ₹${overAmt.toStringAsFixed(0)}',
           severity: overAmt / budget.amount,
           icon: Icons.warning_amber_rounded,
           color: Colors.red,
@@ -2048,7 +2049,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         leakageItems.add(_LeakageItem(
           category: entry.key,
           amount: entry.value,
-          reason: '$count transactions, avg â‚¹${avgTxn.toStringAsFixed(0)} each',
+          reason: '$count transactions, avg ₹${avgTxn.toStringAsFixed(0)} each',
           severity: count / 10,
           icon: Icons.repeat_rounded,
           color: Colors.orange,
@@ -2134,7 +2135,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               child: Row(
                 children: [
                   Text(
-                    'â‚¹${totalLeakage.toStringAsFixed(0)}',
+                    '₹${totalLeakage.toStringAsFixed(0)}',
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.pink.shade700),
                   ),
                   const SizedBox(width: 8),
@@ -2173,7 +2174,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                           ),
                           const SizedBox(width: 8),
                           Expanded(child: Text(item.category, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
-                          Text('â‚¹${item.amount.toStringAsFixed(0)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: item.color)),
+                          Text('₹${item.amount.toStringAsFixed(0)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: item.color)),
                         ],
                       ),
                       const SizedBox(height: 6),
@@ -2415,22 +2416,27 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           decoration: BoxDecoration(
             color: isHovered
-                ? (isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF8FAFC))
+                ? (isDark ? Colors.white.withOpacity(0.04) : AppColors.surfaceHoverLight)
                 : isPending
                     ? Colors.amber.withOpacity(0.04)
                     : null,
-            border: Border(top: BorderSide(color: isDark ? AppColors.grey800 : const Color(0xFFF1F5F9))),
+            border: Border(top: BorderSide(color: isDark ? AppColors.grey800 : AppColors.surfaceHoverLight)),
           ),
           child: Row(
             children: [
-              // Category icon bubble
+              // Category emoji bubble
               Container(
                 width: 44, height: 44,
                 decoration: BoxDecoration(
                   color: bgColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(AppIcons.getCategoryIcon(expense.category), size: 22, color: iconColor),
+                child: Center(
+                  child: Text(
+                    CategoryEmoji.getCategoryEmoji(expense.category, description: expense.description),
+                    style: const TextStyle(fontSize: 22),
+                  ),
+                ),
               ),
               const SizedBox(width: 14),
               // Main content
@@ -2453,7 +2459,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: isDark ? AppColors.grey800 : const Color(0xFFF1F5F9),
+                            color: isDark ? AppColors.grey800 : AppColors.surfaceHoverLight,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(_webCapitalize(expense.category), style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.grey[500])),
@@ -2513,7 +2519,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                         child: LinearProgressIndicator(
                           value: (matchingBudget.spent / matchingBudget.amount).clamp(0.0, 1.0),
                           minHeight: 6,
-                          backgroundColor: isDark ? AppColors.grey800 : const Color(0xFFEEF2F6),
+                          backgroundColor: isDark ? AppColors.grey800 : AppColors.progressBgLight,
                           valueColor: AlwaysStoppedAnimation<Color>(
                             matchingBudget.spent > matchingBudget.amount
                                 ? AppColors.error
@@ -2570,10 +2576,10 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   child: Container(
                     width: 32, height: 32,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEEF2F6),
+                      color: AppColors.progressBgLight,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF64748B)),
+                    child: const Icon(Icons.edit_outlined, size: 16, color: AppColors.slate500),
                   ),
                 ),
               ),
@@ -2707,7 +2713,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         color: isDark ? AppColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-            color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+            color: isDark ? AppColors.grey800 : AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2764,7 +2770,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           const SizedBox(height: 10),
           Text(
             footer,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+            style: const TextStyle(fontSize: 12, color: AppColors.slate500),
           ),
         ],
       ),
@@ -2791,7 +2797,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         color: isDark ? AppColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-            color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+            color: isDark ? AppColors.grey800 : AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2989,7 +2995,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             : (isDark ? AppColors.surfaceDark : Colors.white),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-            color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+            color: isDark ? AppColors.grey800 : AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3027,7 +3033,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           color: isDark ? AppColors.surfaceDark : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-              color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+              color: isDark ? AppColors.grey800 : AppColors.borderLight),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 15, color: Colors.grey[500]),
@@ -3339,7 +3345,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       'Vacation', 'Convenience Food',
     ];
 
-    const iconColor = Color(0xFF64748B);
+    const iconColor = AppColors.slate500;
     const activeColor = Color(0xFFE65100);
     const iconSize = 20.0;
     const btnConstraints = BoxConstraints(minWidth: 34, minHeight: 34);
@@ -3502,13 +3508,13 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
   Widget _buildInlineExpenseForm() {
     final isEditing = _editingExpense != null;
-    const controlColor = Color(0xFF64748B);
+    const controlColor = AppColors.slate500;
     return Container(
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+        border: Border(bottom: BorderSide(color: AppColors.borderLight)),
       ),
       child: Row(
         children: [
@@ -3533,8 +3539,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               decoration: InputDecoration(
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.borderLight)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.borderLight)),
                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AppColors.primary)),
               ),
               items: _expenseCategories.map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 12)))).toList(),
@@ -3550,12 +3556,12 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               style: const TextStyle(fontSize: 12),
               decoration: InputDecoration(
-                hintText: 'â‚¹ 0.00',
+                hintText: '₹ 0.00',
                 hintStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.borderLight)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.borderLight)),
                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AppColors.primary)),
               ),
             ),
@@ -3574,8 +3580,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   hintStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.borderLight)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.borderLight)),
                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AppColors.primary)),
                 ),
               ),
@@ -3594,8 +3600,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   hintStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.borderLight)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.borderLight)),
                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AppColors.primary)),
                 ),
               ),
@@ -3646,7 +3652,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             decoration: BoxDecoration(
               color: isDark ? AppColors.surfaceDark : Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+              border: Border.all(color: isDark ? AppColors.grey800 : AppColors.borderLight),
             ),
             child: Column(
               children: [
@@ -3703,7 +3709,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           decoration: BoxDecoration(
             color: isDark ? AppColors.surfaceDark : Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+            border: Border.all(color: isDark ? AppColors.grey800 : AppColors.borderLight),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3736,7 +3742,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                         child: LinearProgressIndicator(
                           value: overallRatio,
                           minHeight: 6,
-                          backgroundColor: isDark ? AppColors.grey800 : const Color(0xFFEEF2F6),
+                          backgroundColor: isDark ? AppColors.grey800 : AppColors.progressBgLight,
                           valueColor: AlwaysStoppedAnimation<Color>(overallColor),
                         ),
                       ),
@@ -3775,7 +3781,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   ],
                 ),
               ),
-              const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              const Divider(height: 1, color: AppColors.surfaceHoverLight),
               // Inline expense form slides down, pushing rows
               if (_showInlineExpenseForm)
                 _buildInlineExpenseForm(),
@@ -3796,7 +3802,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                               const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8)),
+                                decoration: BoxDecoration(color: AppColors.surfaceHoverLight, borderRadius: BorderRadius.circular(8)),
                                 child: Text('${entry.value.length}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.grey[500])),
                               ),
                             ]),
@@ -3934,10 +3940,10 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
-        color: active ? Colors.white : const Color(0xFFF1F5F9),
+        color: active ? Colors.white : AppColors.surfaceHoverLight,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: active ? const Color(0xFF0D7FF2) : const Color(0xFFE2E8F0),
+          color: active ? const Color(0xFF0D7FF2) : AppColors.borderLight,
         ),
       ),
       child: Row(
@@ -4247,7 +4253,7 @@ class _InlineAddExpensePanelState extends State<_InlineAddExpensePanel> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4270,8 +4276,8 @@ class _InlineAddExpensePanelState extends State<_InlineAddExpensePanel> {
             controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
-              labelText: 'Amount (â‚¹)',
-              prefixText: 'â‚¹ ',
+              labelText: 'Amount (₹)',
+              prefixText: '₹ ',
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             ),
@@ -5095,7 +5101,7 @@ class _InlineImportPanelState extends State<_InlineImportPanel> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: _commitResult != null ? _buildDone() : _buildForm(),
     );
@@ -5434,7 +5440,7 @@ class _InlineTransactionDetailPanelState extends State<_InlineTransactionDetailP
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: _isEditing ? _buildEditView() : _buildDetailView(),
     );
@@ -5465,11 +5471,16 @@ class _InlineTransactionDetailPanelState extends State<_InlineTransactionDetailP
             Container(
               width: 56, height: 56,
               decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(16)),
-              child: Icon(AppIcons.getCategoryIcon(e.category), size: 28, color: iconColor),
+              child: Center(
+                child: Text(
+                  CategoryEmoji.getCategoryEmoji(e.category, description: e.description),
+                  style: const TextStyle(fontSize: 28),
+                ),
+              ),
             ),
             const SizedBox(height: 12),
             Text(
-              '${isIncome ? '+' : '-'} â‚¹${e.amount.toStringAsFixed(2)}',
+              '${isIncome ? '+' : '-'} ₹${e.amount.toStringAsFixed(2)}',
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: isIncome ? AppColors.success : AppColors.error),
             ),
           ]),
@@ -5528,7 +5539,7 @@ class _InlineTransactionDetailPanelState extends State<_InlineTransactionDetailP
           controller: _amountCtrl,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: InputDecoration(
-            labelText: 'Amount (â‚¹)', prefixText: 'â‚¹ ',
+            labelText: 'Amount (₹)', prefixText: '₹ ',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           ),
@@ -5678,7 +5689,7 @@ class _HistoricalPerformancePanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -5703,9 +5714,9 @@ class _HistoricalPerformancePanel extends StatelessWidget {
           // Summary cards
           Row(
             children: [
-              Expanded(child: _miniCard('This Month', 'â‚¹${currentMonthSpend.toStringAsFixed(0)}', Colors.deepPurple)),
+              Expanded(child: _miniCard('This Month', '₹${currentMonthSpend.toStringAsFixed(0)}', Colors.deepPurple)),
               const SizedBox(width: 8),
-              Expanded(child: _miniCard('Budget', 'â‚¹${totalBudget.toStringAsFixed(0)}', Colors.blue)),
+              Expanded(child: _miniCard('Budget', '₹${totalBudget.toStringAsFixed(0)}', Colors.blue)),
               const SizedBox(width: 8),
               Expanded(child: _miniCard(
                 'Trend',
@@ -5740,7 +5751,7 @@ class _HistoricalPerformancePanel extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  SizedBox(width: 60, child: Text('â‚¹${entry.value.toStringAsFixed(0)}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[700]), textAlign: TextAlign.right)),
+                  SizedBox(width: 60, child: Text('₹${entry.value.toStringAsFixed(0)}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[700]), textAlign: TextAlign.right)),
                 ],
               ),
             );
@@ -5766,8 +5777,8 @@ class _HistoricalPerformancePanel extends StatelessWidget {
                 Expanded(
                   child: Text(
                     currentMonthSpend <= totalBudget
-                        ? 'Within budget â€” â‚¹${(totalBudget - currentMonthSpend).toStringAsFixed(0)} remaining'
-                        : 'Over budget by â‚¹${(currentMonthSpend - totalBudget).toStringAsFixed(0)}',
+                        ? 'Within budget â€” ₹${(totalBudget - currentMonthSpend).toStringAsFixed(0)} remaining'
+                        : 'Over budget by ₹${(currentMonthSpend - totalBudget).toStringAsFixed(0)}',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -5852,7 +5863,7 @@ class _SpendingAnalyticsPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -5877,9 +5888,9 @@ class _SpendingAnalyticsPanel extends StatelessWidget {
           // Summary stats
           Row(
             children: [
-              Expanded(child: _statCard('Total', 'â‚¹${totalSpend.toStringAsFixed(0)}', Icons.account_balance_wallet_outlined, const Color(0xFF00ACC1))),
+              Expanded(child: _statCard('Total', '₹${totalSpend.toStringAsFixed(0)}', Icons.account_balance_wallet_outlined, const Color(0xFF00ACC1))),
               const SizedBox(width: 8),
-              Expanded(child: _statCard('Daily Avg', 'â‚¹${dailyAvg.toStringAsFixed(0)}', Icons.trending_up_outlined, Colors.orange)),
+              Expanded(child: _statCard('Daily Avg', '₹${dailyAvg.toStringAsFixed(0)}', Icons.trending_up_outlined, Colors.orange)),
               const SizedBox(width: 8),
               Expanded(child: _statCard('Txns', txnCount.toString(), Icons.receipt_long_outlined, Colors.indigo)),
             ],
@@ -5924,10 +5935,10 @@ class _SpendingAnalyticsPanel extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(AppIcons.getCategoryIcon(entry.key), size: 14, color: AppColors.getCategoryIconColor(entry.key)),
+                        Text(CategoryEmoji.getCategoryEmoji(entry.key), style: const TextStyle(fontSize: 14)),
                         const SizedBox(width: 6),
                         Expanded(child: Text(entry.key, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-                        Text('â‚¹${entry.value.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isOverBudget ? Colors.red[600] : Colors.grey[700])),
+                        Text('₹${entry.value.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isOverBudget ? Colors.red[600] : Colors.grey[700])),
                         const SizedBox(width: 4),
                         Text('${pct.toStringAsFixed(0)}%', style: TextStyle(fontSize: 10, color: Colors.grey[400])),
                       ],
@@ -5945,7 +5956,7 @@ class _SpendingAnalyticsPanel extends StatelessWidget {
                     if (budgetForCategory != null) ...[
                       const SizedBox(height: 2),
                       Text(
-                        'Budget: â‚¹${budgetForCategory.amount.toStringAsFixed(0)}${isOverBudget ? ' (over by â‚¹${(entry.value - budgetForCategory.amount).toStringAsFixed(0)})' : ''}',
+                        'Budget: ₹${budgetForCategory.amount.toStringAsFixed(0)}${isOverBudget ? ' (over by ₹${(entry.value - budgetForCategory.amount).toStringAsFixed(0)})' : ''}',
                         style: TextStyle(fontSize: 9, color: isOverBudget ? Colors.red[400] : Colors.grey[400]),
                       ),
                     ],
@@ -6064,7 +6075,7 @@ class _AIInsightsPanelState extends State<_AIInsightsPanel> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -6453,7 +6464,7 @@ class _ExpenseExcelPreviewDialogState extends State<_ExpenseExcelPreviewDialog> 
                     _chip('${invalidRows.length} invalid', AppColors.error),
                   const Spacer(),
                   Text(
-                    'Total: â‚¹${totalAmount.toStringAsFixed(0)}',
+                    'Total: ₹${totalAmount.toStringAsFixed(0)}',
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
@@ -6573,7 +6584,7 @@ class _ExpenseExcelPreviewDialogState extends State<_ExpenseExcelPreviewDialog> 
                           _ExpTableCell(
                             Text(
                               _editableRows[idx].isValid
-                                  ? 'â‚¹${_editableRows[idx].amount.toStringAsFixed(0)}'
+                                  ? '₹${_editableRows[idx].amount.toStringAsFixed(0)}'
                                   : '',
                               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                             ),

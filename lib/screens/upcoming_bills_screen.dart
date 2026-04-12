@@ -266,7 +266,7 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
     final overdueTotal = overdue.fold<double>(0, (sum, b) => sum + b.amount);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.surfaceHoverLight,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,10 +311,39 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
+                  // Bill status filter chips
+                  Row(
+                    children: [
+                      ..._BillFilter.values.map((f) {
+                        final label = f == _BillFilter.all ? 'All' : f == _BillFilter.upcoming ? 'Upcoming' : f == _BillFilter.overdue ? 'Overdue' : 'Paid';
+                        final selected = _activeFilter == f;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: ChoiceChip(
+                            label: Text(label, style: const TextStyle(fontSize: 12)),
+                            selected: selected,
+                            visualDensity: VisualDensity.compact,
+                            onSelected: (_) => setState(() => _activeFilter = f),
+                          ),
+                        );
+                      }),
+                      if (_activeFilter != _BillFilter.all)
+                        Tooltip(
+                          message: 'Clear filter',
+                          child: IconButton(
+                            icon: const Icon(Icons.filter_alt_off_outlined, size: 16, color: Color(0xFFEF4444)),
+                            onPressed: () => setState(() => _activeFilter = _BillFilter.all),
+                            constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                            padding: EdgeInsets.zero,
+                            splashRadius: 14,
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ),
             ),
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+            const Divider(height: 1, color: AppColors.borderLight),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: Column(
@@ -349,16 +378,16 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
                                 itemBuilder: (context, index) {
                                   final bill = _filteredBills[index];
                                   final statusColor = bill.isPaid
-                                      ? const Color(0xFF16A34A)
+                                      ? AppColors.scoreGood
                                       : bill.isOverdue
-                                          ? const Color(0xFFDC2626)
-                                          : const Color(0xFF2563EB);
+                                          ? AppColors.scorePoor
+                                          : AppColors.activeBlue;
 
                                   return Container(
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(14),
-                                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                                      border: Border.all(color: AppColors.borderLight),
                                     ),
                                     child: ListTile(
                                       contentPadding: const EdgeInsets.symmetric(
@@ -369,7 +398,7 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
                                         width: 42,
                                         height: 42,
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFF1F5F9),
+                                          color: AppColors.surfaceHoverLight,
                                           borderRadius: BorderRadius.circular(12),
                                         ),
                                         child: Icon(
@@ -460,8 +489,8 @@ class _UpcomingBillsScreenState extends State<UpcomingBillsScreen> {
                                                         ? Icons.check_circle
                                                         : Icons.radio_button_unchecked,
                                                     color: bill.isPaid
-                                                        ? const Color(0xFF16A34A)
-                                                        : const Color(0xFF64748B),
+                                                        ? AppColors.scoreGood
+                                                        : AppColors.slate500,
                                                   ),
                                                 ),
                                                 PopupMenuButton<String>(
@@ -545,7 +574,7 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

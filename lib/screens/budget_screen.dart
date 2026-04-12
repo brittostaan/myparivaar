@@ -13,6 +13,7 @@ import '../services/family_service.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../utils/category_emoji.dart';
 import '../utils/tag_utils.dart';
 import '../widgets/app_header.dart';
 import '../widgets/tag_input_section.dart';
@@ -690,14 +691,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
-  // ΓöÇΓöÇ Info Cards Column ΓöÇΓöÇ
+  // ── Info Cards Column ──
 
   Widget _buildInfoCardsColumn(bool isDark, Color primary) {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? const Color(0xFF333333) : const Color(0xFFE2E8F0)),
+        border: Border.all(color: isDark ? const Color(0xFF333333) : AppColors.borderLight),
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -839,7 +840,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
         .where((b) => recurringCats.contains(b.category.toLowerCase()))
         .fold<double>(0, (s, b) => s + b.amount);
 
-    // Silent Budget Erosion: small allocations under Γé╣500
+    // Silent Budget Erosion: small allocations under ₹500
     final smallBudgets = _budgets.where((b) => b.amount > 0 && b.amount < 500).toList();
     final smallTotal = smallBudgets.fold<double>(0, (s, b) => s + b.amount);
 
@@ -930,98 +931,98 @@ class _BudgetScreenState extends State<BudgetScreen> {
         .fold<double>(0, (s, b) => s + b.amount);
     final nonSavingsBudget = totalBudget - savingsBudget;
 
-    // ΓöÇΓöÇ Build all 14 cards ΓöÇΓöÇ
+    // ── Build all 14 cards ──
     final allCards = <Widget>[
-      _aiCard('≡ƒÆº', 'Spend Leakage',
+      _aiCard('💧', 'Spend Leakage',
           leakyBudgets.isNotEmpty
               ? '${_fmtCurrency(leakyTotal)} allocated to ${leakyBudgets.map((b) => b.category).take(2).join(' and ')} but no spending.'
               : 'All budget categories are being utilized. No leaks detected!',
           leakyBudgets.isNotEmpty ? Colors.pink : Colors.green,
           leakyBudgets.isNotEmpty ? 'Reallocate' : 'Healthy'),
 
-      _aiCard('ΓÜí', 'Impulse Risk',
+      _aiCard('🔥', 'Impulse Risk',
           hasImpulseRisk
               ? '${impulseRiskBudgets.first.category} budget may trigger impulse spending.'
               : 'No impulse-risk budget categories detected!',
           hasImpulseRisk ? Colors.orange : Colors.green,
           hasImpulseRisk ? 'Watch closely' : 'Great control!'),
 
-      _aiCard('≡ƒöö', 'Recurring Lock-in',
+      _aiCard('🔒', 'Recurring Lock-in',
           recurringTotal > 0
               ? '${_fmtCurrency(recurringTotal)} locked into monthly subscriptions.'
               : 'No recurring budget lock-ins detected.',
           recurringTotal > 0 ? Colors.red : Colors.green,
           recurringTotal > 0 ? 'Review subscriptions' : 'No lock-ins'),
 
-      _aiCard('≡ƒöì', 'Silent Erosion',
+      _aiCard('🔍', 'Silent Erosion',
           smallBudgets.isNotEmpty
               ? '${smallBudgets.length} small allocations add up to ${_fmtCurrency(smallTotal)}.'
               : 'No small budget erosion detected.',
           smallBudgets.isNotEmpty ? Colors.indigo : Colors.green,
-          smallBudgets.isNotEmpty ? 'Under Γé╣500 each' : 'Clean'),
+          smallBudgets.isNotEmpty ? 'Under ₹500 each' : 'Clean'),
 
-      _aiCard('≡ƒôë', 'Slippage',
+      _aiCard('📉', 'Slippage',
           slippageCat != null
               ? '${slippageCat} likely to exceed by ${_fmtCurrency(slippageAmount)} at current pace.'
               : 'All categories on pace. No slippage detected!',
           slippageCat != null ? Colors.red : Colors.green,
           slippageCat != null ? 'Adjust now' : 'On track'),
 
-      _aiCard('≡ƒôè', 'Instability',
+      _aiCard('📊', 'Instability',
           unstableCat != null && maxFluctuation > 20
               ? '${unstableCat} budget fluctuates ${maxFluctuation.toStringAsFixed(0)}% month to month.'
               : 'Budget allocations are stable month to month.',
           maxFluctuation > 20 ? Colors.amber : Colors.green,
           maxFluctuation > 20 ? 'Stabilize' : 'Stable'),
 
-      _aiCard('Γ£à', 'Healthy Mix',
+      _aiCard('✅', 'Healthy Mix',
           '${mixRatio.toStringAsFixed(0)}% of budget allocated to essentials & long-term needs.',
           mixRatio >= 60 ? Colors.green : Colors.orange,
           mixRatio >= 60 ? 'Great balance!' : 'Could improve'),
 
-      _aiCard('≡ƒÅå', 'Discipline Score',
+      _aiCard('🏅', 'Discipline Score',
           totalMonths > 0
               ? 'Score: ${disciplineScore.toStringAsFixed(1)} / 10\nWithin budget for $withinCount of $totalMonths months.'
               : 'Add budgets to start tracking discipline.',
           disciplineScore >= 7 ? Colors.green : disciplineScore >= 4 ? Colors.amber : Colors.red,
           '${disciplineScore.toStringAsFixed(1)}/10'),
 
-      _aiCard('≡ƒÆí', 'Smart Recommendation',
+      _aiCard('💡', 'Smart Recommendation',
           smartRecCat != null
               ? 'Reducing ${smartRecCat} by 10% could increase savings by ${_fmtCurrency(smartRecSaving)}.'
               : 'Set non-essential budgets to get recommendations.',
           Colors.blue,
           smartRecCat != null ? 'Quick win' : 'Set budgets'),
 
-      _aiCard('≡ƒÆ│', 'Safe-to-Spend',
+      _aiCard('💳', 'Safe-to-Spend',
           remaining > 0
               ? 'You can safely spend ${_fmtCurrency(safeToSpend > 0 ? safeToSpend : 0)} per day and stay within budget.'
               : 'Budget exhausted for this month.',
           remaining > 0 ? Colors.teal : Colors.red,
           remaining > 0 ? 'On track' : 'Exceeded'),
 
-      _aiCard('≡ƒôÉ', 'Income Fit',
+      _aiCard('📈', 'Income Fit',
           totalBudget > 0
               ? 'Total budget: ${_fmtCurrency(totalBudget)}. ${usagePct > 85 ? 'Keeping budgets under 85% of income improves flexibility.' : 'Budget allocation looks sustainable.'}'
               : 'Set budgets to check income fit.',
           usagePct <= 85 ? Colors.green : Colors.orange,
           usagePct <= 85 ? 'Good fit' : 'Tight'),
 
-      _aiCard('ΓÜû∩╕Å', 'Fixed vs Flexible Split',
+      _aiCard('⚖️', 'Fixed vs Flexible Split',
           totalBudget > 0
               ? 'Fixed: ${fixedPct.toStringAsFixed(0)}%  |  Flexible: ${flexPct.toStringAsFixed(0)}%\n${fixedPct > 65 ? 'High fixed costs may reduce month-end comfort.' : 'Balanced split between fixed and flexible.'}'
               : 'Add budgets to see the split.',
           fixedPct <= 65 ? Colors.green : Colors.orange,
           fixedPct <= 65 ? 'Balanced' : 'Review fixed'),
 
-      _aiCard('≡ƒ¢í∩╕Å', 'Emergency Buffer Health',
+      _aiCard('🛡️', 'Emergency Buffer Health',
           emergencyBudget > 0
               ? '${_fmtCurrency(emergencyBudget)} allocated for emergencies this month.'
-              : 'No emergency buffer allocated. Consider adding Γé╣2,000ΓÇôΓé╣5,000.',
+              : 'No emergency buffer allocated. Consider adding ₹2,000–₹5,000.',
           emergencyBudget > 0 ? Colors.green : Colors.red,
           emergencyBudget > 0 ? 'Protected' : 'Add buffer'),
 
-      _aiCard('≡ƒÄ»', 'Goal Impact',
+      _aiCard('🎯', 'Goal Impact',
           savingsBudget > 0
               ? '${_fmtCurrency(savingsBudget)} allocated to savings & goals this month.'
               : 'No savings budget set. Current spend may reduce goal progress.',
@@ -1532,13 +1533,13 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   Widget _buildInlineBudgetForm() {
     final isEditing = _editingBudget != null;
-    const controlColor = Color(0xFF64748B);
+    const controlColor = AppColors.slate500;
     return Container(
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+        border: Border(bottom: BorderSide(color: AppColors.borderLight)),
       ),
       child: Row(
         children: [
@@ -1571,12 +1572,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               style: const TextStyle(fontSize: 12),
               decoration: InputDecoration(
-                hintText: 'â‚¹ 0.00',
+                hintText: '₹ 0.00',
                 hintStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.borderLight)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.borderLight)),
                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AppColors.primary)),
               ),
             ),
@@ -1594,8 +1595,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   hintStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.borderLight)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.borderLight)),
                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AppColors.primary)),
                 ),
               ),
@@ -1643,7 +1644,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
       'Vacation', 'Convenience Food', 'Bank',
     ];
 
-    const iconColor = Color(0xFF64748B);
+    const iconColor = AppColors.slate500;
     const activeColor = Color(0xFFE65100);
     const iconSize = 20.0;
     const btnConstraints = BoxConstraints(minWidth: 34, minHeight: 34);
@@ -1755,6 +1756,22 @@ class _BudgetScreenState extends State<BudgetScreen> {
             splashRadius: 18,
           ),
         ),
+        // 5b. Clear filters
+        if (hasCatFilter || hasDateFilter)
+          Tooltip(
+            message: 'Clear all filters',
+            child: IconButton(
+              icon: const Icon(Icons.filter_alt_off_outlined, color: Color(0xFFEF4444), size: iconSize),
+              onPressed: () => setState(() {
+                _selectedCategoryFilter = null;
+                _filterStartDate = null;
+                _filterEndDate = null;
+              }),
+              constraints: btnConstraints,
+              padding: EdgeInsets.zero,
+              splashRadius: 18,
+            ),
+          ),
         // 6. Add Budget
         Tooltip(
           message: 'Add Budget',
@@ -1784,7 +1801,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             decoration: BoxDecoration(
               color: isDark ? AppColors.surfaceDark : Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+              border: Border.all(color: isDark ? AppColors.grey800 : AppColors.borderLight),
             ),
             child: Column(
               children: [
@@ -1844,7 +1861,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
           decoration: BoxDecoration(
             color: isDark ? AppColors.surfaceDark : Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0)),
+            border: Border.all(color: isDark ? AppColors.grey800 : AppColors.borderLight),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1876,7 +1893,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       child: LinearProgressIndicator(
                         value: overallRatio,
                         minHeight: 6,
-                        backgroundColor: isDark ? AppColors.grey800 : const Color(0xFFEEF2F6),
+                        backgroundColor: isDark ? AppColors.grey800 : AppColors.progressBgLight,
                         valueColor: AlwaysStoppedAnimation<Color>(overallColor),
                       ),
                     ),
@@ -1891,7 +1908,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   ],
                 ),
               ),
-              const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              const Divider(height: 1, color: AppColors.surfaceHoverLight),
               // Inline budget form slides down, pushing budget rows
               if (_showInlineBudgetForm)
                 _buildInlineBudgetForm(),
@@ -1912,7 +1929,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                               const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8)),
+                                decoration: BoxDecoration(color: AppColors.surfaceHoverLight, borderRadius: BorderRadius.circular(8)),
                                 child: Text('${entry.value.length}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.grey[500])),
                               ),
                             ]),
@@ -1961,6 +1978,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             : '${_fmtCurrency(budget.remaining)} left';
 
     final catIcon = _budgetCategoryIcon(budget.category);
+    final catEmoji = CategoryEmoji.getCategoryEmoji(budget.category);
     final catColor = _budgetCategoryColor(budget.category);
     final isHovered = _hoveredBudgetId == budget.id;
 
@@ -1970,19 +1988,21 @@ class _BudgetScreenState extends State<BudgetScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: BoxDecoration(
-          color: isHovered ? (isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF8FAFC)) : null,
-          border: Border(top: BorderSide(color: isDark ? AppColors.grey800 : const Color(0xFFF1F5F9))),
+          color: isHovered ? (isDark ? Colors.white.withOpacity(0.04) : AppColors.surfaceHoverLight) : null,
+          border: Border(top: BorderSide(color: isDark ? AppColors.grey800 : AppColors.surfaceHoverLight)),
         ),
         child: Row(
           children: [
-            // Category icon bubble
+            // Category emoji bubble
             Container(
               width: 44, height: 44,
               decoration: BoxDecoration(
                 color: catColor.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(catIcon, size: 22, color: catColor),
+              child: Center(
+                child: Text(catEmoji, style: const TextStyle(fontSize: 22)),
+              ),
             ),
             const SizedBox(width: 14),
             // Category + progress
@@ -2029,31 +2049,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       ],
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  // Progress bar
-                  Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: clampedRatio,
-                          minHeight: 8,
-                          backgroundColor: isDark ? AppColors.grey800 : const Color(0xFFEEF2F6),
-                          valueColor: AlwaysStoppedAnimation<Color>(barColor),
-                        ),
-                      ),
-                      // Pace marker (where you should be based on day of month)
-                      Positioned(
-                        left: _monthPaceRatio() * (MediaQuery.of(context).size.width * 0.25),
-                        top: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 2,
-                          color: Colors.grey.withOpacity(0.4),
-                        ),
-                      ),
-                    ],
-                  ),
                   const SizedBox(height: 4),
                   // Spent vs Budget amounts
                   Row(
@@ -2085,10 +2080,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   child: Container(
                     width: 32, height: 32,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEEF2F6),
+                      color: AppColors.progressBgLight,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF64748B)),
+                    child: const Icon(Icons.edit_outlined, size: 16, color: AppColors.slate500),
                   ),
                 ),
               ),
@@ -2105,7 +2100,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     child: CircularProgressIndicator(
                       value: clampedRatio,
                       strokeWidth: 4,
-                      backgroundColor: isDark ? AppColors.grey800 : const Color(0xFFEEF2F6),
+                      backgroundColor: isDark ? AppColors.grey800 : AppColors.progressBgLight,
                       valueColor: AlwaysStoppedAnimation<Color>(barColor),
                     ),
                   ),
@@ -2333,7 +2328,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
         color: isDark ? AppColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0),
+          color: isDark ? AppColors.grey800 : AppColors.borderLight,
         ),
       ),
       child: Column(
@@ -2418,12 +2413,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
       icon = Icons.auto_awesome;
     } else if (focusBudget.isOverBudget) {
       title = 'Overspend Alert';
-      message = '${_titleCase(focusBudget.category)} is over budget by â‚¹${focusBudget.remaining.abs().toStringAsFixed(0)} this month. Review and adjust the category limit.';
+      message = '${_titleCase(focusBudget.category)} is over budget by ₹${focusBudget.remaining.abs().toStringAsFixed(0)} this month. Review and adjust the category limit.';
       accent = AppColors.error;
       icon = Icons.warning_amber_rounded;
     } else if (focusBudget.usagePercent >= 85) {
       title = 'Tightest Budget';
-      message = '${_titleCase(focusBudget.category)} has already used ${focusBudget.usagePercent.toStringAsFixed(0)}% of its budget, leaving â‚¹${focusBudget.remaining.toStringAsFixed(0)}.';
+      message = '${_titleCase(focusBudget.category)} has already used ${focusBudget.usagePercent.toStringAsFixed(0)}% of its budget, leaving ₹${focusBudget.remaining.toStringAsFixed(0)}.';
       accent = AppColors.warningDark;
       icon = Icons.trending_up_rounded;
     } else {
@@ -2431,7 +2426,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
         ..sort((a, b) => a.usagePercent.compareTo(b.usagePercent));
       final winner = bestBudget.first;
       title = 'Best Controlled Category';
-      message = '${_titleCase(winner.category)} is tracking well at ${winner.usagePercent.toStringAsFixed(0)}% used, leaving â‚¹${winner.remaining.toStringAsFixed(0)} for the month.';
+      message = '${_titleCase(winner.category)} is tracking well at ${winner.usagePercent.toStringAsFixed(0)}% used, leaving ₹${winner.remaining.toStringAsFixed(0)} for the month.';
       accent = AppColors.success;
       icon = Icons.check_circle_outline_rounded;
     }
@@ -2506,7 +2501,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             Expanded(
               child: _budgetSummaryCard(
                 title: 'Latest Month Spend',
-                value: 'â‚¹${latest.totalSpent.toStringAsFixed(0)}',
+                value: '₹${latest.totalSpent.toStringAsFixed(0)}',
                 subtitle: latest.month.isEmpty ? 'No history yet' : _monthLabel(_selectedMonth),
                 valueColor: primary,
               ),
@@ -2522,7 +2517,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             color: isDark ? AppColors.surfaceDark : Colors.white,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0),
+              color: isDark ? AppColors.grey800 : AppColors.borderLight,
             ),
           ),
           child: Column(
@@ -2555,14 +2550,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
                           child: LinearProgressIndicator(
                             value: ratio.clamp(0.0, 1.0),
                             minHeight: 8,
-                            backgroundColor: const Color(0xFFF1F5F9),
+                            backgroundColor: AppColors.surfaceHoverLight,
                             color: color,
                           ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        'â‚¹${item.summary.totalSpent.toStringAsFixed(0)} / â‚¹${item.summary.totalBudget.toStringAsFixed(0)}',
+                        '₹${item.summary.totalSpent.toStringAsFixed(0)} / ₹${item.summary.totalBudget.toStringAsFixed(0)}',
                         style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                       ),
                     ],
@@ -2608,7 +2603,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 value: topCategory == null ? 'â€”' : _titleCase(topCategory.category),
                 subtitle: topCategory == null
                     ? 'No analytics yet'
-                    : 'â‚¹${topCategory.totalSpent.toStringAsFixed(0)} over ${topCategory.monthsTracked} months',
+                    : '₹${topCategory.totalSpent.toStringAsFixed(0)} over ${topCategory.monthsTracked} months',
                 valueColor: primary,
               ),
             ),
@@ -2616,7 +2611,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             Expanded(
               child: _budgetSummaryCard(
                 title: 'Average Monthly Spend',
-                value: 'â‚¹${averageMonthlySpend.toStringAsFixed(0)}',
+                value: '₹${averageMonthlySpend.toStringAsFixed(0)}',
                 subtitle: 'Across tracked categories',
                 valueColor: AppColors.success,
               ),
@@ -2641,7 +2636,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             color: isDark ? AppColors.surfaceDark : Colors.white,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: isDark ? AppColors.grey800 : const Color(0xFFE2E8F0),
+              color: isDark ? AppColors.grey800 : AppColors.borderLight,
             ),
           ),
           child: Column(
@@ -2678,13 +2673,13 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                 child: LinearProgressIndicator(
                                   value: ratio.clamp(0.0, 1.0),
                                   minHeight: 8,
-                                  backgroundColor: const Color(0xFFF1F5F9),
+                                  backgroundColor: AppColors.surfaceHoverLight,
                                   color: color,
                                 ),
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                'Spent â‚¹${item.totalSpent.toStringAsFixed(0)} of â‚¹${item.totalBudget.toStringAsFixed(0)} across ${item.monthsTracked} months',
+                                'Spent ₹${item.totalSpent.toStringAsFixed(0)} of ₹${item.totalBudget.toStringAsFixed(0)} across ${item.monthsTracked} months',
                                 style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                               ),
                             ],
@@ -2721,10 +2716,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          color: active ? Colors.white : const Color(0xFFF1F5F9),
+          color: active ? Colors.white : AppColors.surfaceHoverLight,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: active ? const Color(0xFF0D7FF2) : const Color(0xFFE2E8F0),
+            color: active ? const Color(0xFF0D7FF2) : AppColors.borderLight,
           ),
         ),
         child: Row(
@@ -2850,7 +2845,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2898,7 +2893,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 7,
-                backgroundColor: const Color(0xFFF1F5F9),
+                backgroundColor: AppColors.surfaceHoverLight,
                 color: color ?? primary,
               ),
             ),
@@ -2916,22 +2911,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   IconData _budgetCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'food':
-        return Icons.restaurant;
-      case 'shopping':
-        return Icons.shopping_bag;
-      case 'utilities':
-        return Icons.bolt;
-      case 'transport':
-        return Icons.directions_car;
-      case 'entertainment':
-        return Icons.movie;
-      case 'healthcare':
-        return Icons.local_hospital;
-      default:
-        return Icons.account_balance_wallet_outlined;
-    }
+    return AppIcons.getCategoryIcon(category);
   }
 
   Widget _miniBar(double heightFactor, Color color) {
@@ -3605,7 +3585,7 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
                     _chip('${invalidRows.length} invalid', AppColors.error),
                   const Spacer(),
                   Text(
-                    'Total: â‚¹${totalAmount.toStringAsFixed(0)}',
+                    'Total: ₹${totalAmount.toStringAsFixed(0)}',
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
@@ -3712,7 +3692,7 @@ class _ExcelPreviewDialogState extends State<_ExcelPreviewDialog> {
                           _TableCell(
                             Text(
                               _editableRows[idx].isValid
-                                  ? 'â‚¹${_editableRows[idx].amount.toStringAsFixed(0)}'
+                                  ? '₹${_editableRows[idx].amount.toStringAsFixed(0)}'
                                   : _editableRows[idx].validationError ?? 'Invalid',
                               style: TextStyle(
                                 fontSize: 12,
@@ -3989,7 +3969,7 @@ class _CategoryEditorState extends State<_CategoryEditor> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  border: Border.all(color: AppColors.borderLight),
                 ),
                 child: ListView(
                   padding: const EdgeInsets.symmetric(vertical: 4),
@@ -4062,8 +4042,8 @@ class _CategoryEditorState extends State<_CategoryEditor> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16),
             suffixIconConstraints: const BoxConstraints(maxWidth: 24, maxHeight: 30),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.borderLight)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.borderLight)),
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AppColors.primary)),
           ),
           onSubmitted: (_) {
@@ -4162,7 +4142,7 @@ class _BudgetAIInsightsPanelState extends State<_BudgetAIInsightsPanel> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

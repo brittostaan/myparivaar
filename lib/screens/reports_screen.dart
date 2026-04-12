@@ -232,7 +232,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.surfaceHoverLight,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -361,6 +361,28 @@ class _ReportsScreenState extends State<ReportsScreen> {
               const SizedBox(width: 8),
               // Category filter
               if (_expenses.isNotEmpty) _buildCategoryFilter(),
+              // Clear filters
+              if (_filterCategory != null || _preset != DateRangePreset.thisMonth)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Tooltip(
+                    message: 'Reset all filters',
+                    child: IconButton(
+                      icon: const Icon(Icons.filter_alt_off_outlined, size: 18, color: Color(0xFFEF4444)),
+                      onPressed: () {
+                        setState(() {
+                          _filterCategory = null;
+                          _preset = DateRangePreset.thisMonth;
+                          _customRange = null;
+                        });
+                        _runReport();
+                      },
+                      constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                      padding: EdgeInsets.zero,
+                      splashRadius: 16,
+                    ),
+                  ),
+                ),
             ],
           ),
           // Active range display
@@ -440,7 +462,7 @@ class _ReportCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -476,9 +498,9 @@ class _StatTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
+          color: AppColors.surfaceHoverLight,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: AppColors.borderLight),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -553,7 +575,7 @@ class _BarRow extends StatelessWidget {
                   height: 8,
                   width: constraints.maxWidth,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
+                    color: AppColors.surfaceHoverLight,
                     borderRadius: BorderRadius.circular(99),
                   ),
                 ),
@@ -619,7 +641,7 @@ class _ReportExpenseSummary extends StatelessWidget {
                 _StatTile(
                   label: 'Peak Day Spend',
                   value: fmtAmt(maxEntry.value),
-                  accent: const Color(0xFFDC2626),
+                  accent: AppColors.scorePoor,
                 ),
                 const SizedBox(width: 12),
                 _StatTile(label: 'Active Days', value: '$uniqueDays days'),
@@ -683,7 +705,7 @@ class _ReportCategoryBreakdown extends StatelessWidget {
       const Color(0xFFEC4899),
       const Color(0xFF14B8A6),
       const Color(0xFFF97316),
-      const Color(0xFF64748B),
+      AppColors.slate500,
       const Color(0xFF6366F1),
     ];
 
@@ -795,8 +817,8 @@ class _ReportBudgetVsActual extends StatelessWidget {
                   label: 'Total Actual',
                   value: fmtAmt(totalActual),
                   accent: totalActual > totalBudget && totalBudget > 0
-                      ? const Color(0xFFDC2626)
-                      : const Color(0xFF16A34A),
+                      ? AppColors.scorePoor
+                      : AppColors.scoreGood,
                 ),
               ]),
               const SizedBox(height: 12),
@@ -805,8 +827,8 @@ class _ReportBudgetVsActual extends StatelessWidget {
                   label: 'Variance',
                   value: fmtAmt((totalBudget - totalActual).abs()),
                   accent: totalActual > totalBudget
-                      ? const Color(0xFFDC2626)
-                      : const Color(0xFF16A34A),
+                      ? AppColors.scorePoor
+                      : AppColors.scoreGood,
                 ),
                 const SizedBox(width: 12),
                 _StatTile(
@@ -817,8 +839,8 @@ class _ReportBudgetVsActual extends StatelessWidget {
                           ? 'On track'
                           : 'Over budget',
                   accent: totalActual > totalBudget
-                      ? const Color(0xFFDC2626)
-                      : const Color(0xFF16A34A),
+                      ? AppColors.scorePoor
+                      : AppColors.scoreGood,
                 ),
               ]),
             ],
@@ -860,7 +882,7 @@ class _ReportBudgetVsActual extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFFDC2626),
+                                color: AppColors.scorePoor,
                               ),
                             ),
                           ),
@@ -882,7 +904,7 @@ class _ReportBudgetVsActual extends StatelessWidget {
                       value: actual,
                       max: barMax,
                       valueText: fmtAmt(actual),
-                      color: isOver ? const Color(0xFFDC2626) : const Color(0xFF258CF4),
+                      color: isOver ? AppColors.scorePoor : const Color(0xFF258CF4),
                     ),
                   ],
                 ),
@@ -958,8 +980,8 @@ class _ReportMonthlyTrend extends StatelessWidget {
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color: change > 0
-                                    ? const Color(0xFFDC2626)
-                                    : const Color(0xFF16A34A),
+                                    ? AppColors.scorePoor
+                                    : AppColors.scoreGood,
                               ),
                             ),
                           ),
@@ -978,7 +1000,7 @@ class _ReportMonthlyTrend extends StatelessWidget {
                           height: 10,
                           width: c.maxWidth,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
+                            color: AppColors.surfaceHoverLight,
                             borderRadius: BorderRadius.circular(99),
                           ),
                         ),
@@ -987,7 +1009,7 @@ class _ReportMonthlyTrend extends StatelessWidget {
                           width: c.maxWidth * fraction,
                           decoration: BoxDecoration(
                             color: isHighest
-                                ? const Color(0xFFDC2626)
+                                ? AppColors.scorePoor
                                 : AppColors.primary,
                             borderRadius: BorderRadius.circular(99),
                           ),
@@ -1013,7 +1035,7 @@ class _ReportMonthlyTrend extends StatelessWidget {
                 _StatTile(
                   label: 'Highest Month',
                   value: sorted.reduce((a, b) => a.value > b.value ? a : b).key,
-                  accent: const Color(0xFFDC2626),
+                  accent: AppColors.scorePoor,
                 ),
               ]),
               const SizedBox(height: 12),
@@ -1164,7 +1186,7 @@ class _ReportTopExpenses extends StatelessWidget {
                           width: 60,
                           child: LinearProgressIndicator(
                             value: maxAmt > 0 ? e.amount / maxAmt : 0,
-                            backgroundColor: const Color(0xFFF1F5F9),
+                            backgroundColor: AppColors.surfaceHoverLight,
                             color: color,
                             minHeight: 4,
                             borderRadius: BorderRadius.circular(99),
@@ -1203,7 +1225,7 @@ class _EmptyState extends StatelessWidget {
               style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF64748B)),
+                  color: AppColors.slate500),
             ),
             SizedBox(height: 4),
             Text(

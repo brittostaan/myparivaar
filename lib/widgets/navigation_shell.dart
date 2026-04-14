@@ -789,8 +789,8 @@ class _NavigationShellState extends State<NavigationShell> {
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [Colors.deepPurple.shade50, Colors.blue.shade50],
@@ -804,9 +804,18 @@ class _NavigationShellState extends State<NavigationShell> {
         children: [
           Icon(Icons.auto_awesome, size: 16, color: Colors.deepPurple.shade300),
           const SizedBox(width: 8),
+          Text(
+            'Quote of the Day',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: Colors.deepPurple.shade400,
+            ),
+          ),
           Expanded(
             child: Text(
               quote,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 11,
                 fontStyle: FontStyle.italic,
@@ -1014,6 +1023,7 @@ class _NavigationShellState extends State<NavigationShell> {
                 children: [
                   if (widget.showWebTopBar)
                     _buildWebTopBar(context, showLabels, isDesktop),
+                  _buildDailyQuote(),
                   Expanded(
                     child: Row(
                       children: [
@@ -1023,7 +1033,6 @@ class _NavigationShellState extends State<NavigationShell> {
                           child: Column(
                             children: [
                               const SizedBox(height: 57),
-                              _buildDailyQuote(),
                               _buildRewardsRow(),
                               Expanded(
                                 child: AIInsightsPanel(

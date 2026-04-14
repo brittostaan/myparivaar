@@ -789,7 +789,7 @@ class _NavigationShellState extends State<NavigationShell> {
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -1023,7 +1023,6 @@ class _NavigationShellState extends State<NavigationShell> {
                 children: [
                   if (widget.showWebTopBar)
                     _buildWebTopBar(context, showLabels, isDesktop),
-                  _buildDailyQuote(),
                   Expanded(
                     child: Row(
                       children: [
@@ -1033,6 +1032,7 @@ class _NavigationShellState extends State<NavigationShell> {
                           child: Column(
                             children: [
                               const SizedBox(height: 57),
+                              _buildDailyQuote(),
                               _buildRewardsRow(),
                               Expanded(
                                 child: AIInsightsPanel(

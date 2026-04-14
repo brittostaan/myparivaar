@@ -9,6 +9,7 @@ import '../services/auth_service.dart';
 import '../services/expense_service.dart';
 // app_bottom_navigation_bar removed (mobile-only)
 import 'global_header_actions.dart';
+import 'ai_insights_panel.dart';
 import '../theme/app_colors.dart';
 
 /// A shell widget that wraps screens with bottom navigation.
@@ -53,6 +54,7 @@ class _NavigationShellState extends State<NavigationShell> {
   String? _searchError;
   Timer? _desktopAutoCollapseTimer;
   ViewMode? _lastHandledViewMode;
+  bool _showAIInsights = false;
 
   @override
   void initState() {
@@ -799,7 +801,19 @@ class _NavigationShellState extends State<NavigationShell> {
                 children: [
                   if (widget.showWebTopBar)
                     _buildWebTopBar(context, showLabels, isDesktop),
-                  Expanded(child: widget.child),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Expanded(child: widget.child),
+                        SizedBox(
+                          width: 380,
+                          child: AIInsightsPanel(
+                            onClose: () {},
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),

@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
@@ -23,6 +23,7 @@ import '../theme/app_icons.dart';
 import '../utils/category_emoji.dart';
 import '../utils/tag_utils.dart';
 import '../services/ai_service.dart';
+import '../widgets/ai_insights_panel.dart';
 
 class ExpenseManagementScreen extends StatefulWidget {
   const ExpenseManagementScreen({super.key});
@@ -59,12 +60,12 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   bool _showAnalyticsPanel = false;
   bool _showAIInsightsPanel = false;
   Expense? _selectedExpenseDetail;
-  bool _showLeakageFlip = false; // flip between Projected â†” Leakage when panel active
+  bool _showLeakageFlip = false; // flip between Projected Ã¢â€ â€ Leakage when panel active
   final ScrollController _infoCardScrollController = ScrollController();
 
   // Compact toolbar state (matches budget screen pattern)
   String _expenseGroupBy = 'none'; // 'none', 'category', 'source'
-  bool _expenseSortAscending = false; // false = highâ†’low (default)
+  bool _expenseSortAscending = false; // false = highÃ¢â€ â€™low (default)
   String? _hoveredExpenseId;
 
   // Upload progress tracking
@@ -214,7 +215,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   }
 
   /// Parse .xlsx bytes into structured expense rows (description, category, date, amount).
-  /// Handles: DD-MM-YYYY dates, ₹-prefixed amounts, Excel date serials.
+  /// Handles: DD-MM-YYYY dates, â‚¹-prefixed amounts, Excel date serials.
   static List<_ExpenseEditableRow> _parseExpenseExcel(Uint8List bytes) {
     final archive = ZipDecoder().decodeBytes(bytes);
 
@@ -316,8 +317,8 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       final rawDate = dateCol >= 0 && dateCol < vals.length ? vals[dateCol].trim() : '';
       final rawAmt = amtCol >= 0 && amtCol < vals.length ? vals[amtCol].trim() : '';
 
-      // Parse amount: strip ₹, commas, spaces
-      final cleanAmt = rawAmt.replaceAll(RegExp(r'[₹,\s]'), '');
+      // Parse amount: strip â‚¹, commas, spaces
+      final cleanAmt = rawAmt.replaceAll(RegExp(r'[â‚¹,\s]'), '');
       final amount = double.tryParse(cleanAmt);
 
       // Parse date: handle DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD, Excel serial
@@ -573,9 +574,30 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       final idToken = await authService.getIdToken();
+
+      // Format dates for the Edge Function (YYYY-MM-DD)
+      String? startDate;
+      String? endDate;
+      if (_filterStartDate != null) {
+        startDate = '${_filterStartDate!.year}-${_filterStartDate!.month.toString().padLeft(2, '0')}-${_filterStartDate!.day.toString().padLeft(2, '0')}';
+        final ed = _filterEndDate ?? _filterStartDate!;
+        endDate = '${ed.year}-${ed.month.toString().padLeft(2, '0')}-${ed.day.toString().padLeft(2, '0')}';
+      } else {
+        // Default: fetch current month from server side
+        final now = DateTime.now();
+        startDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
+        endDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      }
+
+      // Use higher limit for custom date ranges (multi-month queries)
+      final fetchLimit = _filterStartDate != null ? 5000 : 1000;
+
       final expenses = await _expenseService.getExpenses(
         supabaseUrl: authService.supabaseUrl,
         idToken: idToken,
+        startDate: startDate,
+        endDate: endDate,
+        limit: fetchLimit,
       );
 
       // Load budgets for the web budget status card (optional)
@@ -695,7 +717,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   }
 
   String _formatCurrency(double amount) {
-    return '₹${amount.toStringAsFixed(2)}';
+    return 'â‚¹${amount.toStringAsFixed(2)}';
   }
 
   String _formatDate(DateTime date) {
@@ -758,7 +780,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // â”€â”€ Title Row â”€â”€
+          // Ã¢â€â‚¬Ã¢â€â‚¬ Title Row Ã¢â€â‚¬Ã¢â€â‚¬
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
             child: Column(
@@ -802,7 +824,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               ],
             ),
           ),
-          // â”€â”€ Main content below title â”€â”€
+          // Ã¢â€â‚¬Ã¢â€â‚¬ Main content below title Ã¢â€â‚¬Ã¢â€â‚¬
           Expanded(
             child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -828,7 +850,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                       const SizedBox(height: 8),
                     ],
                     const SizedBox(height: 12),
-                    // â”€â”€ Main Content: fills remaining viewport height â”€â”€
+                    // Ã¢â€â‚¬Ã¢â€â‚¬ Main Content: fills remaining viewport height Ã¢â€â‚¬Ã¢â€â‚¬
                     Expanded(
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -905,24 +927,24 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // â”€â”€ Three info cards: Budget vs Expense, Over-budget bars, AI proverb â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Three info cards: Budget vs Expense, Over-budget bars, AI proverb Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   static const _financeProverbs = [
     'A family that budgets together, grows together.',
     'Small savings today build big dreams for tomorrow.',
-    'Track every rupee â€” awareness is the first step to wealth.',
+    'Track every rupee Ã¢â‚¬â€ awareness is the first step to wealth.',
     'The best time to start budgeting was yesterday. The next best is now.',
-    'Financial peace isn\'t about how much you earn â€” it\'s about how wisely you spend.',
+    'Financial peace isn\'t about how much you earn Ã¢â‚¬â€ it\'s about how wisely you spend.',
     'Every expense tracked is a step closer to financial freedom.',
     'Teach your children about money, and you give them wings for life.',
     'A budget is telling your money where to go instead of wondering where it went.',
-    'Consistency beats intensity â€” save a little every day.',
+    'Consistency beats intensity Ã¢â‚¬â€ save a little every day.',
     'The secret to wealth is simple: spend less than you earn, invest the rest.',
     'Your family\'s financial health is the foundation for everything else.',
     'Don\'t save what\'s left after spending. Spend what\'s left after saving.',
   ];
 
-  // â”€â”€ Custom Inline Calendar Widget â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Custom Inline Calendar Widget Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildInlineCalendar(bool isDark, Color primary) {
     final now = DateTime.now();
@@ -1030,7 +1052,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                           _filterStartDate = date;
                           _filterEndDate = null;
                         } else {
-                          // Start is set, end is not â€” set end date
+                          // Start is set, end is not Ã¢â‚¬â€ set end date
                           if (date.isBefore(_filterStartDate!)) {
                             _filterEndDate = _filterStartDate;
                             _filterStartDate = date;
@@ -1040,6 +1062,10 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                           _showCalendarDropdown = false;
                         }
                       });
+                      // Re-fetch from server when date range is complete
+                      if (_filterStartDate != null && _filterEndDate != null) {
+                        _loadExpenses();
+                      }
                     },
                     child: Container(
                       height: 28,
@@ -1084,6 +1110,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   _filterEndDate = today;
                   _showCalendarDropdown = false;
                 });
+                _loadExpenses();
               }),
               const SizedBox(width: 6),
               _calQuickBtn('Yesterday', () {
@@ -1093,6 +1120,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   _filterEndDate = y;
                   _showCalendarDropdown = false;
                 });
+                _loadExpenses();
               }),
               const SizedBox(width: 6),
               _calQuickBtn('Last 7 days', () {
@@ -1101,6 +1129,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   _filterEndDate = today;
                   _showCalendarDropdown = false;
                 });
+                _loadExpenses();
               }),
             ],
           ),
@@ -1114,6 +1143,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   _filterEndDate = null;
                   _showCalendarDropdown = false;
                 });
+                _loadExpenses();
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 6),
@@ -1149,7 +1179,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // â”€â”€ Rewards Row: extracted to reuse in Col 3 â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Rewards Row: extracted to reuse in Col 3 Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildRewardsRow(bool isDark) {
     final rewards = <_RewardIcon>[
@@ -1197,7 +1227,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // â”€â”€ Info Cards column (without rewards) â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Info Cards column (without rewards) Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildInfoCardsColumn(bool isDark, Color primary) {
     return Container(
@@ -1214,7 +1244,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // â”€â”€ All 14 AI Info Cards in a single scrollable column with arrow nav â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ All 14 AI Info Cards in a single scrollable column with arrow nav Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildAllInfoCards(bool isDark, Color primary) {
     return LayoutBuilder(
@@ -1309,7 +1339,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // â”€â”€ Build the flat list of all 14 info cards â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Build the flat list of all 14 info cards Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildInfoCardsList(bool isDark, Color primary) {
     final now = DateTime.now();
@@ -1434,20 +1464,20 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
 
     // Build all 14 cards and distribute into 2 columns
     final allCards = <Widget>[
-      _aiCard('💵', 'Budget vs Expense', '${_fmtCurrency(totalSpend)} / ${_fmtCurrency(totalBudget)} spent (${usagePct.toStringAsFixed(0)}%)', withinBudget ? Colors.green : Colors.red, withinBudget ? 'On track' : 'Over budget'),
-      _aiCard('📊', 'Over Budget', overBudgetCount > 0 ? '$overBudgetCount categor${overBudgetCount == 1 ? 'y' : 'ies'} over budget' : 'All within budget!', overBudgetCount > 0 ? Colors.red : Colors.green, '$overBudgetCount'),
-      _aiCard('💧', 'Spend Leakage', leakageCount > 0 ? '$leakageCount spending leak${leakageCount == 1 ? '' : 's'} detected' : 'No spending leaks detected! Your finances look healthy.', leakageCount > 0 ? Colors.pink : Colors.green, leakageCount > 0 ? 'Review' : 'Healthy'),
-      _aiCard('💰', 'Projected Expense', '₹${projectedTotal.toStringAsFixed(0)} projected this month', Colors.green, '₹${dailyRate.toStringAsFixed(0)}/day'),
-      _aiCard('🔔', 'Subscription Drain', currentMonthExpenses.isEmpty ? 'Connect email to track subscriptions' : '${catCount.length} active spending categories detected', Colors.red, 'Track recurring'),
-      _aiCard('⚡', 'Impulse Spend', impulseCount > 0 ? '$impulseCount impulse spend${impulseCount == 1 ? '' : 's'} detected this month' : 'No impulse spending detected!', Colors.orange, impulseCount > 0 ? 'Review spending' : 'Great control!'),
-      _aiCard('📍', 'Silent Expenses', smallExpenses.isNotEmpty ? '${smallExpenses.length} small spends totaling ₹${smallTotal.toStringAsFixed(0)}' : 'No silent expenses detected', Colors.indigo, 'Under ₹200 each'),
-      _aiCard('📈', 'Lifestyle Creep', creepPct.abs() > 5 ? 'Spending ${creepPct > 0 ? 'up' : 'down'} ${creepPct.abs().toStringAsFixed(0)}% vs last quarter' : 'Spending stable vs last quarter', creepPct > 10 ? Colors.red : Colors.teal, 'Quarter comparison'),
-      _aiCard('🎯', 'Budget Drift', driftingCat != null ? '$driftingCat driftingâ€”${driftPct.toStringAsFixed(0)}% used with ${(100 - monthPct).toStringAsFixed(0)}% of month left' : 'All categories on track', Colors.amber, 'Budget pace'),
-      _aiCard('⚠️', 'Category Overshoot', overshootCat != null ? '$overshootCat spend up ₹${overshootAmt.toStringAsFixed(0)} vs last month' : 'No unusual category spikes', overshootCat != null ? Colors.deepOrange : Colors.green, 'Category watch'),
-      _aiCard('📊', 'Spend Volatility', volatilityPct.abs() > 20 ? 'Weekend spending ${volatilityPct > 0 ? '${volatilityPct.toStringAsFixed(0)}% higher' : '${volatilityPct.abs().toStringAsFixed(0)}% lower'} than weekdays' : 'Spending pattern is stable', Colors.purple, 'Daily patterns'),
-      _aiCard('💡', 'Smart Saving', totalBudget > 0 && totalSpend < totalBudget ? 'Potential to save ₹${(totalBudget - totalSpend).toStringAsFixed(0)} this month' : 'Set budgets to unlock saving tips', Colors.blue, 'Opportunity'),
-      _aiCard('✅', 'Good Spend Ratio', '${goodRatio.toStringAsFixed(0)}% of spending on essentials & goals', goodRatio >= 70 ? Colors.green : Colors.orange, goodRatio >= 70 ? 'Healthy!' : 'Could improve'),
-      _aiCard('🛡️', 'Avoided Spend', avoidedCount > 0 ? 'You avoided $avoidedCount impulse spend${avoidedCount == 1 ? '' : 's'} vs last month' : prevImpulse == 0 ? 'Clean record both months!' : '${impulseCount - prevImpulse} more impulse spends than last month', avoidedCount > 0 ? Colors.green : Colors.grey, 'Habit tracking'),
+      _aiCard('ðŸ’µ', 'Budget vs Expense', '${_fmtCurrency(totalSpend)} / ${_fmtCurrency(totalBudget)} spent (${usagePct.toStringAsFixed(0)}%)', withinBudget ? Colors.green : Colors.red, withinBudget ? 'On track' : 'Over budget'),
+      _aiCard('ðŸ“Š', 'Over Budget', overBudgetCount > 0 ? '$overBudgetCount categor${overBudgetCount == 1 ? 'y' : 'ies'} over budget' : 'All within budget!', overBudgetCount > 0 ? Colors.red : Colors.green, '$overBudgetCount'),
+      _aiCard('ðŸ’§', 'Spend Leakage', leakageCount > 0 ? '$leakageCount spending leak${leakageCount == 1 ? '' : 's'} detected' : 'No spending leaks detected! Your finances look healthy.', leakageCount > 0 ? Colors.pink : Colors.green, leakageCount > 0 ? 'Review' : 'Healthy'),
+      _aiCard('ðŸ’°', 'Projected Expense', 'â‚¹${projectedTotal.toStringAsFixed(0)} projected this month', Colors.green, 'â‚¹${dailyRate.toStringAsFixed(0)}/day'),
+      _aiCard('ðŸ””', 'Subscription Drain', currentMonthExpenses.isEmpty ? 'Connect email to track subscriptions' : '${catCount.length} active spending categories detected', Colors.red, 'Track recurring'),
+      _aiCard('âš¡', 'Impulse Spend', impulseCount > 0 ? '$impulseCount impulse spend${impulseCount == 1 ? '' : 's'} detected this month' : 'No impulse spending detected!', Colors.orange, impulseCount > 0 ? 'Review spending' : 'Great control!'),
+      _aiCard('ðŸ“', 'Silent Expenses', smallExpenses.isNotEmpty ? '${smallExpenses.length} small spends totaling â‚¹${smallTotal.toStringAsFixed(0)}' : 'No silent expenses detected', Colors.indigo, 'Under â‚¹200 each'),
+      _aiCard('ðŸ“ˆ', 'Lifestyle Creep', creepPct.abs() > 5 ? 'Spending ${creepPct > 0 ? 'up' : 'down'} ${creepPct.abs().toStringAsFixed(0)}% vs last quarter' : 'Spending stable vs last quarter', creepPct > 10 ? Colors.red : Colors.teal, 'Quarter comparison'),
+      _aiCard('ðŸŽ¯', 'Budget Drift', driftingCat != null ? '$driftingCat driftingÃ¢â‚¬â€${driftPct.toStringAsFixed(0)}% used with ${(100 - monthPct).toStringAsFixed(0)}% of month left' : 'All categories on track', Colors.amber, 'Budget pace'),
+      _aiCard('âš ï¸', 'Category Overshoot', overshootCat != null ? '$overshootCat spend up â‚¹${overshootAmt.toStringAsFixed(0)} vs last month' : 'No unusual category spikes', overshootCat != null ? Colors.deepOrange : Colors.green, 'Category watch'),
+      _aiCard('ðŸ“Š', 'Spend Volatility', volatilityPct.abs() > 20 ? 'Weekend spending ${volatilityPct > 0 ? '${volatilityPct.toStringAsFixed(0)}% higher' : '${volatilityPct.abs().toStringAsFixed(0)}% lower'} than weekdays' : 'Spending pattern is stable', Colors.purple, 'Daily patterns'),
+      _aiCard('ðŸ’¡', 'Smart Saving', totalBudget > 0 && totalSpend < totalBudget ? 'Potential to save â‚¹${(totalBudget - totalSpend).toStringAsFixed(0)} this month' : 'Set budgets to unlock saving tips', Colors.blue, 'Opportunity'),
+      _aiCard('âœ…', 'Good Spend Ratio', '${goodRatio.toStringAsFixed(0)}% of spending on essentials & goals', goodRatio >= 70 ? Colors.green : Colors.orange, goodRatio >= 70 ? 'Healthy!' : 'Could improve'),
+      _aiCard('ðŸ›¡ï¸', 'Avoided Spend', avoidedCount > 0 ? 'You avoided $avoidedCount impulse spend${avoidedCount == 1 ? '' : 's'} vs last month' : prevImpulse == 0 ? 'Clean record both months!' : '${impulseCount - prevImpulse} more impulse spends than last month', avoidedCount > 0 ? Colors.green : Colors.grey, 'Habit tracking'),
     ];
 
     // Distribute cards alternately into 2 columns
@@ -1645,7 +1675,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    item.key.length > 4 ? '${item.key.substring(0, 3)}â€¦' : item.key,
+                                    item.key.length > 4 ? '${item.key.substring(0, 3)}Ã¢â‚¬Â¦' : item.key,
                                     style: TextStyle(fontSize: 7, color: Colors.grey[500]),
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -1665,7 +1695,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // â”€â”€ Flippable Projected Expense (shown under info cards when panel active) â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Flippable Projected Expense (shown under info cards when panel active) Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildFlippableProjectedSection(bool isDark, Color primary) {
     return Column(
@@ -1702,7 +1732,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // â”€â”€ Projected Expense This Month â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Projected Expense This Month Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildProjectedExpenseSection(bool isDark, Color primary) {
     final now = DateTime.now();
@@ -1729,7 +1759,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     // Budget total
     final totalBudget = _budgets.fold<double>(0, (s, b) => s + b.amount);
 
-    // Daily burn rate â€” use current data, or fall back to historical, or budget
+    // Daily burn rate Ã¢â‚¬â€ use current data, or fall back to historical, or budget
     final double dailyRate;
     final double projected;
     if (currentSpend > 0 && daysPassed > 0) {
@@ -1810,7 +1840,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('₹${projected.toStringAsFixed(0)}', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: projectedOverBudget ? Colors.orange.shade800 : Colors.green.shade800)),
+                    Text('â‚¹${projected.toStringAsFixed(0)}', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: projectedOverBudget ? Colors.orange.shade800 : Colors.green.shade800)),
                     const SizedBox(height: 2),
                     Text('projected by month end', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
                   ],
@@ -1853,7 +1883,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           Row(
             children: [
               _projStatChip(
-                '₹${dailyRate.toStringAsFixed(0)}',
+                'â‚¹${dailyRate.toStringAsFixed(0)}',
                 'Daily Rate',
                 Icons.speed_rounded,
                 Colors.blue,
@@ -1890,7 +1920,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'May overflow budget by ₹${projectedOverflowAmt.toStringAsFixed(0)} based on current spending pattern',
+                      'May overflow budget by â‚¹${projectedOverflowAmt.toStringAsFixed(0)} based on current spending pattern',
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.orange.shade800),
                     ),
                   ),
@@ -1899,7 +1929,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
             ),
           ],
 
-          // â”€â”€ Top 5 Projected Expenses â”€â”€
+          // Ã¢â€â‚¬Ã¢â€â‚¬ Top 5 Projected Expenses Ã¢â€â‚¬Ã¢â€â‚¬
           const SizedBox(height: 14),
           Text('Top Projected Expenses', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.grey.shade700)),
           const SizedBox(height: 8),
@@ -1993,7 +2023,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.description.length > 28 ? '${item.description.substring(0, 25)}â€¦' : item.description,
+                      item.description.length > 28 ? '${item.description.substring(0, 25)}Ã¢â‚¬Â¦' : item.description,
                       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -2001,7 +2031,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   ],
                 ),
               ),
-              Text('₹${item.amount.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: accent)),
+              Text('â‚¹${item.amount.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: accent)),
             ],
           ),
         ),
@@ -2009,12 +2039,12 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     }).toList();
   }
 
-  // â”€â”€ Spend Leakage Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Spend Leakage Section Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildSpendLeakageSection(bool isDark, Color primary) {
     final now = DateTime.now();
 
-    // Identify "leakage" â€” categories where spend is disproportionately high
+    // Identify "leakage" Ã¢â‚¬â€ categories where spend is disproportionately high
     // or items with small recurring charges that add up
     final categorySpend = <String, double>{};
     final categoryCount = <String, int>{};
@@ -2038,7 +2068,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         leakageItems.add(_LeakageItem(
           category: entry.key,
           amount: overAmt,
-          reason: 'Over budget by ₹${overAmt.toStringAsFixed(0)}',
+          reason: 'Over budget by â‚¹${overAmt.toStringAsFixed(0)}',
           severity: overAmt / budget.amount,
           icon: Icons.warning_amber_rounded,
           color: Colors.red,
@@ -2049,7 +2079,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         leakageItems.add(_LeakageItem(
           category: entry.key,
           amount: entry.value,
-          reason: '$count transactions, avg ₹${avgTxn.toStringAsFixed(0)} each',
+          reason: '$count transactions, avg â‚¹${avgTxn.toStringAsFixed(0)} each',
           severity: count / 10,
           icon: Icons.repeat_rounded,
           color: Colors.orange,
@@ -2135,7 +2165,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               child: Row(
                 children: [
                   Text(
-                    '₹${totalLeakage.toStringAsFixed(0)}',
+                    'â‚¹${totalLeakage.toStringAsFixed(0)}',
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.pink.shade700),
                   ),
                   const SizedBox(width: 8),
@@ -2174,7 +2204,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                           ),
                           const SizedBox(width: 8),
                           Expanded(child: Text(item.category, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
-                          Text('₹${item.amount.toStringAsFixed(0)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: item.color)),
+                          Text('â‚¹${item.amount.toStringAsFixed(0)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: item.color)),
                         ],
                       ),
                       const SizedBox(height: 6),
@@ -2567,7 +2597,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              // Edit icon â€” visible on hover
+              // Edit icon Ã¢â‚¬â€ visible on hover
               AnimatedOpacity(
                 opacity: isHovered ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 150),
@@ -3048,7 +3078,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // â”€â”€ Computed helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Computed helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   List<Expense> get _filteredExpenses {
     final now = DateTime.now();
@@ -3333,7 +3363,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     }
   }
 
-  // â”€â”€ Web: Compact Expense List Controls (matches budget toolbar pattern) â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Web: Compact Expense List Controls (matches budget toolbar pattern) Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildExpenseListControls() {
     final hasDateFilter = _filterStartDate != null || _filterEndDate != null;
@@ -3418,7 +3448,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
         ),
         // 3. Sort by Amount
         Tooltip(
-          message: _expenseSortAscending ? 'Sort: Low â†’ High' : 'Sort: High â†’ Low',
+          message: _expenseSortAscending ? 'Sort: Low Ã¢â€ â€™ High' : 'Sort: High Ã¢â€ â€™ Low',
           child: IconButton(
             icon: Icon(
               _expenseSortAscending ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
@@ -3504,7 +3534,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // â”€â”€ Web: Inline Expense Form (matches budget inline form pattern) â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Web: Inline Expense Form (matches budget inline form pattern) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildInlineExpenseForm() {
     final isEditing = _editingExpense != null;
@@ -3556,7 +3586,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               style: const TextStyle(fontSize: 12),
               decoration: InputDecoration(
-                hintText: '₹ 0.00',
+                hintText: 'â‚¹ 0.00',
                 hintStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -3639,7 +3669,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // â”€â”€ Web: Transaction List widget â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Web: Transaction List widget Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildWebTransactionList(List<Expense> filtered, bool isDark, Color primary) {
     final controls = _buildExpenseListControls();
@@ -3785,7 +3815,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               // Inline expense form slides down, pushing rows
               if (_showInlineExpenseForm)
                 _buildInlineExpenseForm(),
-              // Transaction rows (scrollable) â€” grouped or flat
+              // Transaction rows (scrollable) Ã¢â‚¬â€ grouped or flat
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
@@ -3826,7 +3856,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // â”€â”€ Web: Inline Add Expense Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Web: Inline Add Expense Panel Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildInlineAddExpensePanel(bool isDark, Color primary) {
     return _InlineAddExpensePanel(
@@ -3838,7 +3868,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // â”€â”€ Web: Inline Import Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Web: Inline Import Panel Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildInlineImportPanel(bool isDark, Color primary) {
     return _InlineImportPanel(
@@ -3850,7 +3880,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // â”€â”€ Web: Inline Transaction Detail â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Web: Inline Transaction Detail Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildInlineTransactionDetail(bool isDark, Color primary) {
     final expense = _selectedExpenseDetail!;
@@ -3903,7 +3933,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     }
   }
 
-  // â”€â”€ Web: Historical Performance Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Web: Historical Performance Panel Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildHistoricalPerformancePanel(bool isDark, Color primary) {
     return _HistoricalPerformancePanel(
@@ -3913,7 +3943,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // â”€â”€ Web: Spending Analytics Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Web: Spending Analytics Panel Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildSpendingAnalyticsPanel(bool isDark, Color primary) {
     return _SpendingAnalyticsPanel(
@@ -3923,10 +3953,10 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     );
   }
 
-  // â”€â”€ Web: AI Insights Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Web: AI Insights Panel Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   Widget _buildAIInsightsPanel(bool isDark, Color primary) {
-    return _AIInsightsPanel(
+    return AIInsightsPanel(
       onClose: () => setState(() => _showAIInsightsPanel = false),
     );
   }
@@ -3983,7 +4013,7 @@ class _ExpenseCategoryItem {
   });
 }
 
-// â”€â”€ Inline Add Expense Panel (shown in web layout) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Inline Add Expense Panel (shown in web layout) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 class _InlineAddExpensePanel extends StatefulWidget {
   final VoidCallback onSaved;
@@ -4276,8 +4306,8 @@ class _InlineAddExpensePanelState extends State<_InlineAddExpensePanel> {
             controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
-              labelText: 'Amount (₹)',
-              prefixText: '₹ ',
+              labelText: 'Amount (â‚¹)',
+              prefixText: 'â‚¹ ',
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             ),
@@ -4307,7 +4337,7 @@ class _InlineAddExpensePanelState extends State<_InlineAddExpensePanel> {
             onChanged: (v) { if (v != null) setState(() => _selectedCategory = v); },
           ),
           const SizedBox(height: 12),
-          // â”€â”€ Modern inline date picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // Ã¢â€â‚¬Ã¢â€â‚¬ Modern inline date picker Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
           InkWell(
             onTap: _toggleDatePicker,
             borderRadius: BorderRadius.circular(12),
@@ -4956,9 +4986,9 @@ class _AddEditExpenseScreenState extends State<AddEditExpenseScreen> {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 // Inline Import Panel (right side, same look as Add Expense)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
 class _InlineImportPanel extends StatefulWidget {
   final VoidCallback onDone;
@@ -5275,7 +5305,7 @@ class _InlineImportPanelState extends State<_InlineImportPanel> {
                   const SizedBox(height: 6),
                   ...(_preview!.errors.take(5).map((e) => Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: Text('Row ${e.row}: ${e.field} â€” ${e.message}', style: TextStyle(fontSize: 11, color: Colors.red[600])),
+                    child: Text('Row ${e.row}: ${e.field} Ã¢â‚¬â€ ${e.message}', style: TextStyle(fontSize: 11, color: Colors.red[600])),
                   ))),
                 ],
               ],
@@ -5338,9 +5368,9 @@ class _InlineImportPanelState extends State<_InlineImportPanel> {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 // Inline Transaction Detail Panel (right side, same look as Add Expense)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
 class _InlineTransactionDetailPanel extends StatefulWidget {
   final Expense expense;
@@ -5480,7 +5510,7 @@ class _InlineTransactionDetailPanelState extends State<_InlineTransactionDetailP
             ),
             const SizedBox(height: 12),
             Text(
-              '${isIncome ? '+' : '-'} ₹${e.amount.toStringAsFixed(2)}',
+              '${isIncome ? '+' : '-'} â‚¹${e.amount.toStringAsFixed(2)}',
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: isIncome ? AppColors.success : AppColors.error),
             ),
           ]),
@@ -5539,7 +5569,7 @@ class _InlineTransactionDetailPanelState extends State<_InlineTransactionDetailP
           controller: _amountCtrl,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: InputDecoration(
-            labelText: 'Amount (₹)', prefixText: '₹ ',
+            labelText: 'Amount (â‚¹)', prefixText: 'â‚¹ ',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           ),
@@ -5639,9 +5669,9 @@ class _InlineTransactionDetailPanelState extends State<_InlineTransactionDetailP
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 // Historical Performance Panel
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
 class _HistoricalPerformancePanel extends StatelessWidget {
   final List<Expense> expenses;
@@ -5714,9 +5744,9 @@ class _HistoricalPerformancePanel extends StatelessWidget {
           // Summary cards
           Row(
             children: [
-              Expanded(child: _miniCard('This Month', '₹${currentMonthSpend.toStringAsFixed(0)}', Colors.deepPurple)),
+              Expanded(child: _miniCard('This Month', 'â‚¹${currentMonthSpend.toStringAsFixed(0)}', Colors.deepPurple)),
               const SizedBox(width: 8),
-              Expanded(child: _miniCard('Budget', '₹${totalBudget.toStringAsFixed(0)}', Colors.blue)),
+              Expanded(child: _miniCard('Budget', 'â‚¹${totalBudget.toStringAsFixed(0)}', Colors.blue)),
               const SizedBox(width: 8),
               Expanded(child: _miniCard(
                 'Trend',
@@ -5751,7 +5781,7 @@ class _HistoricalPerformancePanel extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  SizedBox(width: 60, child: Text('₹${entry.value.toStringAsFixed(0)}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[700]), textAlign: TextAlign.right)),
+                  SizedBox(width: 60, child: Text('â‚¹${entry.value.toStringAsFixed(0)}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[700]), textAlign: TextAlign.right)),
                 ],
               ),
             );
@@ -5777,8 +5807,8 @@ class _HistoricalPerformancePanel extends StatelessWidget {
                 Expanded(
                   child: Text(
                     currentMonthSpend <= totalBudget
-                        ? 'Within budget â€” ₹${(totalBudget - currentMonthSpend).toStringAsFixed(0)} remaining'
-                        : 'Over budget by ₹${(currentMonthSpend - totalBudget).toStringAsFixed(0)}',
+                        ? 'Within budget Ã¢â‚¬â€ â‚¹${(totalBudget - currentMonthSpend).toStringAsFixed(0)} remaining'
+                        : 'Over budget by â‚¹${(currentMonthSpend - totalBudget).toStringAsFixed(0)}',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -5817,9 +5847,9 @@ class _HistoricalPerformancePanel extends StatelessWidget {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 // Spending Analytics Panel
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
 class _SpendingAnalyticsPanel extends StatelessWidget {
   final List<Expense> expenses;
@@ -5888,9 +5918,9 @@ class _SpendingAnalyticsPanel extends StatelessWidget {
           // Summary stats
           Row(
             children: [
-              Expanded(child: _statCard('Total', '₹${totalSpend.toStringAsFixed(0)}', Icons.account_balance_wallet_outlined, const Color(0xFF00ACC1))),
+              Expanded(child: _statCard('Total', 'â‚¹${totalSpend.toStringAsFixed(0)}', Icons.account_balance_wallet_outlined, const Color(0xFF00ACC1))),
               const SizedBox(width: 8),
-              Expanded(child: _statCard('Daily Avg', '₹${dailyAvg.toStringAsFixed(0)}', Icons.trending_up_outlined, Colors.orange)),
+              Expanded(child: _statCard('Daily Avg', 'â‚¹${dailyAvg.toStringAsFixed(0)}', Icons.trending_up_outlined, Colors.orange)),
               const SizedBox(width: 8),
               Expanded(child: _statCard('Txns', txnCount.toString(), Icons.receipt_long_outlined, Colors.indigo)),
             ],
@@ -5938,7 +5968,7 @@ class _SpendingAnalyticsPanel extends StatelessWidget {
                         Text(CategoryEmoji.getCategoryEmoji(entry.key), style: const TextStyle(fontSize: 14)),
                         const SizedBox(width: 6),
                         Expanded(child: Text(entry.key, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-                        Text('₹${entry.value.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isOverBudget ? Colors.red[600] : Colors.grey[700])),
+                        Text('â‚¹${entry.value.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isOverBudget ? Colors.red[600] : Colors.grey[700])),
                         const SizedBox(width: 4),
                         Text('${pct.toStringAsFixed(0)}%', style: TextStyle(fontSize: 10, color: Colors.grey[400])),
                       ],
@@ -5956,7 +5986,7 @@ class _SpendingAnalyticsPanel extends StatelessWidget {
                     if (budgetForCategory != null) ...[
                       const SizedBox(height: 2),
                       Text(
-                        'Budget: ₹${budgetForCategory.amount.toStringAsFixed(0)}${isOverBudget ? ' (over by ₹${(entry.value - budgetForCategory.amount).toStringAsFixed(0)})' : ''}',
+                        'Budget: â‚¹${budgetForCategory.amount.toStringAsFixed(0)}${isOverBudget ? ' (over by â‚¹${(entry.value - budgetForCategory.amount).toStringAsFixed(0)})' : ''}',
                         style: TextStyle(fontSize: 9, color: isOverBudget ? Colors.red[400] : Colors.grey[400]),
                       ),
                     ],
@@ -5988,256 +6018,7 @@ class _SpendingAnalyticsPanel extends StatelessWidget {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// AI Insights Panel
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-class _AIInsightsPanel extends StatefulWidget {
-  final VoidCallback onClose;
-
-  const _AIInsightsPanel({required this.onClose});
-
-  @override
-  State<_AIInsightsPanel> createState() => _AIInsightsPanelState();
-}
-
-class _AIInsightsPanelState extends State<_AIInsightsPanel> {
-  bool _loading = false;
-  String? _analysis;
-  String? _error;
-
-  String _chatInput = '';
-  final _chatController = TextEditingController();
-  final List<_ChatMessage> _chatMessages = [];
-  bool _chatLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchAnalysis();
-  }
-
-  @override
-  void dispose() {
-    _chatController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _fetchAnalysis() async {
-    setState(() { _loading = true; _error = null; });
-    try {
-      final auth = Provider.of<AuthService>(context, listen: false);
-      final result = await AIService().getBudgetAnalysis(
-        supabaseUrl: auth.supabaseUrl,
-        idToken: await auth.getIdToken(),
-      );
-      if (mounted) setState(() { _analysis = result['analysis'] as String?; _loading = false; });
-    } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
-    }
-  }
-
-  Future<void> _sendChat() async {
-    final msg = _chatController.text.trim();
-    if (msg.isEmpty) return;
-    _chatController.clear();
-    setState(() {
-      _chatMessages.add(_ChatMessage(text: msg, isUser: true));
-      _chatLoading = true;
-    });
-    try {
-      final auth = Provider.of<AuthService>(context, listen: false);
-      final result = await AIService().sendChatMessage(
-        message: msg,
-        supabaseUrl: auth.supabaseUrl,
-        idToken: await auth.getIdToken(),
-      );
-      if (mounted) {
-        setState(() {
-          _chatMessages.add(_ChatMessage(text: result['response'] as String? ?? 'No response', isUser: false));
-          _chatLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _chatMessages.add(_ChatMessage(text: 'Error: $e', isUser: false));
-          _chatLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderLight),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            children: [
-              Icon(Icons.auto_awesome, size: 20, color: const Color(0xFF9C27B0)),
-              const SizedBox(width: 8),
-              const Text('AI Insights', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const Spacer(),
-              IconButton(
-                onPressed: _loading ? null : _fetchAnalysis,
-                icon: const Icon(Icons.refresh, size: 18),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                tooltip: 'Refresh analysis',
-              ),
-              const SizedBox(width: 4),
-              IconButton(
-                onPressed: widget.onClose,
-                icon: const Icon(Icons.close, size: 20),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Budget Analysis section
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [Colors.purple.shade50, Colors.blue.shade50]),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.analytics_outlined, size: 16, color: Colors.purple[600]),
-                    const SizedBox(width: 6),
-                    Text('Budget Analysis', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.purple[700])),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (_loading)
-                  const Center(child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
-                  ))
-                else if (_error != null)
-                  Text(_error!, style: TextStyle(fontSize: 12, color: Colors.red[600]))
-                else if (_analysis != null)
-                  Text(_analysis!, style: const TextStyle(fontSize: 12, height: 1.5))
-                else
-                  Text('Tap refresh to generate AI analysis', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Chat section - fills remaining space
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.chat_bubble_outline, size: 16, color: Colors.purple[400]),
-                    const SizedBox(width: 6),
-                    Text('Ask AI', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.purple[600])),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
-                // Chat messages
-                if (_chatMessages.isNotEmpty) ...[
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(8),
-                        itemCount: _chatMessages.length,
-                        itemBuilder: (ctx, i) {
-                          final msg = _chatMessages[i];
-                          return Align(
-                            alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 6),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: msg.isUser ? Colors.purple[100] : Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: msg.isUser ? null : Border.all(color: Colors.grey[200]!),
-                              ),
-                              child: Text(msg.text, style: const TextStyle(fontSize: 12)),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  if (_chatLoading)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                          const SizedBox(width: 8),
-                          Text('Thinking...', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                ] else
-                  const Spacer(),
-
-                // Chat input
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _chatController,
-                        decoration: InputDecoration(
-                          hintText: 'Ask about your finances...',
-                          hintStyle: TextStyle(fontSize: 13, color: Colors.grey[400]),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          isDense: true,
-                        ),
-                        style: const TextStyle(fontSize: 13),
-                        onSubmitted: (_) => _sendChat(),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: _chatLoading ? null : _sendChat,
-                      icon: Icon(Icons.send_rounded, color: Colors.purple[600]),
-                      tooltip: 'Send',
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ChatMessage {
-  final String text;
-  final bool isUser;
-  const _ChatMessage({required this.text, required this.isUser});
-}
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
 class _LeakageItem {
   final String category;
@@ -6287,7 +6068,7 @@ class _ExpenseEditableRow {
   });
 }
 
-/// Rich Excel import preview dialog for expenses â€” matches budget's _ExcelPreviewDialog
+/// Rich Excel import preview dialog for expenses Ã¢â‚¬â€ matches budget's _ExcelPreviewDialog
 class _ExpenseExcelPreviewDialog extends StatefulWidget {
   final List<_ExpenseEditableRow> rows;
   final AuthService authService;
@@ -6464,7 +6245,7 @@ class _ExpenseExcelPreviewDialogState extends State<_ExpenseExcelPreviewDialog> 
                     _chip('${invalidRows.length} invalid', AppColors.error),
                   const Spacer(),
                   Text(
-                    'Total: ₹${totalAmount.toStringAsFixed(0)}',
+                    'Total: â‚¹${totalAmount.toStringAsFixed(0)}',
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
@@ -6584,7 +6365,7 @@ class _ExpenseExcelPreviewDialogState extends State<_ExpenseExcelPreviewDialog> 
                           _ExpTableCell(
                             Text(
                               _editableRows[idx].isValid
-                                  ? '₹${_editableRows[idx].amount.toStringAsFixed(0)}'
+                                  ? 'â‚¹${_editableRows[idx].amount.toStringAsFixed(0)}'
                                   : '',
                               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                             ),

@@ -781,6 +781,52 @@ class _NavigationShellState extends State<NavigationShell> {
     );
   }
 
+  Widget _buildRewardsRow() {
+    final rewards = <_RewardIcon>[
+      _RewardIcon(Icons.emoji_events_rounded, Colors.amber, 'Budget Champion'),
+      _RewardIcon(Icons.savings_rounded, Colors.green, 'Smart Saver'),
+      _RewardIcon(Icons.auto_graph_rounded, Colors.blue, 'Trend Watcher'),
+      _RewardIcon(Icons.favorite_rounded, Colors.pink, 'Impulse Control'),
+      _RewardIcon(Icons.shield_rounded, Colors.purple, 'No Leaks'),
+      _RewardIcon(Icons.star_rounded, Colors.orange, 'Consistent'),
+      _RewardIcon(Icons.diamond_rounded, Colors.teal, 'Goal Achiever'),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Text('Rewards', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.grey.shade500)),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: rewards.map((r) => Tooltip(
+              message: r.label,
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [r.color.withOpacity(0.15), r.color.withOpacity(0.05)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: r.color.withOpacity(0.3)),
+                ),
+                child: Icon(r.icon, size: 15, color: r.color),
+              ),
+            )).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final viewMode = context.watch<ViewModeProvider>().mode;
@@ -807,8 +853,15 @@ class _NavigationShellState extends State<NavigationShell> {
                         Expanded(child: widget.child),
                         SizedBox(
                           width: 380,
-                          child: AIInsightsPanel(
-                            onClose: () {},
+                          child: Column(
+                            children: [
+                              _buildRewardsRow(),
+                              Expanded(
+                                child: AIInsightsPanel(
+                                  onClose: () {},
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -836,5 +889,12 @@ class _WebSidebarItem {
     required this.route,
     required this.connected,
   });
+}
+
+class _RewardIcon {
+  final IconData icon;
+  final Color color;
+  final String label;
+  const _RewardIcon(this.icon, this.color, this.label);
 }
 

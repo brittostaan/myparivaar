@@ -781,6 +781,173 @@ class _NavigationShellState extends State<NavigationShell> {
     );
   }
 
+  Widget _buildDailyQuote() {
+    final route = widget.currentRoute;
+    final quotes = _quotesForRoute(route);
+    final dayOfYear = DateTime.now().difference(DateTime(DateTime.now().year)).inDays;
+    final quote = quotes[dayOfYear % quotes.length];
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.deepPurple.shade50, Colors.blue.shade50],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.deepPurple.shade100),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.auto_awesome, size: 16, color: Colors.deepPurple.shade300),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              quote,
+              style: TextStyle(
+                fontSize: 11,
+                fontStyle: FontStyle.italic,
+                fontWeight: FontWeight.w500,
+                color: Colors.deepPurple.shade700,
+                height: 1.4,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static List<String> _quotesForRoute(String route) {
+    switch (route) {
+      case '/home':
+        return const [
+          'A family that plans together, thrives together.',
+          'Small daily choices build big financial freedom.',
+          'Your household's best investment is financial awareness.',
+          'Today's budget is tomorrow's peace of mind.',
+          'Track, plan, grow — one day at a time.',
+          'Financial clarity starts with a single glance at your dashboard.',
+          'A well-managed home is the foundation of a prosperous family.',
+        ];
+      case '/expenses':
+        return const [
+          'Every rupee tracked is a rupee saved.',
+          'Awareness of spending is the first step to wealth.',
+          'Don't count the cost — make the cost count.',
+          'Mindful spending today, financial freedom tomorrow.',
+          'The art of wealth begins with knowing where your money goes.',
+          'Small leaks sink great ships — track every expense.',
+          'Spend wisely, live richly.',
+        ];
+      case '/budget':
+        return const [
+          'A budget is telling your money where to go, not wondering where it went.',
+          'Budget like it matters — because it does.',
+          'Financial discipline is the bridge between goals and accomplishments.',
+          'The secret to wealth? Spend less than you earn, invest the rest.',
+          'A good budget is a family's financial compass.',
+          'Plan your spending or your spending will plan your life.',
+          'Budgeting isn't sacrifice — it's prioritization.',
+        ];
+      case '/family-planner':
+        return const [
+          'A well-planned family is a well-prepared family.',
+          'Great families don't just happen — they're planned.',
+          'Planning together strengthens the bond that holds your family.',
+          'Every family milestone deserves a thoughtful plan.',
+          'The best time to plan was yesterday. The next best time is now.',
+          'Family goals become family achievements with the right plan.',
+          'Organize today for a smoother tomorrow.',
+        ];
+      case '/kids-dashboard':
+        return const [
+          'Investing in your children is the highest-return investment.',
+          'Teach children the value of money and they'll value their future.',
+          'Every child's dream deserves a financial plan behind it.',
+          'Nurturing talent today builds leaders of tomorrow.',
+          'The greatest gift to your kids is financial literacy.',
+          'Small savings for kids today, big opportunities tomorrow.',
+          'Education is an expense that always pays dividends.',
+        ];
+      case '/parents-dashboard':
+        return const [
+          'Caring for parents is both a privilege and a responsibility.',
+          'Planning for elder care is planning for dignity.',
+          'Honor your parents by securing their comfort.',
+          'Healthcare planning for parents is love in action.',
+          'A family that cares for all generations thrives across all generations.',
+          'Senior care today ensures peace of mind for the whole family.',
+          'Supporting parents financially is the greatest return on their investment in you.',
+        ];
+      case '/investments':
+        return const [
+          'The best time to invest was 20 years ago. The second best time is now.',
+          'Don't save what's left after spending — spend what's left after investing.',
+          'Compound interest is the eighth wonder of the world.',
+          'Invest consistently, and let time do the heavy lifting.',
+          'Diversification is the only free lunch in investing.',
+          'Wealth is built through patience, not timing.',
+          'Your portfolio today shapes your family's future.',
+        ];
+      case '/assets':
+        return const [
+          'An asset is anything that puts money in your pocket.',
+          'Know what you own, and know why you own it.',
+          'Building assets is building your family's legacy.',
+          'Track your assets — they are the pillars of your financial house.',
+          'Real wealth is measured by what you own, not what you earn.',
+          'Every asset starts as a wise decision.',
+          'Protect and grow your assets for generations to come.',
+        ];
+      case '/key-contacts':
+        return const [
+          'Your network is your net worth — keep your contacts close.',
+          'The right contact at the right time can change everything.',
+          'A well-organized contact list is an underrated superpower.',
+          'Great families maintain great relationships.',
+          'Stay connected to the people who matter most.',
+          'Important contacts are the safety net for life's surprises.',
+          'Build relationships before you need them.',
+        ];
+      case '/bills':
+        return const [
+          'Pay your bills on time, and your stress goes down.',
+          'Upcoming bills are upcoming opportunities to stay disciplined.',
+          'Never let a forgotten bill become an unexpected expense.',
+          'Automate your payments, simplify your life.',
+          'Bill management is the unsexy secret of financial success.',
+          'Stay ahead of your bills, and they'll never catch you off guard.',
+          'On-time payments build both credit and confidence.',
+        ];
+      case '/reports':
+        return const [
+          'What gets measured gets managed.',
+          'Financial reports turn confusion into clarity.',
+          'Data-driven families make better financial decisions.',
+          'Review your past to improve your future.',
+          'Reports don't lie — they reveal the truth about your habits.',
+          'Insight without action is wasted. Use your reports wisely.',
+          'The numbers tell a story. Make sure it's a good one.',
+        ];
+      default:
+        return const [
+          'Financial wellness is a journey, not a destination.',
+          'Small steps every day lead to big financial achievements.',
+          'A family united in finance is a family united in purpose.',
+          'Your financial health is your family's well-being.',
+          'Plan, track, grow — repeat.',
+          'Today's choices shape tomorrow's wealth.',
+          'Financial literacy is the greatest gift you can give your family.',
+        ];
+    }
+  }
+
   Widget _buildRewardsRow() {
     final rewards = <_RewardIcon>[
       _RewardIcon(Icons.emoji_events_rounded, Colors.amber, 'Budget Champion'),
@@ -855,6 +1022,7 @@ class _NavigationShellState extends State<NavigationShell> {
                           width: 380,
                           child: Column(
                             children: [
+                              _buildDailyQuote(),
                               _buildRewardsRow(),
                               Expanded(
                                 child: AIInsightsPanel(

@@ -1022,7 +1022,7 @@ class _NavigationShellState extends State<NavigationShell> {
                           width: 380,
                           child: Column(
                             children: [
-                              const SizedBox(height: 567),
+                              const SizedBox(height: 57),
                               _buildDailyQuote(),
                               _buildRewardsRow(),
                               Expanded(

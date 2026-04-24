@@ -333,10 +333,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   }
 
   Future<void> _logout() async {
-    await context.read<AuthService>().signOut();
-    if (mounted) {
-      Navigator.of(context).pushReplacementNamed('/login');
-    }
+    final authService = context.read<AuthService>();
+    await authService.signOut();
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed('/login');
   }
 
   @override

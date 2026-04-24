@@ -37,25 +37,26 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
+      final idToken = await authService.getIdToken();
+      if (!mounted) return;
+      
       final accounts = await _emailService.getEmailAccounts(
         supabaseUrl: authService.supabaseUrl,
-        idToken: await authService.getIdToken(),
+        idToken: idToken,
       );
+      if (!mounted) return;
 
-      if (mounted) {
-        setState(() {
-          _emailAccounts = accounts;
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _emailAccounts = accounts;
+        _isLoading = false;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _emailAccounts = [];
-          _isLoading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _emailAccounts = [];
+        _isLoading = false;
+      });
     }
   }
 
@@ -67,10 +68,13 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
       // Show loading indicator
       setState(() => _isLoading = true);
 
+      final idToken = await authService.getIdToken();
+      if (!mounted) return;
+      
       final authUrl = await _emailService.getEmailConnectUrl(
         provider: provider,
         supabaseUrl: authService.supabaseUrl,
-        idToken: await authService.getIdToken(),
+        idToken: idToken,
       );
 
       if (!mounted) return;
@@ -180,12 +184,16 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
+      final idToken = await authService.getIdToken();
+      if (!mounted) return;
+      
       await _emailService.disconnectEmailAccount(
         accountId: account.id,
         supabaseUrl: authService.supabaseUrl,
-        idToken: await authService.getIdToken(),
+        idToken: idToken,
       );
 
+      if (!mounted) return;
       _loadEmailAccounts();
       
       if (mounted) {

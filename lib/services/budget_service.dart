@@ -25,17 +25,25 @@ class BudgetService {
     required String idToken,
     required String month,
   }) async {
-    final response = await _post(
-      supabaseUrl: supabaseUrl,
-      idToken: idToken,
-      functionName: 'budget-list',
-      body: {'month': month},
-    );
+    try {
+      final response = await _post(
+        supabaseUrl: supabaseUrl,
+        idToken: idToken,
+        functionName: 'budget-list',
+        body: {'month': month},
+      );
 
-    final rows = (response['budgets'] as List<dynamic>? ?? []);
-    return rows
-        .map((row) => Budget.fromJson(row as Map<String, dynamic>))
-        .toList();
+      final rows = (response['budgets'] as List<dynamic>? ?? []);
+      return rows
+          .map((row) => Budget.fromJson(row as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      // Budget functions not yet deployed; return empty list
+      if (e.toString().contains('404') || e.toString().contains('not found')) {
+        return [];
+      }
+      rethrow;
+    }
   }
 
   Future<Budget> upsertBudget({
@@ -46,23 +54,31 @@ class BudgetService {
     required String month,
     List<String>? tags,
   }) async {
-    final response = await _post(
-      supabaseUrl: supabaseUrl,
-      idToken: idToken,
-      functionName: 'budget-upsert',
-      body: {
-        'category': category,
-        'amount': amount,
-        'month': month,
-        'tags': tags,
-      },
-    );
+    try {
+      final response = await _post(
+        supabaseUrl: supabaseUrl,
+        idToken: idToken,
+        functionName: 'budget-upsert',
+        body: {
+          'category': category,
+          'amount': amount,
+          'month': month,
+          'tags': tags,
+        },
+      );
 
-    final budget = response['budget'] as Map<String, dynamic>?;
-    if (budget == null) {
-      throw const BudgetException('Invalid budget response from server');
+      final budget = response['budget'] as Map<String, dynamic>?;
+      if (budget == null) {
+        throw const BudgetException('Invalid budget response from server');
+      }
+      return Budget.fromJson(budget);
+    } catch (e) {
+      // Budget functions not yet deployed; throw helpful error
+      if (e.toString().contains('404') || e.toString().contains('not found')) {
+        throw const BudgetException('Budget management coming soon - feature not yet available');
+      }
+      rethrow;
     }
-    return Budget.fromJson(budget);
   }
 
   Future<void> deleteBudget({
@@ -70,12 +86,20 @@ class BudgetService {
     required String idToken,
     required String budgetId,
   }) async {
-    await _post(
-      supabaseUrl: supabaseUrl,
-      idToken: idToken,
-      functionName: 'budget-delete',
-      body: {'budget_id': budgetId},
-    );
+    try {
+      await _post(
+        supabaseUrl: supabaseUrl,
+        idToken: idToken,
+        functionName: 'budget-delete',
+        body: {'budget_id': budgetId},
+      );
+    } catch (e) {
+      // Budget functions not yet deployed; throw helpful error
+      if (e.toString().contains('404') || e.toString().contains('not found')) {
+        throw const BudgetException('Budget management coming soon - feature not yet available');
+      }
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> _post({

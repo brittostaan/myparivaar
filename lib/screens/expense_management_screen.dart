@@ -154,6 +154,9 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
     final authService = Provider.of<AuthService>(context, listen: false);
     try {
       final tags = parseTags(_formExpenseTagsController.text);
+      final idToken = await authService.getIdToken();
+      if (!mounted) return;
+      
       if (isEditing) {
         await _expenseService.updateExpense(
           expenseId: _editingExpense!.id,
@@ -163,7 +166,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           date: _editingExpense!.date,
           tags: tags,
           supabaseUrl: authService.supabaseUrl,
-          idToken: await authService.getIdToken(),
+          idToken: idToken,
         );
       } else {
         await _expenseService.createExpense(
@@ -173,7 +176,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           date: DateTime.now(),
           tags: tags,
           supabaseUrl: authService.supabaseUrl,
-          idToken: await authService.getIdToken(),
+          idToken: idToken,
         );
       }
       if (!mounted) return;
@@ -2689,7 +2692,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
               ],
               const SizedBox(height: 16),
               GestureDetector(
-                onTap: () => Navigator.of(context).pushNamed('/budget'),
+                onTap: () => Navigator.of(context).pushReplacementNamed('/budget'),
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

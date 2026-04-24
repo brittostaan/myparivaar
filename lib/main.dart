@@ -20,6 +20,7 @@ import 'screens/assets_screen.dart';
 import 'screens/key_contacts_screen.dart';
 import 'screens/email_settings_screen.dart';
 import 'screens/user_settings_screen.dart';
+import 'screens/voice_expense_screen.dart';
 
 import 'screens/admin_center_screen.dart';
 import 'screens/notifications_screen.dart';
@@ -29,6 +30,7 @@ import 'screens/profile_screen.dart';
 import 'screens/legal_page_screen.dart';
 import 'screens/landing_page_screen.dart';
 import 'screens/idea_board_screen.dart';
+import 'screens/more_screen.dart';
 
 import 'services/admin_service.dart';
 import 'services/auth_service.dart';
@@ -52,20 +54,6 @@ const _kSupabaseAnonKey = String.fromEnvironment(
 const _kAppEnv = String.fromEnvironment('APP_ENV', defaultValue: '');
 
 bool get _isPreviewEnvironment => _kAppEnv.toLowerCase().trim() == 'preview';
-
-void _validateSupabaseConfig() {
-  if (_kSupabaseAnonKey == 'MISSING_SUPABASE_ANON_KEY') {
-    if (kReleaseMode) {
-      throw Exception(
-        'SUPABASE_ANON_KEY environment variable is not set. '
-        'Release builds require this key. '
-        'Please provide it at compile time: '
-        'flutter build ... --dart-define=SUPABASE_ANON_KEY=<your-anon-key>'
-      );
-    }
-    debugPrint('[WARNING] SUPABASE_ANON_KEY not set. This is required for release builds.');
-  }
-}
 
 const Set<String> _authenticatedRoutes = {
   '/home',
@@ -488,6 +476,15 @@ class MyParivaaarApp extends StatelessWidget {
           ),
         );
 
+      case '/voice-expense':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const VoiceExpenseScreen(),
+          ),
+        );
+
       case '/user-settings':
         return MaterialPageRoute(
           settings: settings,
@@ -519,6 +516,15 @@ class MyParivaaarApp extends StatelessWidget {
           builder: (_) => NavigationShell(
             currentRoute: routeName,
             child: const NotificationsScreen(),
+          ),
+        );
+
+      case '/more':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const MoreScreen(),
           ),
         );
 
@@ -713,16 +719,19 @@ class _LoginScreenState extends State<_LoginScreen> {
     });
 
     try {
-      final status = await context.read<AuthService>().signInWithEmail(
+      final authService = context.read<AuthService>();
+      final status = await authService.signInWithEmail(
             email: email,
             password: password,
           );
-      if (mounted) _navigateByStatus(status);
+      if (!mounted) return;
+      _navigateByStatus(status);
     } on AppAuthException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      if (!mounted) return;
+      setState(() => _error = e.message);
     } catch (e) {
-      if (mounted)
-        setState(() => _error = 'Something went wrong. Please try again.');
+      if (!mounted) return;
+      setState(() => _error = 'Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }
@@ -745,16 +754,19 @@ class _LoginScreenState extends State<_LoginScreen> {
     });
 
     try {
-      final status = await context.read<AuthService>().signUpWithEmail(
+      final authService = context.read<AuthService>();
+      final status = await authService.signUpWithEmail(
             email: email,
             password: password,
           );
-      if (mounted) _navigateByStatus(status);
+      if (!mounted) return;
+      _navigateByStatus(status);
     } on AppAuthException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      if (!mounted) return;
+      setState(() => _error = e.message);
     } catch (e) {
-      if (mounted)
-        setState(() => _error = 'Something went wrong. Please try again.');
+      if (!mounted) return;
+      setState(() => _error = 'Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }
@@ -881,7 +893,7 @@ class _LoginScreenState extends State<_LoginScreen> {
                     // ── Login Card ────────────────────────────────────────
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).scaffoldBackgroundColor,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: const Color(0xFFE2E8F0)),
                         boxShadow: [
@@ -1267,7 +1279,8 @@ class _NeedsHouseholdScreenState extends State<_NeedsHouseholdScreen> {
 
       if (!mounted) return;
       // Re-bootstrap to pull the updated household into AuthService state.
-      final status = await context.read<AuthService>().refreshSession();
+      final authService = context.read<AuthService>();
+      final status = await authService.refreshSession();
       if (!mounted) return;
 
       if (status == AuthStatus.ready) {
@@ -1278,10 +1291,11 @@ class _NeedsHouseholdScreenState extends State<_NeedsHouseholdScreen> {
             'Joined successfully but could not load household. Please restart the app.');
       }
     } on FamilyException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      if (!mounted) return;
+      setState(() => _error = e.message);
     } catch (_) {
-      if (mounted)
-        setState(() => _error = 'Something went wrong. Please try again.');
+      if (!mounted) return;
+      setState(() => _error = 'Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }

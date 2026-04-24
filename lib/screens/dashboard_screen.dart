@@ -165,19 +165,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // â”€â”€ Balance â”€â”€
       double totalBalance = 0.0;
       double percentageChange = 0.0;
-      try {
-        final stats = await _expenseService.getExpenseStats(
-          supabaseUrl: supabaseUrl,
-          idToken: idToken,
-        );
-        totalBalance = (stats['total_balance'] as num?)?.toDouble() ?? 0.0;
-        percentageChange = (stats['percentage_change'] as num?)?.toDouble() ?? 0.0;
-      } catch (_) {
-        for (final expense in expenses) {
-          final isIncome = expense.category.toLowerCase() == 'income' ||
-              expense.category.toLowerCase() == 'salary';
-          totalBalance += isIncome ? expense.amount : -expense.amount;
-        }
+      // Calculate balance from already-fetched expenses instead of making a second API call
+      for (final expense in expenses) {
+        final isIncome = expense.category.toLowerCase() == 'income' ||
+            expense.category.toLowerCase() == 'salary';
+        totalBalance += isIncome ? expense.amount : -expense.amount;
       }
 
       final upcomingBills = allBills.where((b) => b.isUpcoming).toList()
@@ -958,7 +950,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
               ]),
             ]),
-            onTap: () => Navigator.of(context).pushNamed('/expenses'),
+            onTap: () => Navigator.of(context).pushReplacementNamed('/expenses'),
           )),
           const SizedBox(width: 16),
           Expanded(child: _webStatusCard(
@@ -983,7 +975,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text('${(_budgetUsage * 100).toStringAsFixed(0)}% of total budget used',
                   style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
             ]),
-            onTap: () => Navigator.of(context).pushNamed('/budget'),
+            onTap: () => Navigator.of(context).pushReplacementNamed('/budget'),
           )),
           const SizedBox(width: 16),
           Expanded(child: _webStatusCard(
@@ -1007,7 +999,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ],
             ]),
-            onTap: () => Navigator.of(context).pushNamed('/bills'),
+            onTap: () => Navigator.of(context).pushReplacementNamed('/bills'),
           )),
         ]),
         const SizedBox(height: 16),
@@ -1034,7 +1026,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text('${_savingsGoals.length} goal${_savingsGoals.length != 1 ? 's' : ''} active',
                   style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
             ]),
-            onTap: () => Navigator.of(context).pushNamed('/savings'),
+            onTap: () => Navigator.of(context).pushReplacementNamed('/savings'),
           )),
           const SizedBox(width: 16),
           Expanded(child: _webStatusCard(
@@ -1062,7 +1054,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text('${_investments.length} asset${_investments.length != 1 ? 's' : ''} tracked',
                   style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
             ]),
-            onTap: () => Navigator.of(context).pushNamed('/investments'),
+            onTap: () => Navigator.of(context).pushReplacementNamed('/investments'),
           )),
           const SizedBox(width: 16),
           Expanded(child: _webStatusCard(
@@ -1086,7 +1078,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
               ]),
             ]),
-            onTap: () => Navigator.of(context).pushNamed('/kids-dashboard'),
+            onTap: () => Navigator.of(context).pushReplacementNamed('/kids-dashboard'),
           )),
         ]),
       ],
@@ -1245,7 +1237,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const Text("What's Ahead", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const Spacer(),
               TextButton(
-                onPressed: () => Navigator.of(context).pushNamed('/family-planner'),
+                onPressed: () => Navigator.of(context).pushReplacementNamed('/family-planner'),
                 child: Text('View all', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
               ),
             ]),
@@ -1521,7 +1513,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const Text('Kids Corner', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                 const Spacer(),
                 TextButton(
-                  onPressed: () => Navigator.of(context).pushNamed('/kids-dashboard'),
+                  onPressed: () => Navigator.of(context).pushReplacementNamed('/kids-dashboard'),
                   child: const Text('Details â†’', style: TextStyle(fontSize: 11)),
                 ),
               ]),
@@ -1562,7 +1554,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const Text('Parents Care', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                 const Spacer(),
                 TextButton(
-                  onPressed: () => Navigator.of(context).pushNamed('/parents-dashboard'),
+                  onPressed: () => Navigator.of(context).pushReplacementNamed('/parents-dashboard'),
                   child: const Text('Details â†’', style: TextStyle(fontSize: 11)),
                 ),
               ]),
@@ -1672,8 +1664,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const Text('Recent Transactions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const Spacer(),
             TextButton(
-              onPressed: () => Navigator.of(context).pushNamed('/expenses'),
-              child: Text('View all', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+              onPressed: () => Navigator.of(context).pushReplacementNamed('/expenses'),
+              child: const Text('View All'),
             ),
           ]),
           const SizedBox(height: 12),

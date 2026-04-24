@@ -55,24 +55,6 @@ const _kAppEnv = String.fromEnvironment('APP_ENV', defaultValue: '');
 
 bool get _isPreviewEnvironment => _kAppEnv.toLowerCase().trim() == 'preview';
 
-// ── Custom Scroll Behavior (No Scrollbar) ────────────────────────────────────────
-
-class NoScrollBehavior extends ScrollBehavior {
-  @override
-  Widget buildOverscrollIndicator(
-    BuildContext context,
-    Widget child,
-    ScrollableDetails details,
-  ) {
-    return child; // No overscroll glow
-  }
-
-  @override
-  ScrollPhysics getScrollPhysics(BuildContext context) {
-    return const NeverScrollableScrollPhysics(); // Disable scrolling
-  }
-}
-
 const Set<String> _authenticatedRoutes = {
   '/home',
   '/expenses',
@@ -274,7 +256,6 @@ class MyParivaaarApp extends StatelessWidget {
           theme: AppTheme.lightTheme(),
           darkTheme: AppTheme.darkTheme(),
           themeMode: ThemeMode.light, // Force light mode
-          scrollBehavior: NoScrollBehavior(), // Disable default scroll behavior
           builder: (context, child) {
             return _ResponsiveWrapper(
               viewMode: viewModeProvider.mode,

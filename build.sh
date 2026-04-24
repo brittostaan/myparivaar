@@ -1,0 +1,8 @@
+#!/bin/bash
+git clone https://github.com/flutter/flutter.git --depth 1 -b stable /tmp/flutter && \
+export PATH="/tmp/flutter/bin:$PATH" && \
+flutter config --enable-web && \
+flutter pub get && \
+flutter build web --release \
+  --dart-define=APP_ENV=$APP_ENV \
+  --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY

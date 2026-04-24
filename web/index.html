@@ -62,32 +62,9 @@
       font-size: 16px !important;
     }
 
-    /* Flutter app container */
-    #app {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-    }
-
-    /* Hide preload-links overlay when Flutter loads */
+    /* Preload content - hidden by default */
     #preload-links {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background-color: #ffffff;
-      z-index: 1;
-      transition: opacity 0.3s ease-out;
-      top: 0;
-      left: 0;
-    }
-
-    /* When Flutter app is ready, fade out splash screen */
-    body.flutter-app-loaded #preload-links {
-      opacity: 0;
-      pointer-events: none;
+      display: none;
     }
   </style>
 
@@ -123,18 +100,6 @@
   </div>
 
   <script src="flutter_bootstrap.js" async></script>
-
-  <!-- Mark app as loaded when Flutter is ready -->
-  <script>
-    window.addEventListener('flutter-app-loaded', function() {
-      document.body.classList.add('flutter-app-loaded');
-    });
-
-    // Also watch for Flutter's native initialization
-    if (window.flutterWebLoader) {
-      window.flutterWebLoader.load();
-    }
-  </script>
 
   <!-- Fallback for JS-disabled crawlers -->
   <noscript>

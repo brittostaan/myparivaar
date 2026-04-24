@@ -1763,4 +1763,12 @@ class AdminService extends ChangeNotifier {
     _error = value;
     notifyListeners();
   }
+
+  /// Validate email format using basic regex pattern
+  bool _isValidEmail(String email) {
+    final emailRegex = RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    );
+    return emailRegex.hasMatch(email);
+  }
 }

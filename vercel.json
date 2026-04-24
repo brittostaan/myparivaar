@@ -1,5 +1,5 @@
 {
-  "buildCommand": "bash build.sh",
+  "buildCommand": "bash -c 'export SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY && bash build.sh'",
   "outputDirectory": "build/web",
   "rewrites": [
     {

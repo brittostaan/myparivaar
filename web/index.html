@@ -19,11 +19,14 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="myparivaar">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#FFFFFF">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
@@ -31,6 +34,62 @@
 
   <title>myparivaar</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Mobile Optimization CSS -->
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      position: fixed;
+      background-color: #ffffff;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    #flutter-container {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Prevent pull-to-refresh on iOS */
+    body {
+      overscroll-behavior: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* Prevent zoom on double-tap iOS */
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+
+    /* Hide preload-links overlay when Flutter loads */
+    #preload-links {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #ffffff;
+      z-index: 1;
+      transition: opacity 0.3s ease-out;
+    }
+
+    /* When Flutter app is ready, fade out splash screen */
+    body.flutter-app-loaded #preload-links {
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
 
   <!-- Inter font via CDN — avoids bundling ~1.3 MB of .ttf files in debug builds -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -64,6 +123,18 @@
   </div>
 
   <script src="flutter_bootstrap.js" async></script>
+
+  <!-- Mark app as loaded when Flutter is ready -->
+  <script>
+    window.addEventListener('flutter-app-loaded', function() {
+      document.body.classList.add('flutter-app-loaded');
+    });
+
+    // Also watch for Flutter's native initialization
+    if (window.flutterWebLoader) {
+      window.flutterWebLoader.load();
+    }
+  </script>
 
   <!-- Fallback for JS-disabled crawlers -->
   <noscript>

@@ -445,21 +445,37 @@ async function runScan(
         }
       }
 
-      // Record scanned email (ignore duplicate constraint violations)
-      const { error: scannedInsertErr } = await supabasePublic.from('email_scanned_emails').insert({
-        email_account_id: account.id,
-        scan_result_id: scanId,
-        provider_message_id: providerId,
-        subject: (subject || '').substring(0, 500),
-        sender: (sender || '').substring(0, 500),
-        received_at: receivedAt?.toISOString() || null,
-        folder_name: folderName,
-        has_transaction: hasTx,
-        transaction_id: txId,
-        ai_classified: aiClassified,
-      })
+      // Record scanned email with proper error handling
+      const { data: scannedInserted, error: scannedInsertErr } = await supabasePublic
+        .from('email_scanned_emails')
+        .insert({
+          email_account_id: account.id,
+          scan_result_id: scanId,
+          provider_message_id: providerId,
+          subject: (subject || '').substring(0, 500),
+          sender: (sender || '').substring(0, 500),
+          received_at: receivedAt?.toISOString() || null,
+          folder_name: folderName,
+          has_transaction: hasTx,
+          transaction_id: txId,
+          ai_classified: aiClassified,
+        })
+        .select('id')
+        .single()
+
       if (scannedInsertErr) {
-        console.warn(`[scanInbox] Insert scanned email failed (likely dup):`, scannedInsertErr.message)
+        // Check if this is a duplicate key constraint violation (race condition)
+        if (scannedInsertErr.code === '23505' || scannedInsertErr.message?.includes('duplicate')) {
+          console.warn(`[scanInbox] Email already scanned by concurrent scan (dedup):`, {
+            email_account_id: account.id,
+            provider_message_id: providerId,
+            error: scannedInsertErr.message,
+          })
+          // Skip counting this email since it was already processed
+          continue
+        }
+        // Other database errors should fail the scan
+        throw new Error(`Failed to record scanned email ${providerId}: ${scannedInsertErr.message}`)
       }
 
       if (hasTx) folderTxCount++

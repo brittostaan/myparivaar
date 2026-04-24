@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../models/admin_models.dart';
 import 'auth_service.dart';
@@ -386,9 +387,17 @@ class AdminService extends ChangeNotifier {
     _setError(null);
 
     try {
+      // Validate email format
+      final trimmedEmail = email.trim();
+      if (!_isValidEmail(trimmedEmail)) {
+        throw AdminException(
+          'Invalid email format. Please provide a valid email address.',
+        );
+      }
+
       final data = await _post('admin-staff-manage', {
         'action': 'add',
-        'email': email.trim(),
+        'email': trimmedEmail,
         'initial_scope': initialScope,
         'staff_role': staffRole,
         if (approvalRequestId != null && approvalRequestId.trim().isNotEmpty)
@@ -436,6 +445,102 @@ class AdminService extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+
+  // ── Confirmation Dialogs for Audit Trail ──────────────────────────────────
+
+  /// Show confirmation dialog before adding staff.
+  /// Returns true if user confirmed, false otherwise.
+  /// This action will be logged in the audit trail.
+  Future<bool> showAddStaffConfirmation({
+    required BuildContext context,
+    required String email,
+    required String scope,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Staff Member'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'You are about to add a new staff member with the following details:',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 16),
+            Text('Email: $email'),
+            const SizedBox(height: 8),
+            Text('Scope: $scope'),
+            const SizedBox(height: 16),
+            const Text(
+              'This action will be logged in the audit trail.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    ) ?? false;
+    return confirmed;
+  }
+
+  /// Show confirmation dialog before removing staff.
+  /// Returns true if user confirmed, false otherwise.
+  /// This action will be logged in the audit trail.
+  Future<bool> showRemoveStaffConfirmation({
+    required BuildContext context,
+    required String email,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Staff Member'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'You are about to remove the following staff member:',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 16),
+            Text('Email: $email'),
+            const SizedBox(height: 16),
+            const Text(
+              'This action will be logged in the audit trail.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Remove', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    ) ?? false;
+    return confirmed;
   }
 
   /// Update staff member [staffUserId] with new [staffScope]
@@ -676,70 +781,54 @@ class AdminService extends ChangeNotifier {
 
   /// Fetch users belonging to a specific household.
   Future<List<AdminUser>> fetchHouseholdUsers(String householdId) async {
-    try {
-      final data = await _post('admin-users', {
-        'action': 'list',
-        'household_id': householdId,
-        'limit': 50,
-      });
-      final rows = data['users'] as List? ?? [];
-      return rows
-          .map((e) => AdminUser.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
+    final data = await _post('admin-users', {
+      'action': 'list',
+      'household_id': householdId,
+      'limit': 50,
+    });
+    final rows = data['users'] as List? ?? [];
+    return rows
+        .map((e) => AdminUser.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// Fetch subscriptions for a specific household.
   Future<List<AdminSubscription>> fetchHouseholdSubscriptions(
       String householdId) async {
-    try {
-      final data = await _post('admin-subscriptions', {
-        'action': 'list_subscriptions',
-        'household_id': householdId,
-      });
-      final rows = data['subscriptions'] as List? ?? [];
-      return rows
-          .map((e) => AdminSubscription.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
+    final data = await _post('admin-subscriptions', {
+      'action': 'list_subscriptions',
+      'household_id': householdId,
+    });
+    final rows = data['subscriptions'] as List? ?? [];
+    return rows
+        .map((e) => AdminSubscription.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// Fetch feature flags with overrides for a specific household.
   Future<List<AdminFeatureFlag>> fetchHouseholdFeatureFlags(
       String householdId) async {
-    try {
-      final data = await _post('admin-feature-flags', {
-        'action': 'list_flags',
-        'householdId': householdId,
-      });
-      final flagList = data['flags'] as List? ?? [];
-      return flagList
-          .map((e) => AdminFeatureFlag.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
+    final data = await _post('admin-feature-flags', {
+      'action': 'list_flags',
+      'householdId': householdId,
+    });
+    final flagList = data['flags'] as List? ?? [];
+    return flagList
+        .map((e) => AdminFeatureFlag.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// Fetch audit logs scoped to a specific household.
   Future<List<AuditLog>> fetchHouseholdAuditLogs(String householdId,
       {int limit = 50}) async {
-    try {
-      final data = await _post('admin-audit-log', {
-        'household_id': householdId,
-        'limit': limit,
-      });
-      final list = data['audit_logs'] as List? ?? [];
-      return list
-          .map((e) => AuditLog.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
+    final data = await _post('admin-audit-log', {
+      'household_id': householdId,
+      'limit': limit,
+    });
+    final list = data['audit_logs'] as List? ?? [];
+    return list
+        .map((e) => AuditLog.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// Fetch approval requests for dual-approval decision workflows.

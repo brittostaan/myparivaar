@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -44,11 +45,13 @@ class AuthService extends ChangeNotifier {
     http.Client? httpClient,
   })  : _supabaseUrl = supabaseUrl.replaceAll(RegExp(r'/$'), ''),
         _supabase = supabaseClient ?? Supabase.instance.client,
-        _http = httpClient ?? http.Client();
+        _http = httpClient ?? http.Client(),
+        _secureStorage = const FlutterSecureStorage();
 
   final String _supabaseUrl;
   final SupabaseClient _supabase;
   final http.Client _http;
+  final FlutterSecureStorage _secureStorage;
   StreamSubscription<AuthState>? _authSubscription;
 
   // ── In-memory state ────────────────────────────────────────────────────────
@@ -275,6 +278,14 @@ class AuthService extends ChangeNotifier {
     await _supabase.auth.signOut();
     _currentUser = null;
     _currentHousehold = null;
+    
+    // Clear secure storage on sign out
+    try {
+      await _secureStorage.delete(key: 'household_id');
+    } catch (e) {
+      debugPrint('[AuthService] Failed to clear secure storage on sign out: $e');
+    }
+    
     notifyListeners();
   }
 
@@ -370,6 +381,25 @@ class AuthService extends ChangeNotifier {
       _currentHousehold = data['household'] != null
           ? Household.fromJson(data['household'] as Map<String, dynamic>)
           : null;
+
+      // Securely store household ID for encrypted persistence
+      if (_currentHousehold != null) {
+        try {
+          await _secureStorage.write(
+            key: 'household_id',
+            value: _currentHousehold!.id,
+          );
+        } catch (e) {
+          debugPrint('[AuthService] Failed to store household ID securely: $e');
+        }
+      } else {
+        // Clear stored household ID if user has no household
+        try {
+          await _secureStorage.delete(key: 'household_id');
+        } catch (e) {
+          debugPrint('[AuthService] Failed to clear stored household ID: $e');
+        }
+      }
 
       notifyListeners();
     } else {

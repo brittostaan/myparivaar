@@ -1,8 +1,27 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-String _supabaseAnonKey() =>
-    const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpbXFha2ZqcnlwdHloeG1yanNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NDQ3NzQsImV4cCI6MjA4ODQyMDc3NH0.SIySX0aILaLTp08K-TurhhS4dMWl0VqKzgKp3PPFlM0');
+/// Thrown by [EmailService] for email-related errors
+class EmailException implements Exception {
+  const EmailException(this.message, {this.statusCode});
+  final String message;
+  final int? statusCode;
+
+  @override
+  String toString() => 'EmailException: $message${statusCode != null ? ' (HTTP $statusCode)' : ''}';
+}
+
+String _supabaseAnonKey() {
+  const key = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: 'MISSING_SUPABASE_ANON_KEY');
+  if (key == 'MISSING_SUPABASE_ANON_KEY') {
+    throw EmailException(
+      'SUPABASE_ANON_KEY environment variable is not set. '
+      'Please provide it at compile time: '
+      'flutter build ... --dart-define=SUPABASE_ANON_KEY=<your-anon-key>'
+    );
+  }
+  return key;
+}
 
 String _extractErrorMessage(http.Response response, String fallback) {
   try {
@@ -75,7 +94,7 @@ class EmailService {
     required String? idToken,
   }) async {
     if (idToken == null) {
-      throw Exception('Not authenticated');
+      throw EmailException('Not authenticated');
     }
 
     final response = await http.post(
@@ -89,12 +108,16 @@ class EmailService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception(
+      throw EmailException(
         _extractErrorMessage(response, 'Failed to get email accounts'),
+        statusCode: response.statusCode,
       );
     }
 
-    final List<dynamic> data = jsonDecode(response.body);
+    final data = jsonDecode(response.body);
+    if (data is! List) {
+      throw EmailException('Expected List response for email accounts, got ${data.runtimeType}');
+    }
     return data.map((json) => EmailAccount.fromJson(json)).toList();
   }
 
@@ -104,7 +127,7 @@ class EmailService {
     required String? idToken,
   }) async {
     if (idToken == null) {
-      throw Exception('Not authenticated');
+      throw EmailException('Not authenticated');
     }
 
     final response = await http.post(
@@ -120,13 +143,18 @@ class EmailService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception(
+      throw EmailException(
         _extractErrorMessage(response, 'Failed to get connect URL'),
+        statusCode: response.statusCode,
       );
     }
 
     final data = jsonDecode(response.body);
-    return data['auth_url'];
+    final authUrl = data['auth_url'] as String?;
+    if (authUrl == null || authUrl.isEmpty) {
+      throw EmailException('Missing or empty auth_url in response');
+    }
+    return authUrl;
   }
 
   Future<void> disconnectEmailAccount({
@@ -135,7 +163,7 @@ class EmailService {
     required String? idToken,
   }) async {
     if (idToken == null) {
-      throw Exception('Not authenticated');
+      throw EmailException('Not authenticated');
     }
 
     final response = await http.post(
@@ -149,8 +177,9 @@ class EmailService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception(
+      throw EmailException(
         _extractErrorMessage(response, 'Failed to disconnect account'),
+        statusCode: response.statusCode,
       );
     }
   }
@@ -160,7 +189,7 @@ class EmailService {
     required String? idToken,
   }) async {
     if (idToken == null) {
-      throw Exception('Not authenticated');
+      throw EmailException('Not authenticated');
     }
 
     final response = await http.post(
@@ -174,8 +203,9 @@ class EmailService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception(
+      throw EmailException(
         _extractErrorMessage(response, 'Failed to sync emails'),
+        statusCode: response.statusCode,
       );
     }
 
@@ -189,7 +219,7 @@ class EmailService {
     required String supabaseUrl,
     required String? idToken,
   }) async {
-    if (idToken == null) throw Exception('Not authenticated');
+    if (idToken == null) throw EmailException('Not authenticated');
 
     final response = await http.post(
       Uri.parse('$supabaseUrl/functions/v1/email-scanInbox'),
@@ -205,8 +235,9 @@ class EmailService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception(
+      throw EmailException(
         _extractErrorMessage(response, 'Failed to list folders'),
+        statusCode: response.statusCode,
       );
     }
 
@@ -225,7 +256,7 @@ class EmailService {
     bool useAi = true,
     int daysBack = 7,
   }) async {
-    if (idToken == null) throw Exception('Not authenticated');
+    if (idToken == null) throw EmailException('Not authenticated');
 
     final response = await http.post(
       Uri.parse('$supabaseUrl/functions/v1/email-scanInbox'),
@@ -244,8 +275,9 @@ class EmailService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception(
+      throw EmailException(
         _extractErrorMessage(response, 'Failed to scan inbox'),
+        statusCode: response.statusCode,
       );
     }
 
@@ -257,7 +289,7 @@ class EmailService {
     required String supabaseUrl,
     required String? idToken,
   }) async {
-    if (idToken == null) throw Exception('Not authenticated');
+    if (idToken == null) throw EmailException('Not authenticated');
 
     final response = await http.post(
       Uri.parse('$supabaseUrl/functions/v1/email-scanInbox'),
@@ -273,8 +305,9 @@ class EmailService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception(
+      throw EmailException(
         _extractErrorMessage(response, 'Failed to fetch scan history'),
+        statusCode: response.statusCode,
       );
     }
 

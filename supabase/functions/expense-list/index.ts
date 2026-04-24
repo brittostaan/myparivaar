@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
       .eq('household_id', userData.household_id)
       .is('deleted_at', null)
       .order('date', { ascending: false })
-      .limit(Math.min(limit, 1000)) // Max 1000 records
+      .limit(Math.min(limit, 5000)) // Max 5000 records
 
     if (category) {
       query = query.eq('category', category.toLowerCase())

@@ -159,21 +159,33 @@ Deno.serve(async (req: Request) => {
     )
 
     // Store chat interaction
-    await supabase.from('ai_chat_history').insert({
+    const { error: chatInsertError } = await supabase.from('ai_chat_history').insert({
       household_id: userData.household_id,
       user_message: message.substring(0, 500), // truncate for storage
       ai_response: response.substring(0, 1000),
       created_by: decodedToken.uid
-    }).then(() => null).catch(() => null)
+    })
+    
+    if (chatInsertError) {
+      console.error('Failed to store chat history:', chatInsertError)
+    }
 
     // Update usage counter
-    await supabase.from('ai_usage').upsert({
+    const { error: usageErr } = await supabase.from('ai_usage').upsert({
       household_id: userData.household_id,
       month: currentMonth,
       chat_count: queriesUsed + 1
     }, {
       onConflict: 'household_id,month'
     })
+
+    if (usageErr) {
+      console.error('Failed to update ai_usage:', usageErr)
+      return new Response(JSON.stringify({ error: 'Failed to update usage counter: ' + usageErr.message }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     return new Response(JSON.stringify({
       response,

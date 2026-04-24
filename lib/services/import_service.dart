@@ -46,16 +46,34 @@ class ImportService {
 
   /// Commits a validated CSV. All rows must be clean (no errors).
   /// Returns the number of rows imported and the batch id.
+  /// Validates that all expected rows were imported.
   Future<ImportCommitResult> commit({
     required String type,
     required String csvText,
   }) async {
+    // Calculate expected row count (lines minus header)
+    final expectedRows = csvText.split('\n').where((line) => line.trim().isNotEmpty).length - 1;
+    
+    if (expectedRows <= 0) {
+      throw const ImportException('CSV file is empty or contains only headers.');
+    }
+
     final data = await _call(
       action:  'commit',
       type:    type,
       csvText: csvText,
     );
-    return ImportCommitResult.fromJson(data);
+    
+    final result = ImportCommitResult.fromJson(data);
+    
+    // Validate that the imported rows match expected rows
+    if (result.imported < expectedRows) {
+      throw ImportException(
+        'Only ${result.imported} of $expectedRows rows imported. Check for errors.',
+      );
+    }
+    
+    return result;
   }
 
   // ── Internal ───────────────────────────────────────────────────────────────

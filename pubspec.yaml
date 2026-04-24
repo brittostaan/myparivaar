@@ -33,6 +33,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   url_launcher: ^6.3.2
 
+  # Secure storage for sensitive data (OAuth tokens, household ID)
+  flutter_secure_storage: ^9.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

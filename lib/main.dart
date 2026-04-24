@@ -40,8 +40,6 @@ import 'theme/app_theme.dart';
 import 'theme/app_icons.dart';
 
 const _kDefaultSupabaseUrl = 'https://qimqakfjryptyhxmrjsj.supabase.co';
-const _kDefaultSupabaseAnonKey =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpbXFha2ZqcnlwdHloeG1yanNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NDQ3NzQsImV4cCI6MjA4ODQyMDc3NH0.SIySX0aILaLTp08K-TurhhS4dMWl0VqKzgKp3PPFlM0';
 
 const _kSupabaseUrl = String.fromEnvironment(
   'SUPABASE_URL',
@@ -49,11 +47,25 @@ const _kSupabaseUrl = String.fromEnvironment(
 );
 const _kSupabaseAnonKey = String.fromEnvironment(
   'SUPABASE_ANON_KEY',
-  defaultValue: _kDefaultSupabaseAnonKey,
+  defaultValue: 'MISSING_SUPABASE_ANON_KEY',
 );
 const _kAppEnv = String.fromEnvironment('APP_ENV', defaultValue: '');
 
 bool get _isPreviewEnvironment => _kAppEnv.toLowerCase().trim() == 'preview';
+
+void _validateSupabaseConfig() {
+  if (_kSupabaseAnonKey == 'MISSING_SUPABASE_ANON_KEY') {
+    if (kReleaseMode) {
+      throw Exception(
+        'SUPABASE_ANON_KEY environment variable is not set. '
+        'Release builds require this key. '
+        'Please provide it at compile time: '
+        'flutter build ... --dart-define=SUPABASE_ANON_KEY=<your-anon-key>'
+      );
+    }
+    debugPrint('[WARNING] SUPABASE_ANON_KEY not set. This is required for release builds.');
+  }
+}
 
 const Set<String> _authenticatedRoutes = {
   '/home',
@@ -219,14 +231,24 @@ void main() async {
 }
 
 void _validateSupabaseConfig() {
+  if (_kSupabaseAnonKey == 'MISSING_SUPABASE_ANON_KEY') {
+    if (kReleaseMode) {
+      throw Exception(
+        'SUPABASE_ANON_KEY environment variable is not set. '
+        'Release builds require this key. '
+        'Please provide it at compile time: '
+        'flutter build ... --dart-define=SUPABASE_ANON_KEY=<your-anon-key>'
+      );
+    }
+    debugPrint('[WARNING] SUPABASE_ANON_KEY not set. This is required for release builds.');
+  }
+
   final hasValidUrl = _kSupabaseUrl.startsWith('https://') &&
       _kSupabaseUrl.contains('.supabase.co');
-  final hasAnonKey = _kSupabaseAnonKey.trim().isNotEmpty &&
-      _kSupabaseAnonKey.split('.').length == 3;
-
-  if (!hasValidUrl || !hasAnonKey) {
+  
+  if (!hasValidUrl) {
     throw StateError(
-      'Invalid Supabase configuration. Provide valid values via --dart-define=SUPABASE_URL=... and --dart-define=SUPABASE_ANON_KEY=...',
+      'Invalid Supabase URL. Provide valid URL via --dart-define=SUPABASE_URL=...'
     );
   }
 }

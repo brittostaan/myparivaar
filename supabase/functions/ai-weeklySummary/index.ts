@@ -149,22 +149,34 @@ Deno.serve(async (req: Request) => {
     const summary = await generateFinancialSummary(supabase, transactions || [], budgets || [], household.name)
 
     // Store the summary
-    await supabase.from('ai_summaries').insert({
+    const { error: summaryInsertError } = await supabase.from('ai_summaries').insert({
       household_id: userData.household_id,
       summary_type: 'weekly',
       summary,
       data_from: oneWeekAgo.toISOString().split('T')[0],
       data_to: new Date().toISOString().split('T')[0]
-    }).then(() => null).catch(() => null)
+    })
+    
+    if (summaryInsertError) {
+      console.error('Failed to store weekly summary:', summaryInsertError)
+    }
 
     // Update usage counter
-    await supabase.from('ai_usage').upsert({
+    const { error: usageErr } = await supabase.from('ai_usage').upsert({
       household_id: userData.household_id,
       month: startOfWeek.toISOString().substring(0, 7),
       summary_generated_at: new Date().toISOString()
     }, {
       onConflict: 'household_id,month'
     })
+
+    if (usageErr) {
+      console.error('Failed to update ai_usage:', usageErr)
+      return new Response(JSON.stringify({ error: 'Failed to update usage counter: ' + usageErr.message }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     return new Response(JSON.stringify({
       summary,

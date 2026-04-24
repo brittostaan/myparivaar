@@ -3,8 +3,17 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/expense.dart';
 
-String _supabaseAnonKey() =>
-    const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpbXFha2ZqcnlwdHloeG1yanNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NDQ3NzQsImV4cCI6MjA4ODQyMDc3NH0.SIySX0aILaLTp08K-TurhhS4dMWl0VqKzgKp3PPFlM0');
+String _supabaseAnonKey() {
+  const key = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: 'MISSING_SUPABASE_ANON_KEY');
+  if (key == 'MISSING_SUPABASE_ANON_KEY') {
+    throw Exception(
+      'SUPABASE_ANON_KEY environment variable is not set. '
+      'Please provide it at compile time: '
+      'flutter build ... --dart-define=SUPABASE_ANON_KEY=<your-anon-key>'
+    );
+  }
+  return key;
+}
 
 class ExpenseException implements Exception {
   final String message;
@@ -41,7 +50,7 @@ class ExpenseService {
       // Send filters in the JSON body (the Edge Function reads from body,
       // not from URL query params). Default limit 500 to show all imported rows.
       final bodyParams = <String, dynamic>{
-        'limit': limit ?? 500,
+        'limit': limit ?? 1000,
       };
       if (category != null) bodyParams['category'] = category;
       if (startDate != null) bodyParams['start_date'] = startDate;
@@ -61,9 +70,31 @@ class ExpenseService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        
+        // Validate expenses is a list before casting
+        if (data['expenses'] is! List) {
+          throw ExpenseException(
+            'Invalid response: expenses field is not a list',
+            statusCode: 200,
+            rawBody: response.body,
+            url: uri.toString(),
+          );
+        }
+        
+        // Filter to only valid map items and safely deserialize
         final expenses = (data['expenses'] as List)
-            .map((expense) => Expense.fromJson(expense))
+            .whereType<Map<String, dynamic>>()
+            .map((expense) {
+              try {
+                return Expense.fromJson(expense);
+              } catch (e) {
+                debugPrint('[ExpenseService] Malformed expense item: $expense, Error: $e');
+                return null;
+              }
+            })
+            .whereType<Expense>()
             .toList();
+        
         return expenses;
       } else {
         String errorMsg = 'Failed to load expenses';

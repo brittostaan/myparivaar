@@ -7,18 +7,9 @@ class AIInsightsHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final isMobile = width < 800;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildAISection(context, isMobile),
-          ],
-        ),
-      ),
+    return const Scaffold(
+      backgroundColor: Color(0xFFF8FAFC),
+      body: SizedBox.shrink(),
     );
   }
 

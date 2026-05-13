@@ -25,7 +25,7 @@ import 'screens/voice_expense_screen.dart';
 import 'screens/admin_center_screen.dart';
 import 'screens/notifications_screen.dart';
 
-import 'screens/home_dashboard_screen.dart';
+import 'screens/dashboard_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/legal_page_screen.dart';
 import 'screens/landing_page_screen.dart';
@@ -286,7 +286,10 @@ class MyParivaaarApp extends StatelessWidget {
       case '/home':
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => const _HomeShell(),
+          builder: (_) => NavigationShell(
+            currentRoute: routeName,
+            child: const _HomeShell(),
+          ),
         );
 
       case '/household-setup':
@@ -661,13 +664,13 @@ class _AppRouterState extends State<_AppRouter> {
 // ── Home Shell ───────────────────────────────────────────────────────────────
 
 /// Main screen shown to authenticated users with a household.
-/// Uses the new HomeDashboardScreen for a rich data dashboard.
+/// Uses the new DashboardScreen for a modern UI.
 class _HomeShell extends StatelessWidget {
   const _HomeShell();
 
   @override
   Widget build(BuildContext context) {
-    return const HomeDashboardScreen();
+    return const DashboardScreen();
   }
 }
 

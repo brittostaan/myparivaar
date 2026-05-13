@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -15,8 +14,6 @@ import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
 import '../utils/category_emoji.dart';
 import '../utils/tag_utils.dart';
-import '../widgets/ai_insights_panel.dart';
-import '../widgets/app_header.dart';
 import '../widgets/tag_input_section.dart';
 import '../widgets/tag_wrap.dart';
 
@@ -643,53 +640,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
   Widget build(BuildContext context) {
     final summary = BudgetSummary(month: _monthKey, budgets: _budgets);
     return _buildWebLayout(context, summary);
-  }
-
-
-  Widget _buildRewardsRow(bool isDark) {
-    final rewards = <_BudgetRewardIcon>[
-      _BudgetRewardIcon(Icons.emoji_events_rounded, Colors.amber, 'Budget Champion'),
-      _BudgetRewardIcon(Icons.savings_rounded, Colors.green, 'Smart Saver'),
-      _BudgetRewardIcon(Icons.auto_graph_rounded, Colors.blue, 'Trend Watcher'),
-      _BudgetRewardIcon(Icons.favorite_rounded, Colors.pink, 'Impulse Control'),
-      _BudgetRewardIcon(Icons.shield_rounded, Colors.purple, 'No Leaks'),
-      _BudgetRewardIcon(Icons.star_rounded, Colors.orange, 'Consistent'),
-      _BudgetRewardIcon(Icons.diamond_rounded, Colors.teal, 'Goal Achiever'),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Text('Rewards', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.grey.shade500)),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: rewards.map((r) => Tooltip(
-              message: r.label,
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [r.color.withOpacity(0.15), r.color.withOpacity(0.05)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: r.color.withOpacity(0.3)),
-                ),
-                child: Icon(r.icon, size: 15, color: r.color),
-              ),
-            )).toList(),
-          ),
-        ],
-      ),
-    );
   }
 
   // ── Info Cards Column ──

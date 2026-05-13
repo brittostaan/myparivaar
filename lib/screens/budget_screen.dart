@@ -1199,49 +1199,18 @@ class _BudgetScreenState extends State<BudgetScreen> {
                             child: _buildWebBudgetList(summary, isDark, primary),
                           ),
                           const SizedBox(width: 12),
-                          // When a panel is open: Col2=InfoCards, Col3=Panel
+                          // When a panel is open: Col2=InfoCards
                           if (_anyPanelOpen) ...[
                             Expanded(
                               flex: 4,
                               child: _buildInfoCardsColumn(isDark, primary),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 3,
-                              child: Column(
-                                children: [
-                                  _buildRewardsRow(isDark),
-                                  const SizedBox(height: 8),
-                                  if (_showAIInsightsPanel)
-                                    Expanded(child: AIInsightsPanel(
-                                      onClose: () => setState(() => _showAIInsightsPanel = false),
-                                    ))
-                                  else
-                                    Expanded(child: AIInsightsPanel(
-                                      onClose: () {},
-                                    )),
-                                ],
-                              ),
-                            ),
                           ]
-                          // Default: Col2=InfoCards, Col3=Rewards+AI Insights
+                          // Default: Col2=InfoCards (navigation_shell provides AI Insights sidebar)
                           else ...[
                             Expanded(
                               flex: 4,
                               child: _buildInfoCardsColumn(isDark, primary),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 3,
-                              child: Column(
-                                children: [
-                                  _buildRewardsRow(isDark),
-                                  const SizedBox(height: 8),
-                                  Expanded(child: AIInsightsPanel(
-                                    onClose: () {},
-                                  )),
-                                ],
-                              ),
                             ),
                           ],
                         ],

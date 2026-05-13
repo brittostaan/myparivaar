@@ -901,22 +901,11 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                               ),
                             ),
                           ]
-                          // Default: Col2=InfoCards, Col3=Rewards+AI Insights
+                          // Default: Col2=InfoCards (navigation_shell provides AI Insights sidebar)
                           else ...[
                             Expanded(
                               flex: 4,
                               child: _buildInfoCardsColumn(isDark, primary),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 3,
-                              child: Column(
-                                children: [
-                                  _buildRewardsRow(isDark),
-                                  const SizedBox(height: 8),
-                                  Expanded(child: _buildAIInsightsPanel(isDark, primary)),
-                                ],
-                              ),
                             ),
                           ],
                         ],
@@ -1472,14 +1461,14 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
       _aiCard('ðŸ’§', 'Spend Leakage', leakageCount > 0 ? '$leakageCount spending leak${leakageCount == 1 ? '' : 's'} detected' : 'No spending leaks detected! Your finances look healthy.', leakageCount > 0 ? Colors.pink : Colors.green, leakageCount > 0 ? 'Review' : 'Healthy'),
       _aiCard('ðŸ’°', 'Projected Expense', 'â‚¹${projectedTotal.toStringAsFixed(0)} projected this month', Colors.green, 'â‚¹${dailyRate.toStringAsFixed(0)}/day'),
       _aiCard('ðŸ””', 'Subscription Drain', currentMonthExpenses.isEmpty ? 'Connect email to track subscriptions' : '${catCount.length} active spending categories detected', Colors.red, 'Track recurring'),
-      _aiCard('âš¡', 'Impulse Spend', impulseCount > 0 ? '$impulseCount impulse spend${impulseCount == 1 ? '' : 's'} detected this month' : 'No impulse spending detected!', Colors.orange, impulseCount > 0 ? 'Review spending' : 'Great control!'),
+      _aiCard('⚡', 'Impulse Spend', impulseCount > 0 ? '$impulseCount impulse spend${impulseCount == 1 ? '' : 's'} detected this month' : 'No impulse spending detected!', Colors.orange, impulseCount > 0 ? 'Review spending' : 'Great control!'),
       _aiCard('ðŸ“', 'Silent Expenses', smallExpenses.isNotEmpty ? '${smallExpenses.length} small spends totaling â‚¹${smallTotal.toStringAsFixed(0)}' : 'No silent expenses detected', Colors.indigo, 'Under â‚¹200 each'),
       _aiCard('ðŸ“ˆ', 'Lifestyle Creep', creepPct.abs() > 5 ? 'Spending ${creepPct > 0 ? 'up' : 'down'} ${creepPct.abs().toStringAsFixed(0)}% vs last quarter' : 'Spending stable vs last quarter', creepPct > 10 ? Colors.red : Colors.teal, 'Quarter comparison'),
       _aiCard('ðŸŽ¯', 'Budget Drift', driftingCat != null ? '$driftingCat driftingÃ¢â‚¬â€${driftPct.toStringAsFixed(0)}% used with ${(100 - monthPct).toStringAsFixed(0)}% of month left' : 'All categories on track', Colors.amber, 'Budget pace'),
       _aiCard('âš ï¸', 'Category Overshoot', overshootCat != null ? '$overshootCat spend up â‚¹${overshootAmt.toStringAsFixed(0)} vs last month' : 'No unusual category spikes', overshootCat != null ? Colors.deepOrange : Colors.green, 'Category watch'),
       _aiCard('ðŸ“Š', 'Spend Volatility', volatilityPct.abs() > 20 ? 'Weekend spending ${volatilityPct > 0 ? '${volatilityPct.toStringAsFixed(0)}% higher' : '${volatilityPct.abs().toStringAsFixed(0)}% lower'} than weekdays' : 'Spending pattern is stable', Colors.purple, 'Daily patterns'),
       _aiCard('ðŸ’¡', 'Smart Saving', totalBudget > 0 && totalSpend < totalBudget ? 'Potential to save â‚¹${(totalBudget - totalSpend).toStringAsFixed(0)} this month' : 'Set budgets to unlock saving tips', Colors.blue, 'Opportunity'),
-      _aiCard('âœ…', 'Good Spend Ratio', '${goodRatio.toStringAsFixed(0)}% of spending on essentials & goals', goodRatio >= 70 ? Colors.green : Colors.orange, goodRatio >= 70 ? 'Healthy!' : 'Could improve'),
+      _aiCard('✅', 'Good Spend Ratio', '${goodRatio.toStringAsFixed(0)}% of spending on essentials & goals', goodRatio >= 70 ? Colors.green : Colors.orange, goodRatio >= 70 ? 'Healthy!' : 'Could improve'),
       _aiCard('ðŸ›¡ï¸', 'Avoided Spend', avoidedCount > 0 ? 'You avoided $avoidedCount impulse spend${avoidedCount == 1 ? '' : 's'} vs last month' : prevImpulse == 0 ? 'Clean record both months!' : '${impulseCount - prevImpulse} more impulse spends than last month', avoidedCount > 0 ? Colors.green : Colors.grey, 'Habit tracking'),
     ];
 

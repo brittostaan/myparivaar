@@ -26,6 +26,7 @@ import 'screens/admin_center_screen.dart';
 import 'screens/notifications_screen.dart';
 
 import 'screens/dashboard_screen.dart';
+import 'screens/ai_insights_home_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/legal_page_screen.dart';
 import 'screens/landing_page_screen.dart';
@@ -664,13 +665,13 @@ class _AppRouterState extends State<_AppRouter> {
 // ── Home Shell ───────────────────────────────────────────────────────────────
 
 /// Main screen shown to authenticated users with a household.
-/// Uses the new DashboardScreen for a modern UI.
+/// Shows only AI Insights section.
 class _HomeShell extends StatelessWidget {
   const _HomeShell();
 
   @override
   Widget build(BuildContext context) {
-    return const DashboardScreen();
+    return const AIInsightsHomeScreen();
   }
 }
 

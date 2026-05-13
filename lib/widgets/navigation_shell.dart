@@ -1028,7 +1028,7 @@ class _NavigationShellState extends State<NavigationShell> {
                       children: [
                         Expanded(child: widget.child),
                         SizedBox(
-                          width: 380,
+                          width: 476,
                           child: Column(
                             children: [
                               const SizedBox(height: 57),
